@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 //#include "../MyLinkList.h"
+#include "../utils/MyBitMap.h"
+#include "../utils/pagedef.h"
 using namespace std;
 class FileManager {
 private:
@@ -18,15 +20,24 @@ private:
 	int _createFile(const char* name) {
 		FILE* f = fopen(name, "a+");
 		if (f == NULL) {
-			cout << "fail" << endl;
+			printf("Error in creating file %s\n", name);
 			return -1;
 		}
 		fclose(f);
 		return 0;
 	}
+	int _removeFile(const char* name) {
+		int res = remove(name);
+		if (res != 0) {
+			printf("Error in removing file %s\n", name);
+			return -1;
+		}
+		return 0;
+	}
 	int _openFile(const char* name, int fileID) {
 		int f = open(name, O_RDWR);
 		if (f == -1) {
+			printf("Error in removing file %s\n", name);
 			return -1;
 		}
 		fd[fileID] = f;
@@ -105,6 +116,12 @@ public:
 		_createFile(name);
 		return true;
 	}
+
+	bool removeFile(const char* name) {
+		_removeFile(name);
+		return true;
+	}
+
 	/*
 	 * @函数名openFile
 	 * @参数name:文件名
