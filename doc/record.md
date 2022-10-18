@@ -30,6 +30,39 @@ public:
 };
 ```
 
+### TableHeader
+
+`src/record/RMComponent.h`
+
+用来记录表的列数、列属性等**元数据**。
+
+```C++
+class TableHeader{
+public:
+    uint8_t valid;
+    uint8_t colNum;
+    uint32_t recordSize;
+    TableEntry* entryHead;
+    char tableName[TAB_MAX_NAME_LEN];
+
+    TableHeader();
+
+    TableEntry* getCol(char* colName);
+
+    void init(TableEntry* entryHead_);
+
+    int alterCol(TableEntry* tableEntry);
+
+    int removeCol(char* colName);
+
+    int addCol(TableEntry* tableEntry);
+
+    bool existCol(char* colName);
+
+    void printInfo();
+};
+```
+
 ### FileHandler
 
 > `src/record/FileHandler.h`
@@ -40,31 +73,34 @@ public:
 class FileHandler{
 private:
     FileManager* fileManager;
+    TableHeader* tableHeader;
     int fileId;
 public:
-    FileHandler() {}
 
-    FileHandler(FileManager* fileManager_, int fileId_);
+    FileHandler();
 
     ~FileHandler();
 
     void init(FileManager* fileManager_, int fileId_);
 
     int getFileId();
+
+    int operateTable(TB_OP_TYPE opCode, char* colName = nullptr, TableEntry* tableEntry = nullptr);
+    // when operating type is init, tableEntry represents the head of a linklist of TableEntry
     
-    void getRecord(const int recordId, Record &record) const;
+    bool getRecord(const int recordId, Record &record) const;
 
-    void insertRecord(const char* recordData, int &recordId);
+    bool insertRecord(const char* recordData, int &recordId);
 
-    void removeRecord(const int recordId);
+    bool removeRecord(const int recordId);
 
-    void updateRecord(const Record &record);
+    bool updateRecord(const Record &record);
 
-    void writeBack(const int pageNumber); // write page back to disk
+    bool writeBack(const int pageNumber); // write page back to disk
 };
 ```
 
-
+`FileHandler`通过接口`operateTable()`来对一张表的结构进行初始化、修改、增加删除等操作，`opCode`指定的操作的类型。返回值为0表示操作成功，-1表示操作失败。特别的，`opCode=TB_EXIST`时，返回值为0表示未找到对应列，返回值为1表示找到了。
 
 ### RecordManager
 
