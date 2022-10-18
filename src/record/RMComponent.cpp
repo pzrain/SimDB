@@ -45,8 +45,7 @@ void TableHeader::printInfo() {
         if (head->primaryKeyConstraint) {
             printf("Primary Key ");
         }
-        switch (head->colType)
-        {
+        switch (head->colType) {
             case COL_INT:
                 printf("INT");
                 if (head->hasDefault) {
@@ -146,4 +145,5 @@ int TableHeader::addCol(TableEntry* tableEntry) {
 
 void TableHeader::init(TableEntry* entryHead_) {
     entryHead = entryHead_;
+    valid = 1;
 }
