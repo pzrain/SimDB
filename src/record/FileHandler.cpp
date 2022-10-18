@@ -57,21 +57,22 @@ int FileHandler::operateTable(TB_OP_TYPE opCode, char* colName = nullptr, TableE
         printf("[Error] the table has not been initialized yet.\n");
         return -1;
     }
+    int res = 0;
     switch (opCode) {
         case TB_INIT:
             tableHeader->init(tableEntry);
             break;
         case TB_ALTER:
-            return tableHeader->alterCol(tableEntry);
+            res = tableHeader->alterCol(tableEntry);
             break;
         case TB_REMOVE:
-            return tableHeader->removeCol(colName);
+            res =  tableHeader->removeCol(colName);
             break;
         case TB_ADD:
-            return tableHeader->addCol(tableEntry);
+            res =  tableHeader->addCol(tableEntry);
             break;
         case TB_EXIST:
-            return tableHeader->existCol(colName) ? 1 : 0;
+            res =  tableHeader->existCol(colName) ? 1 : 0;
             break;
         case TB_PRINT:
             tableHeader->printInfo();
@@ -80,5 +81,6 @@ int FileHandler::operateTable(TB_OP_TYPE opCode, char* colName = nullptr, TableE
             printf("[Error] unknown op code.\n");
             return -1;
     }
-    return 0;
+    writeTableHeader(fileManager, fileId, tableHeader);
+    return res;
 }
