@@ -18,6 +18,15 @@ TableHeader::TableHeader() {
     entryHead = nullptr;
 }
 
+TableHeader::~TableHeader() {
+    TableEntry* head = entryHead, *next;
+    while (head) {
+        next = head->next;
+        delete head;
+        head = next;
+    }
+}
+
 bool TableHeader::existCol(char* colName) {
     TableEntry* head = entryHead;
     while (head) {
@@ -102,6 +111,7 @@ int TableHeader::alterCol(TableEntry* tableEntry) {
             } else {
                 entryHead = tableEntry;
             }
+            delete head;
             tableEntry->next = head->next;
             return 0;
         }
@@ -121,6 +131,7 @@ int TableHeader::removeCol(char* colName) {
             } else {
                 entryHead = head->next;
             }
+            delete head;
             return 0;
         }
     }

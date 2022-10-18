@@ -56,6 +56,8 @@ public:
 
     TableHeader();
 
+    ~TableHeader();
+
     TableEntry* getCol(char* colName);
 
     void init(TableEntry* entryHead_);
