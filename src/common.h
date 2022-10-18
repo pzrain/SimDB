@@ -13,9 +13,10 @@
 #define TAB_MAX_LEN 128
 
 typedef enum {
-    COL_INT = 0,
-    COL_VARCHAR = 1,
-    COL_FLOAT = 2
+    COL_NULL = 0,
+    COL_INT = 1,
+    COL_VARCHAR = 2,
+    COL_FLOAT = 3
 } TB_COL_TYPE;
 
 #endif

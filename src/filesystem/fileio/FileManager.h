@@ -37,7 +37,7 @@ private:
 	int _openFile(const char* name, int fileID) {
 		int f = open(name, O_RDWR);
 		if (f == -1) {
-			printf("[Error] Can not remove file %s\n", name);
+			printf("[Error] Can not open file %s\n", name);
 			return -1;
 		}
 		fd[fileID] = f;

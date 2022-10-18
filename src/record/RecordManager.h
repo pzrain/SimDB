@@ -11,13 +11,13 @@ public:
 
     ~RecordManager();
 
-    void createFile(const char* filename); 
+    int createFile(const char* filename); 
 
-    void removeFile(const char* filename);
+    int removeFile(const char* filename);
 
-    void openFile(const char* filename, FileHandler* fileHandler);// one file corresponds with one fileHandler
+    int openFile(const char* filename, FileHandler* fileHandler);// one file corresponds with one fileHandler
 
-    void closeFile(FileHandler* fileHandler);
+    int closeFile(FileHandler* fileHandler);
 };
 
 #endif
