@@ -3,10 +3,12 @@
 
 #include "RMComponent.h"
 #include "FileManager.h"
+#include "RMComponent.h"
 
 class FileHandler{
 private:
     FileManager* fileManager;
+    TableHeader* tableHeader;
     int fileId;
 public:
     FileHandler() {}

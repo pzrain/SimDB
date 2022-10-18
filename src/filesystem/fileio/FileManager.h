@@ -20,7 +20,7 @@ private:
 	int _createFile(const char* name) {
 		FILE* f = fopen(name, "a+");
 		if (f == NULL) {
-			printf("Error in creating file %s\n", name);
+			printf("[Error] Can not create file %s\n", name);
 			return -1;
 		}
 		fclose(f);
@@ -29,7 +29,7 @@ private:
 	int _removeFile(const char* name) {
 		int res = remove(name);
 		if (res != 0) {
-			printf("Error in removing file %s\n", name);
+			printf("[Error] Can not remove file %s\n", name);
 			return -1;
 		}
 		return 0;
@@ -37,7 +37,7 @@ private:
 	int _openFile(const char* name, int fileID) {
 		int f = open(name, O_RDWR);
 		if (f == -1) {
-			printf("Error in removing file %s\n", name);
+			printf("[Error] Can not remove file %s\n", name);
 			return -1;
 		}
 		fd[fileID] = f;

@@ -15,7 +15,7 @@ public:
 
     void removeFile(const char* filename);
 
-    void openFile(const char* filename, FileHandler* fileHandler);// one file corresponds with one fileHandle
+    void openFile(const char* filename, FileHandler* fileHandler);// one file corresponds with one fileHandler
 
     void closeFile(FileHandler* fileHandler);
 };
