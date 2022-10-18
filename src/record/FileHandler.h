@@ -5,31 +5,42 @@
 #include "FileManager.h"
 #include "RMComponent.h"
 
+typedef enum{
+    TB_INIT = 0,
+    TB_ALTER = 1,
+    TB_REMOVE = 2,
+    TB_ADD = 3,
+    TB_EXIST = 4,
+    TB_PRINT = 5
+} TB_OP_TYPE;
+
 class FileHandler{
 private:
     FileManager* fileManager;
     TableHeader* tableHeader;
     int fileId;
 public:
-    FileHandler() {}
 
-    FileHandler(FileManager* fileManager_, int fileId_);
+    FileHandler();
 
     ~FileHandler();
 
     void init(FileManager* fileManager_, int fileId_);
 
     int getFileId();
+
+    int operateTable(TB_OP_TYPE opCode, char* colName = nullptr, TableEntry* tableEntry = nullptr);
+    // when operating type is init, tableEntry represents the head of a linklist of TableEntry
     
-    void getRecord(const int recordId, Record &record) const;
+    bool getRecord(const int recordId, Record &record) const;
 
-    void insertRecord(const char* recordData, int &recordId);
+    bool insertRecord(const char* recordData, int &recordId);
 
-    void removeRecord(const int recordId);
+    bool removeRecord(const int recordId);
 
-    void updateRecord(const Record &record);
+    bool updateRecord(const Record &record);
 
-    void writeBack(const int pageNumber); // write page back to disk
+    bool writeBack(const int pageNumber); // write page back to disk
 };
 
 
