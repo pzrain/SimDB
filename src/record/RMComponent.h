@@ -5,16 +5,16 @@
 #include <cstring>
 #include <stdint.h>
 
-class Record{
+class RecordId{
 private:
     int pageNumber, slotNumber;
 public:
-    Record(int pageNumber_, int slotNumber_) {
+    RecordId(int pageNumber_, int slotNumber_) {
         pageNumber = pageNumber_;
         slotNumber = slotNumber_;
     }
 
-    ~Record() {}
+    ~RecordId() {}
 
     int getPageNumber() {
         return pageNumber;
@@ -25,32 +25,46 @@ public:
     }
 };
 
+struct Record{
+    char* data;
+};
+
+class RecordList {
+    Record record;
+    Record* next;
+};
+
 struct TableEntry{
     uint8_t colType;
     bool checkConstraint;
     bool primaryKeyConstraint;
     bool foreignKeyConstraint;
     uint32_t colLen;
-    char colName[TAB_MAX_LEN];
+    uint32_t recordLen;
+    char colName[TAB_MAX_NAME_LEN];
     TableEntry* next = nullptr;
+    bool hasDefault;
+    bool notNullConstraint;
+    bool uniqueConstraint;
+    bool isNull;
     union {
         int defaultValInt;
         char defaultValVarchar[TAB_MAX_LEN];
         float defaultValFloat;
     };
-    bool hasDefault;
-    bool notNullConstraint;
-    bool uniqueConstraint;
     /* 
         TODO: implement of checkConstraint and foreignKeyConstraint
      */
+    void calcRecordLen();
 };
 
 class TableHeader{
+private:
+    void calcRecordSize();
 public:
     uint8_t valid;
     uint8_t colNum;
-    uint32_t recordSize;
+    uint32_t recordSize, recordLen;
     TableEntry* entryHead;
     char tableName[TAB_MAX_NAME_LEN];
 

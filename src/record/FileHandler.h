@@ -2,7 +2,7 @@
 #define __FILEHANDLER_H__
 
 #include "RMComponent.h"
-#include "FileManager.h"
+#include "RecordManager.h"
 #include "RMComponent.h"
 
 typedef enum{
@@ -16,7 +16,7 @@ typedef enum{
 
 class FileHandler{
 private:
-    FileManager* fileManager;
+    BufPageManager* bufPageManager;
     TableHeader* tableHeader;
     int fileId;
 public:
@@ -25,14 +25,14 @@ public:
 
     ~FileHandler();
 
-    void init(FileManager* fileManager_, int fileId_);
+    void init(BufPageManager* bufPageManager_, int fileId_, const char* filename);
 
     int getFileId();
 
     int operateTable(TB_OP_TYPE opCode, char* colName = nullptr, TableEntry* tableEntry = nullptr);
     // when operating type is init, tableEntry represents the head of a linklist of TableEntry
     
-    bool getRecord(const int recordId, Record &record) const;
+    bool getRecord(RecordId recordId, Record &record);
 
     bool insertRecord(const char* recordData, int &recordId);
 

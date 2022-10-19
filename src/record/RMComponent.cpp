@@ -2,19 +2,37 @@
 #include "../filesystem/utils/pagedef.h"
 #include "cstring"
 
-void loadTableHeaderToBuff(BufType dataLoad, TableHeader* tableHeader) {
+void loadTableHeaderToBuff(BufType &dataLoad, TableHeader* tableHeader) {
     memcpy((uint8_t*)tableHeader, (uint8_t*)dataLoad, sizeof(TableHeader));
     // tableHeader = (TableHeader*)((uint8_t*)dataLoad[sizeof(TableHeader)]);
 }
 
-void writeTableHeaderToBuff(BufType dataLoad, TableHeader* tableHeader) {
+void writeTableHeaderToBuff(BufType &dataLoad, TableHeader* tableHeader) {
     memcpy((uint8_t*)dataLoad, (uint8_t*)tableHeader, sizeof(TableHeader));
+}
+
+void TableEntry::calcRecordLen() {
+    recordLen = 16 + TAB_MAX_NAME_LEN + sizeof(void*);
+    switch (colType) {
+        case COL_INT:
+            recordLen += sizeof(int);
+            break;
+        case COL_FLOAT:
+            recordLen += sizeof(float);
+            break;
+        case COL_VARCHAR:
+            recordLen += sizeof(char) * TAB_MAX_LEN;
+            break;
+        default:
+            break;
+    }
 }
 
 TableHeader::TableHeader() {
     valid = 0;
     colNum = 0;
     recordSize = 0;
+    recordLen = 0;
     entryHead = nullptr;
 }
 
@@ -111,6 +129,7 @@ int TableHeader::alterCol(TableEntry* tableEntry) {
             } else {
                 entryHead = tableEntry;
             }
+            recordSize = recordSize - head->recordLen + tableEntry->recordLen;
             delete head;
             tableEntry->next = head->next;
             return 0;
@@ -131,6 +150,7 @@ int TableHeader::removeCol(char* colName) {
             } else {
                 entryHead = head->next;
             }
+            recordSize -= head->recordLen;
             delete head;
             return 0;
         }
@@ -151,10 +171,21 @@ int TableHeader::addCol(TableEntry* tableEntry) {
             head = head->next;
         head->next = entryHead;
     }
+    recordSize += tableEntry->recordLen;
     return 0;
 }
 
 void TableHeader::init(TableEntry* entryHead_) {
     entryHead = entryHead_;
+    calcRecordSize();
     valid = 1;
+}
+
+void TableHeader::calcRecordSize() {
+    TableEntry* head = entryHead;
+    recordSize = 0;
+    while (head) {
+        recordSize += head->recordLen;
+        head = head->next;
+    }
 }

@@ -1,34 +1,36 @@
 #include "FileHandler.h"
 
-void loadTableHeaderFromBuff(BufType, TableHeader*); // define in "RMComponent.cpp"
+void loadTableHeaderFromBuff(BufType&, TableHeader*); // define in "RMComponent.cpp"
 
-void writeTableHeaderToBuff(BufType, TableHeader*);
+void writeTableHeaderToBuff(BufType&, TableHeader*);
 
-int loadTableHeader(FileManager* fileManager, int fileId, TableHeader* tableHeader) {
+int loadTableHeader(BufPageManager* bufPageManager, int fileId, TableHeader* tableHeader) {
     BufType data;
-    if (fileManager->readPage(fileId, 0, data, 0)) {
-        loadTableHeaderFromBuff(data, tableHeader);
-        return 0;
-    }
-    return -1;
+    int index;
+    data = bufPageManager->getPage(fileId, 0, index);
+    loadTableHeaderFromBuff(data, tableHeader);
+    return 0;
 }
 
-int writeTableHeader(FileManager* fileManager, int fileId, TableHeader* tableHeader) {
+int writeTableHeader(BufPageManager* bufPageManager, int fileId, TableHeader* tableHeader) {
     BufType data;
+    int index;
+    data = bufPageManager->getPage(fileId, 0, index);
     writeTableHeaderToBuff(data, tableHeader);
-    return fileManager->writePage(fileId, 0, data, 0);
+    bufPageManager->markDirty(index);
+    return 0;
 }
 
 FileHandler::FileHandler() {
-    fileManager = nullptr;
+    bufPageManager = nullptr;
     tableHeader = new TableHeader();
     fileId = -1;
 }
 
-void FileHandler::init(FileManager* fileManager_, int fileId_) {
-    fileManager = fileManager_;
+void FileHandler::init(BufPageManager* bufPageManager_, int fileId_, const char* filename) {
+    bufPageManager = bufPageManager_;
     fileId = fileId_;
-    if (loadTableHeader(fileManager, fileId, tableHeader) != 0) {
+    if (loadTableHeader(bufPageManager, fileId, tableHeader) != 0) {
         printf("[Error] fail to load table header");
         return;
     }
@@ -36,9 +38,11 @@ void FileHandler::init(FileManager* fileManager_, int fileId_) {
         // init the tableHeader
         tableHeader->colNum = 0;
         tableHeader->recordSize = 0;
+        tableHeader->recordLen = 0;
         tableHeader->entryHead = nullptr;
+        strcpy(tableHeader->tableName, filename);
         tableHeader->valid = 1;
-        if (writeTableHeader(fileManager, fileId, tableHeader) != 0) {
+        if (writeTableHeader(bufPageManager, fileId, tableHeader) != 0) {
             printf("[Error] fail to write table header.\n");
         }
     }
@@ -66,21 +70,27 @@ int FileHandler::operateTable(TB_OP_TYPE opCode, char* colName = nullptr, TableE
             res = tableHeader->alterCol(tableEntry);
             break;
         case TB_REMOVE:
-            res =  tableHeader->removeCol(colName);
+            res = tableHeader->removeCol(colName);
             break;
         case TB_ADD:
-            res =  tableHeader->addCol(tableEntry);
+            res = tableHeader->addCol(tableEntry);
             break;
         case TB_EXIST:
-            res =  tableHeader->existCol(colName) ? 1 : 0;
-            break;
+            res = tableHeader->existCol(colName) ? 1 : 0;
+            return res;
         case TB_PRINT:
             tableHeader->printInfo();
-            break;
+            return 0;
         default:
             printf("[Error] unknown op code.\n");
             return -1;
     }
-    writeTableHeader(fileManager, fileId, tableHeader);
-    return res;
+    if (res == 0) {
+        return writeTableHeader(bufPageManager, fileId, tableHeader);
+    }
+    return -1;
+}
+
+bool FileHandler::getRecord(RecordId recordId, Record &record) {
+
 }
