@@ -172,5 +172,17 @@ public:
 			addr[i] = NULL;
 		}
 	}
+
+	/* forget to delete ? */
+	~BufPageManager() {
+		close();
+		delete[] dirty;
+		for (int i = 0; i < CAP; i++) {
+			delete addr[i];
+		}
+		delete[] addr;
+		delete hash;
+		delete replace;
+	}
 };
 #endif
