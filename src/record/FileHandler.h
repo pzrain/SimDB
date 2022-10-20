@@ -34,7 +34,7 @@ public:
     
     bool getRecord(RecordId recordId, Record &record);
 
-    bool insertRecord(const char* recordData, int &recordId);
+    bool insertRecord(RecordId &recordId, const Record &record);
 
     bool removeRecord(const int recordId);
 

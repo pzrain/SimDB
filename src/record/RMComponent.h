@@ -7,26 +7,31 @@
 
 class RecordId{
 private:
-    int pageNumber, slotNumber;
+    int pageId, slotId;
 public:
-    RecordId(int pageNumber_, int slotNumber_) {
-        pageNumber = pageNumber_;
-        slotNumber = slotNumber_;
+    RecordId(int pageId_, int slotId_) {
+        pageId = pageId_;
+        slotId = slotId_;
     }
 
     ~RecordId() {}
 
-    int getPageNumber() {
-        return pageNumber;
+    int getpageId() {
+        return pageId;
     }
 
-    int getSlotNumber() {
-        return slotNumber;
+    int getslotId() {
+        return slotId;
+    }
+
+    void set(int pageId_, int slotId_) {
+        pageId = pageId_;
+        slotId = slotId_;
     }
 };
 
 struct Record{
-    char* data;
+    uint8_t* data;
 };
 
 class RecordList {
@@ -60,11 +65,14 @@ struct TableEntry{
 
 class TableHeader{
 private:
-    void calcRecordSize();
+    void calcRecordSizeAndLen();
 public:
     uint8_t valid;
     uint8_t colNum;
-    uint32_t recordSize, recordLen;
+    int16_t firstNotFullPage;
+    uint16_t recordLen, totalPageNumber; // recordLen: length of one record
+    uint32_t recordSize; // total number of records/slots
+
     TableEntry* entryHead;
     char tableName[TAB_MAX_NAME_LEN];
 
@@ -85,6 +93,18 @@ public:
     bool existCol(char* colName);
 
     void printInfo();
+};
+
+struct PageHeader{
+    int16_t nextFreePage;
+    int16_t firstEmptySlot; // slot id starts at 0
+    int16_t totalSlot;
+
+    PageHeader() {
+        nextFreePage = -1;
+        firstEmptySlot = -1;
+        totalSlot = 0;
+    }
 };
 
 #endif

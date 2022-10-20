@@ -12,25 +12,14 @@ void writeTableHeaderToBuff(BufType &dataLoad, TableHeader* tableHeader) {
 }
 
 void TableEntry::calcRecordLen() {
-    recordLen = 16 + TAB_MAX_NAME_LEN + sizeof(void*);
-    switch (colType) {
-        case COL_INT:
-            recordLen += sizeof(int);
-            break;
-        case COL_FLOAT:
-            recordLen += sizeof(float);
-            break;
-        case COL_VARCHAR:
-            recordLen += sizeof(char) * TAB_MAX_LEN;
-            break;
-        default:
-            break;
-    }
+    recordLen = 16 + TAB_MAX_NAME_LEN + sizeof(void*) + TAB_MAX_LEN;
 }
 
 TableHeader::TableHeader() {
     valid = 0;
     colNum = 0;
+    firstNotFullPage = -1;
+    totalPageNumber = 1;
     recordSize = 0;
     recordLen = 0;
     entryHead = nullptr;
@@ -177,15 +166,18 @@ int TableHeader::addCol(TableEntry* tableEntry) {
 
 void TableHeader::init(TableEntry* entryHead_) {
     entryHead = entryHead_;
-    calcRecordSize();
+    calcRecordSizeAndLen();
     valid = 1;
 }
 
-void TableHeader::calcRecordSize() {
+void TableHeader::calcRecordSizeAndLen() {
     TableEntry* head = entryHead;
-    recordSize = 0;
+    recordLen = sizeof(uint16_t); // record if slot is free
     while (head) {
-        recordSize += head->recordLen;
+        recordLen += head->recordLen;
         head = head->next;
+    }
+    if (recordSize > 0) {
+        recordSize = (PAGE_SIZE - sizeof(PageHeader)) / recordLen;
     }
 }
