@@ -35,12 +35,11 @@ public:
     bool getRecord(RecordId recordId, Record &record);
 
     bool insertRecord(RecordId &recordId, const Record &record);
+    // the page id and slot id of the inserted record will be stored in recordId
 
-    bool removeRecord(const int recordId);
+    bool removeRecord(RecordId &recordId);
 
-    bool updateRecord(const Record &record);
-
-    bool writeBack(const int pageNumber); // write page back to disk
+    bool updateRecord(RecordId &recordId, const Record &record);
 };
 
 

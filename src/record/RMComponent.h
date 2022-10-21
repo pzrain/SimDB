@@ -96,8 +96,8 @@ public:
 };
 
 typedef enum{
-    LAST_FREE = -1,
-    DIRTY = -2
+    SLOT_LAST_FREE = -1,
+    SLOT_DIRTY = -2
 } SLOT_TYPE;
 
 struct PageHeader{
