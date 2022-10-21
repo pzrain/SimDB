@@ -10,7 +10,7 @@ typedef enum{
     TB_REMOVE = 2,
     TB_ADD = 3,
     TB_EXIST = 4,
-    TB_PRINT = 5
+    TB_PRINT = 5,
 } TB_OP_TYPE;
 
 class FileHandler{
@@ -28,8 +28,13 @@ public:
 
     int getFileId();
 
-    int operateTable(TB_OP_TYPE opCode, char* colName, TableEntry* tableEntry);
-    // when operating type is init, tableEntry represents the head of a linklist of TableEntry
+    int operateTable(TB_OP_TYPE opCode, char* colName = nullptr, TableEntry* tableEntry = nullptr, int num = 0);
+    /* 
+        when operating type is init, tableEntry represents the head of a linklist of TableEntry
+        DO NOT DELETE tableEntry by yourself! This is done by class TableHeader
+
+        @return: -1 if fail, 0 if succeed for all op other than TB_EXIST, which returns 0 or 1
+     */
     
     bool getRecord(RecordId recordId, Record &record);
 

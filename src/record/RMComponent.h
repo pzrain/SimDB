@@ -44,10 +44,8 @@ struct TableEntry{
     bool checkConstraint;
     bool primaryKeyConstraint;
     bool foreignKeyConstraint;
-    uint32_t colLen;
-    uint32_t recordLen;
+    uint32_t colLen; // VARCHAR(%d), int(4), float(4)
     char colName[TAB_MAX_NAME_LEN];
-    TableEntry* next = nullptr;
     bool hasDefault;
     bool notNullConstraint;
     bool uniqueConstraint;
@@ -57,32 +55,40 @@ struct TableEntry{
         char defaultValVarchar[TAB_MAX_LEN];
         float defaultValFloat;
     };
+    int8_t next;
     /* 
         TODO: implement of checkConstraint and foreignKeyConstraint
      */
-    void calcRecordLen();
+
+    TableEntry();
+
+    TableEntry(char* colName_, uint8_t colType_, bool checkConstraint_ = false, bool primaryKeyConstraint_ = false, \
+               bool foreignKeyConstraint_ = false, uint32_t colLen_ = 0, bool hasDefault_ = false, \
+               bool notNullConstraint_ = false, bool uniqueConstraint_ = false, bool isNull_ = false);
 };
 
 class TableHeader{
 private:
     void calcRecordSizeAndLen();
+
+    int findFreeCol();
+
 public:
     uint8_t valid;
     uint8_t colNum;
+    int8_t entryHead;
     int16_t firstNotFullPage;
     uint16_t recordLen, totalPageNumber; // recordLen: length of one record
     uint32_t recordSize; // total number of records/slots
-
-    TableEntry* entryHead;
+    TableEntry entrys[TAB_MAX_COL_NUM];
     char tableName[TAB_MAX_NAME_LEN];
 
     TableHeader();
 
-    ~TableHeader();
+    void init(TableEntry* entryHead_, int num);
+    // num is the length of the TableEntry array
 
-    TableEntry* getCol(char* colName);
-
-    void init(TableEntry* entryHead_);
+    int getCol(char* colName, TableEntry& tableEntry);
 
     int alterCol(TableEntry* tableEntry);
 

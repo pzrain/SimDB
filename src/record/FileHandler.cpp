@@ -1,9 +1,14 @@
 #include "FileHandler.h"
 #include "assert.h"
 
-void loadTableHeaderFromBuff(BufType&, TableHeader*); // define in "RMComponent.cpp"
+void loadTableHeaderFromBuff(BufType &dataLoad, TableHeader* tableHeader) {
+    memcpy((uint8_t*)tableHeader, (uint8_t*)dataLoad, sizeof(TableHeader));
+    // tableHeader = (TableHeader*)((uint8_t*)dataLoad[sizeof(TableHeader)]);
+}
 
-void writeTableHeaderToBuff(BufType&, TableHeader*);
+void writeTableHeaderToBuff(BufType &dataLoad, TableHeader* tableHeader) {
+    memcpy((uint8_t*)dataLoad, (uint8_t*)tableHeader, sizeof(TableHeader));
+}
 
 int loadTableHeader(BufPageManager* bufPageManager, int fileId, TableHeader* tableHeader) {
     BufType data;
@@ -42,7 +47,7 @@ void FileHandler::init(BufPageManager* bufPageManager_, int fileId_, const char*
         tableHeader->firstNotFullPage = -1;
         tableHeader->totalPageNumber = 1;
         tableHeader->recordLen = 0;
-        tableHeader->entryHead = nullptr;
+        tableHeader->entryHead = -1;
         strcpy(tableHeader->tableName, filename);
         tableHeader->valid = 1;
         if (writeTableHeader(bufPageManager, fileId, tableHeader) != 0) {
@@ -59,15 +64,28 @@ int FileHandler::getFileId() {
     return fileId;
 }
 
-int FileHandler::operateTable(TB_OP_TYPE opCode, char* colName = nullptr, TableEntry* tableEntry = nullptr) {
+int FileHandler::operateTable(TB_OP_TYPE opCode, char* colName, TableEntry* tableEntry, int num) {
     if (tableHeader->valid == 0) {
         printf("[Error] the table has not been initialized yet.\n");
         return -1;
     }
+    if (opCode == TB_INIT || opCode == TB_ALTER || opCode == TB_ADD) {
+        if (tableEntry == nullptr) {
+            printf("[ERROR] tableEntry should not be null.\n");
+            return -1;
+        }
+    }
+    if (opCode == TB_REMOVE || opCode == TB_EXIST) {
+        if (colName == nullptr) {
+            printf("[ERROR] colName should not be null.\n");
+            return -1;
+        }
+    }
+
     int res = 0;
     switch (opCode) {
         case TB_INIT:
-            tableHeader->init(tableEntry);
+            tableHeader->init(tableEntry, num);
             break;
         case TB_ALTER:
             res = tableHeader->alterCol(tableEntry);
