@@ -7,24 +7,24 @@
 
 class RecordId{
 private:
-    int pageId, slotId;
+    int16_t pageId, slotId;
 public:
-    RecordId(int pageId_, int slotId_) {
+    RecordId(int16_t pageId_, int16_t slotId_) {
         pageId = pageId_;
         slotId = slotId_;
     }
 
     ~RecordId() {}
 
-    int getpageId() {
+    int16_t getPageId() {
         return pageId;
     }
 
-    int getslotId() {
+    int16_t getSlotId() {
         return slotId;
     }
 
-    void set(int pageId_, int slotId_) {
+    void set(int16_t pageId_, int16_t slotId_) {
         pageId = pageId_;
         slotId = slotId_;
     }
@@ -94,6 +94,11 @@ public:
 
     void printInfo();
 };
+
+typedef enum{
+    LAST_FREE = -1,
+    DIRTY = -2
+} SLOT_TYPE;
 
 struct PageHeader{
     int16_t nextFreePage;
