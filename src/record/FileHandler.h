@@ -2,8 +2,7 @@
 #define __FILEHANDLER_H__
 
 #include "RMComponent.h"
-#include "RecordManager.h"
-#include "RMComponent.h"
+#include "../filesystem/bufmanager/BufPageManager.h"
 
 typedef enum{
     TB_INIT = 0,
@@ -29,7 +28,7 @@ public:
 
     int getFileId();
 
-    int operateTable(TB_OP_TYPE opCode, char* colName = nullptr, TableEntry* tableEntry = nullptr);
+    int operateTable(TB_OP_TYPE opCode, char* colName, TableEntry* tableEntry);
     // when operating type is init, tableEntry represents the head of a linklist of TableEntry
     
     bool getRecord(RecordId recordId, Record &record);

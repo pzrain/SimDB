@@ -10,7 +10,7 @@
  * BufPageManager
  * 实现了一个缓存的管理器
  */
-struct BufPageManager {
+class BufPageManager {
 public:
 	int last;
 	FileManager* fileManager;
