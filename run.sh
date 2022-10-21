@@ -8,3 +8,7 @@ cd build
 cmake ..
 make -j8
 cd ..
+
+echo "Done!"
+
+./bin/simDB
