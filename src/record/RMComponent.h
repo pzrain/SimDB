@@ -5,24 +5,38 @@
 #include <cstring>
 #include <stdint.h>
 
-class Record{
+class RecordId{
 private:
-    int pageNumber, slotNumber;
+    int16_t pageId, slotId;
 public:
-    Record(int pageNumber_, int slotNumber_) {
-        pageNumber = pageNumber_;
-        slotNumber = slotNumber_;
+    RecordId(int16_t pageId_, int16_t slotId_) {
+        pageId = pageId_;
+        slotId = slotId_;
     }
 
-    ~Record() {}
+    ~RecordId() {}
 
-    int getPageNumber() {
-        return pageNumber;
+    int16_t getPageId() {
+        return pageId;
     }
 
-    int getSlotNumber() {
-        return slotNumber;
+    int16_t getSlotId() {
+        return slotId;
     }
+
+    void set(int16_t pageId_, int16_t slotId_) {
+        pageId = pageId_;
+        slotId = slotId_;
+    }
+};
+
+struct Record{
+    uint8_t* data;
+};
+
+class RecordList {
+    Record record;
+    Record* next;
 };
 
 struct TableEntry{
@@ -30,35 +44,51 @@ struct TableEntry{
     bool checkConstraint;
     bool primaryKeyConstraint;
     bool foreignKeyConstraint;
-    uint32_t colLen;
-    char colName[TAB_MAX_LEN];
-    TableEntry* next = nullptr;
+    uint32_t colLen; // VARCHAR(%d), int(4), float(4)
+    char colName[TAB_MAX_NAME_LEN];
+    bool hasDefault;
+    bool notNullConstraint;
+    bool uniqueConstraint;
+    bool isNull;
     union {
         int defaultValInt;
         char defaultValVarchar[TAB_MAX_LEN];
         float defaultValFloat;
     };
-    bool hasDefault;
-    bool notNullConstraint;
-    bool uniqueConstraint;
+    int8_t next;
     /* 
         TODO: implement of checkConstraint and foreignKeyConstraint
      */
+
+    TableEntry();
+
+    TableEntry(char* colName_, uint8_t colType_, bool checkConstraint_ = false, bool primaryKeyConstraint_ = false, \
+               bool foreignKeyConstraint_ = false, uint32_t colLen_ = 0, bool hasDefault_ = false, \
+               bool notNullConstraint_ = false, bool uniqueConstraint_ = false, bool isNull_ = false);
 };
 
 class TableHeader{
+private:
+    void calcRecordSizeAndLen();
+
+    int findFreeCol();
+
 public:
     uint8_t valid;
     uint8_t colNum;
-    uint32_t recordSize;
-    TableEntry* entryHead;
+    int8_t entryHead;
+    int16_t firstNotFullPage;
+    uint16_t recordLen, totalPageNumber; // recordLen: length of one record
+    uint32_t recordSize; // total number of records/slots
+    TableEntry entrys[TAB_MAX_COL_NUM];
     char tableName[TAB_MAX_NAME_LEN];
 
     TableHeader();
 
-    TableEntry* getCol(char* colName);
+    void init(TableEntry* entryHead_, int num);
+    // num is the length of the TableEntry array
 
-    void init(TableEntry* entryHead_);
+    int getCol(char* colName, TableEntry& tableEntry);
 
     int alterCol(TableEntry* tableEntry);
 
@@ -69,6 +99,23 @@ public:
     bool existCol(char* colName);
 
     void printInfo();
+};
+
+typedef enum{
+    SLOT_LAST_FREE = -1,
+    SLOT_DIRTY = -2
+} SLOT_TYPE;
+
+struct PageHeader{
+    int16_t nextFreePage;
+    int16_t firstEmptySlot; // slot id starts at 0
+    int16_t totalSlot;
+
+    PageHeader() {
+        nextFreePage = -1;
+        firstEmptySlot = -1;
+        totalSlot = 0;
+    }
 };
 
 #endif

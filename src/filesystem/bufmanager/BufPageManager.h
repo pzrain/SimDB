@@ -10,7 +10,7 @@
  * BufPageManager
  * 实现了一个缓存的管理器
  */
-struct BufPageManager {
+class BufPageManager {
 public:
 	int last;
 	FileManager* fileManager;
@@ -171,6 +171,18 @@ public:
 			dirty[i] = false;
 			addr[i] = NULL;
 		}
+	}
+
+	/* forget to delete ? */
+	~BufPageManager() {
+		close();
+		delete[] dirty;
+		for (int i = 0; i < CAP; i++) {
+			delete addr[i];
+		}
+		delete[] addr;
+		delete hash;
+		delete replace;
 	}
 };
 #endif

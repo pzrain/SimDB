@@ -2,8 +2,7 @@
 #define __FILEHANDLER_H__
 
 #include "RMComponent.h"
-#include "FileManager.h"
-#include "RMComponent.h"
+#include "../filesystem/bufmanager/BufPageManager.h"
 
 typedef enum{
     TB_INIT = 0,
@@ -11,12 +10,12 @@ typedef enum{
     TB_REMOVE = 2,
     TB_ADD = 3,
     TB_EXIST = 4,
-    TB_PRINT = 5
+    TB_PRINT = 5,
 } TB_OP_TYPE;
 
 class FileHandler{
 private:
-    FileManager* fileManager;
+    BufPageManager* bufPageManager;
     TableHeader* tableHeader;
     int fileId;
 public:
@@ -25,22 +24,26 @@ public:
 
     ~FileHandler();
 
-    void init(FileManager* fileManager_, int fileId_);
+    void init(BufPageManager* bufPageManager_, int fileId_, const char* filename);
 
     int getFileId();
 
-    int operateTable(TB_OP_TYPE opCode, char* colName = nullptr, TableEntry* tableEntry = nullptr);
-    // when operating type is init, tableEntry represents the head of a linklist of TableEntry
+    int operateTable(TB_OP_TYPE opCode, char* colName = nullptr, TableEntry* tableEntry = nullptr, int num = 0);
+    /* 
+        when operating type is init, tableEntry represents the head of a linklist of TableEntry
+        DO NOT DELETE tableEntry by yourself! This is done by class TableHeader
+
+        @return: -1 if fail, 0 if succeed for all op other than TB_EXIST, which returns 0 or 1
+     */
     
-    bool getRecord(const int recordId, Record &record) const;
+    bool getRecord(RecordId recordId, Record &record);
 
-    bool insertRecord(const char* recordData, int &recordId);
+    bool insertRecord(RecordId &recordId, const Record &record);
+    // the page id and slot id of the inserted record will be stored in recordId
 
-    bool removeRecord(const int recordId);
+    bool removeRecord(RecordId &recordId);
 
-    bool updateRecord(const Record &record);
-
-    bool writeBack(const int pageNumber); // write page back to disk
+    bool updateRecord(RecordId &recordId, const Record &record);
 };
 
 

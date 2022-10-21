@@ -1,13 +1,13 @@
 #ifndef __RECORD_H_
 #define __RECORD_H_
-#include "../filesystem/fileio/FileManager.h"
+#include "../filesystem/bufmanager/BufPageManager.h"
 #include "FileHandler.h"
 
 class RecordManager{
 private:
-    FileManager* fileManager;
+    BufPageManager* bufPageManager;
 public:
-    RecordManager(FileManager*);
+    RecordManager(BufPageManager*);
 
     ~RecordManager();
 

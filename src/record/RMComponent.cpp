@@ -2,29 +2,62 @@
 #include "../filesystem/utils/pagedef.h"
 #include "cstring"
 
-void loadTableHeaderToBuff(BufType dataLoad, TableHeader* tableHeader) {
-    memcpy((uint8_t*)tableHeader, (uint8_t*)dataLoad, sizeof(TableHeader));
-    // tableHeader = (TableHeader*)((uint8_t*)dataLoad[sizeof(TableHeader)]);
-}
+TableEntry::TableEntry() {}
 
-void writeTableHeaderToBuff(BufType dataLoad, TableHeader* tableHeader) {
-    memcpy((uint8_t*)dataLoad, (uint8_t*)tableHeader, sizeof(TableHeader));
+TableEntry::TableEntry(char* colName_, uint8_t colType_, bool checkConstraint_, bool primaryKeyConstraint_, \
+               bool foreignKeyConstraint_, uint32_t colLen_, bool hasDefault_, \
+               bool notNullConstraint_, bool uniqueConstraint_, bool isNull_) {
+    colType = colType_;
+    strcpy(colName, colName_);
+    // strncpy(colName, colName_, strlen(colName_));
+    checkConstraint = checkConstraint_;
+    primaryKeyConstraint = primaryKeyConstraint_;
+    foreignKeyConstraint = foreignKeyConstraint_;
+    colLen = colLen_;
+    hasDefault = hasDefault_;
+    notNullConstraint = notNullConstraint_;
+    uniqueConstraint = uniqueConstraint_;
+    isNull = isNull_;
+    switch (colType) {
+        case COL_INT:
+            colLen = sizeof(int);
+            break;
+        case COL_FLOAT:
+            colLen = sizeof(float);
+            break;
+        default:
+            break;
+    }
+    next = -1;
 }
 
 TableHeader::TableHeader() {
     valid = 0;
     colNum = 0;
+    entryHead = -1;
+    firstNotFullPage = -1;
+    totalPageNumber = 1;
     recordSize = 0;
-    entryHead = nullptr;
+    recordLen = 0;
 }
 
 bool TableHeader::existCol(char* colName) {
-    TableEntry* head = entryHead;
-    while (head) {
-        if (strcmp(colName, head->colName) == 0) {
+    int8_t head = entryHead;
+    TableEntry entry;
+    while (head >= 0) {
+        entry = entrys[head];
+        if (colName == nullptr) {
+            printf("Error1\n");
+            return false;
+        }
+        if (entry.colName == nullptr) {
+            printf("Error2\n");
+            return false;
+        }
+        if (strcmp(colName, entry.colName) == 0) {
             return true;
         }
-        head = head->next;
+        head = entry.next;
     }
     return false;
 }
@@ -32,36 +65,40 @@ bool TableHeader::existCol(char* colName) {
 void TableHeader::printInfo() {
     printf("==========  Begin Table Info  ==========\n");
 
-    printf("Table name: %s", tableName);
-    printf("Column size: %d", colNum);
-    printf("Record size: ", recordSize);
+    printf("Table name: %s\n", tableName);
+    printf("Column size: %d\n", colNum);
+    printf("Record Length: %d\n", recordLen);
+    printf("Record size: %d\n", recordSize);
 
-    TableEntry* head = entryHead;
-    while (head) {
-        printf("[column %d] name = %s, type = ", head->colName);
-        if (head->uniqueConstraint) {
+    int8_t head = entryHead;
+    TableEntry entry;
+    int cnt = 0;
+    while (head >= 0) {
+        entry = entrys[head];
+        printf("[column %d] name = %s, type = ", ++cnt, entry.colName);
+        if (entry.uniqueConstraint) {
             printf("Unique ");
         }
-        if (head->primaryKeyConstraint) {
+        if (entry.primaryKeyConstraint) {
             printf("Primary Key ");
         }
-        switch (head->colType) {
+        switch (entry.colType) {
             case COL_INT:
                 printf("INT");
-                if (head->hasDefault) {
-                    printf(", Default value = %d", head->defaultValInt);
+                if (entry.hasDefault) {
+                    printf(", Default value = %d", entry.defaultValInt);
                 }
                 break;
             case COL_VARCHAR:
-                printf("VARCHAR(%d)", head->colLen);
-                if (head->hasDefault) {
-                    printf(", Default value = %s", head->defaultValVarchar);
+                printf("VARCHAR(%d)", entry.colLen);
+                if (entry.hasDefault) {
+                    printf(", Default value = %s", entry.defaultValVarchar);
                 }
                 break;
             case COL_FLOAT:
                 printf("FLOAT");
-                if (head->hasDefault) {
-                    printf(", Default value = %f", head->defaultValFloat);
+                if (entry.hasDefault) {
+                    printf(", Default value = %f", entry.defaultValFloat);
                 }
                 break;
             case COL_NULL:
@@ -71,58 +108,80 @@ void TableHeader::printInfo() {
                 printf("Error Type");
                 break;
         }
-        if (head->notNullConstraint) {
+        if (entry.notNullConstraint) {
             printf(", not NULL");
         }
         printf("\n");
-        head = head->next;
+        head = entry.next;
     }
 
     printf("==========   End  Table Info  ==========\n");
 }
 
-TableEntry* TableHeader::getCol(char* colName) {
-    TableEntry* head = entryHead;
-    while (head) {
-        if (strcmp(head->colName, colName) == 0) {
-            return head;
-        }
-        head = head->next;
-    }
-    return nullptr;
-}
-
-int TableHeader::alterCol(TableEntry* tableEntry) {
-    TableEntry* head = entryHead;
-    TableEntry* prev = nullptr;
-    while (head) {
-        if (strcmp(head->colName, tableEntry->colName) == 0) {
-            if (prev) {
-                prev->next = tableEntry;
-            } else {
-                entryHead = tableEntry;
-            }
-            tableEntry->next = head->next;
+int TableHeader::getCol(char* colName, TableEntry& tableEntry) {
+    int8_t head = entryHead;
+    TableEntry entry;
+    while (head >= 0) {
+        entry = entrys[head];
+        if (strcmp(entry.colName, colName) == 0) {
+            tableEntry = entrys[head];
             return 0;
         }
-        prev = head;
-        head = head->next;
+        head = entry.next;
     }
     return -1;
 }
 
-int TableHeader::removeCol(char* colName) {
-    TableEntry* head = entryHead;
-    TableEntry* prev = nullptr;
-    while (head) {
-        if (strcmp(head->colName, colName) == 0) {
-            if (prev) {
-                prev->next = head->next;
-            } else {
-                entryHead = head->next;
-            }
+int TableHeader::alterCol(TableEntry* tableEntry) {
+    int8_t head = entryHead;
+    TableEntry entry;
+    while (head >= 0) {
+        entry = entrys[head];
+        if (strcmp(entry.colName, tableEntry->colName) == 0) {
+            int8_t tmpNext = entry.next;
+            memcpy(&(entrys[head]), tableEntry, sizeof(TableEntry));
+            entrys[head].next = tmpNext;
+            calcRecordSizeAndLen();
             return 0;
         }
+        head = entry.next;
+    }
+    printf("[ERROR] column with specified name dose not exist.\n");
+    return -1;
+}
+
+int TableHeader::removeCol(char* colName) {
+    int8_t head = entryHead, prev = -1;
+    TableEntry entry;
+    while (head >= 0) {
+        entry = entrys[head];
+        if (strcmp(entry.colName, colName) == 0) {
+            if (prev >= 0) {
+                entrys[prev].next = entrys[head].next;
+            } else {
+                entryHead = entrys[head].next;
+            }
+            calcRecordSizeAndLen();
+            colNum--;
+            return 0;
+        }
+        prev = head;
+        head = entry.next;
+    }
+    printf("[ERROR] column with specified name dose not exist.\n");
+    return -1;
+}
+
+int TableHeader::findFreeCol() {
+    bool check[TAB_MAX_COL_NUM] = {false};
+    int8_t head = entryHead;
+    while (head >= 0) {
+        check[head] = true;
+        head = entrys[head].next;
+    }
+    for (int i = 0; i < TAB_MAX_COL_NUM; i++) {
+        if (!check[i])
+            return i;
     }
     return -1;
 }
@@ -132,18 +191,49 @@ int TableHeader::addCol(TableEntry* tableEntry) {
         printf("[Error] Column with same name already exists.\n");
         return -1;
     }
-    TableEntry* head = entryHead;
-    if (!head) {
-        head = tableEntry;
-    } else {
-        while (head->next)
-            head = head->next;
-        head->next = entryHead;
+    int8_t head = entryHead;
+    TableEntry entry;
+
+    int freeCol = findFreeCol();
+    if (freeCol < 0) {
+        printf("[ERROR] no free column.\n");
+        return -1;
     }
+    memcpy(&entrys[freeCol], tableEntry, sizeof(TableEntry));
+    entrys[freeCol].next = -1;
+    if (head < 0) {
+        entryHead = freeCol;
+    } else {
+        entry = entrys[head];
+        while (entry.next >= 0) {
+            head = entry.next;
+            entry = entrys[head];
+        }
+        entrys[head].next = freeCol;
+    }
+    colNum++;
+    calcRecordSizeAndLen();
     return 0;
 }
 
-void TableHeader::init(TableEntry* entryHead_) {
-    entryHead = entryHead_;
+void TableHeader::init(TableEntry* entryHead_, int num) {
+    for (int i = 0; i < num; i++) {
+        entrys[i] = entryHead_[i];
+    }
+    calcRecordSizeAndLen();
     valid = 1;
+}
+
+void TableHeader::calcRecordSizeAndLen() {
+    int8_t head = entryHead;
+    TableEntry entry;
+    recordLen = sizeof(uint16_t); // record if slot is free
+    while (head >= 0) {
+        entry = entrys[head];
+        recordLen += entry.colLen;
+        head = entry.next;
+    }
+    if (recordLen > 0) {
+        recordSize = (PAGE_SIZE - sizeof(PageHeader)) / recordLen;
+    }
 }
