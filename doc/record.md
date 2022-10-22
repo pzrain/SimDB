@@ -44,20 +44,79 @@ public:
 描述了存放在文件里的一条记录，也即插入数据库表中的一条记录，为序列化之后的结果。创建时应当指定记录的长度。
 
 ```C++
-struct Record{
+class Record{
+public:
     uint8_t* data;
+    size_t len;
 
-    Record(size_t len) {
-        data = new uint8_t[len];
+    Record(size_t len_) {
+        len = len_;
+        data = new uint8_t[len_];
     }
 
     ~Record() {
         delete data;
     }
+
+    bool deserialize(RecordData& rData, TableEntryDesc& tableEntryDesc);
 };
 ```
 
 在页式文件系统中，文件（也就是一张表）被划分为很多页。为了快速找到空闲的页上空闲的槽，空闲页面被组成成链表的形式，链表头部空闲页的页号被记录在表头中。同时，每个页面中的空闲槽也被组织成链表，页头中记录的指针指向链表开头的空闲槽。如果插入一条数据，就在页头中记录的空闲槽位中插入，同时指针后移一位；如果删除一条记录，就将删除后得到的空闲槽插入链表开头，并让页头中的指针指向它。
+
+### Serialize & Deserialize
+
+`src/record/RMComponent.h`
+
+用于序列化&反序列化的相关操作。`RecordData`是未进行序列化的原始信息。通过`RecordData.serialize()`进行序列化后存储在`Record`中。`TableEntryDesc`是对表中各列的描述信息，用于指导反序列化操作。通过`Record.deserialize(RecordData, TableEntryDesc)`来将`Record`中储存的序列化后的字节序列再反序列化，存储到`RecordData`中。需要注意的是，`RecordData`实际上是一个节点的列表，每个节点是一个指向某一列具体类型、长度信息的结构体的指针。这些指针的内存管理在`RecordData`类中已经做好，不可以手动`delete`。
+
+```C++
+struct RecordDataNode{
+    union{
+        int* intContent;
+        float* floatContent;
+        char* charContent;
+    }content;
+    uint32_t len;
+    TB_COL_TYPE nodeType;
+    RecordDataNode* next = nullptr;
+
+    ~RecordDataNode() {}
+};
+
+class RecordData{
+public:
+    RecordDataNode* head; // attention : you should not delete head manually
+    size_t recordLen = 0;
+
+    RecordData() { head = nullptr; }
+
+    RecordData(RecordDataNode* head_): head(head_) {}
+    
+    bool serialize(Record& record);
+
+    size_t getLen();
+
+    ~RecordData();
+};
+
+struct TableEntryDescNode{
+    uint8_t colType;
+    uint32_t colLen;
+    TableEntryDescNode* next;
+};
+
+class TableEntryDesc{
+private:
+    size_t len = 0;
+public:
+    TableEntryDescNode* head;
+
+    ~TableEntryDesc();
+
+    size_t getLen();
+};
+```
 
 ### PageHeader
 
@@ -156,6 +215,8 @@ public:
     bool existCol(char* colName);
 
     void printInfo();
+    
+    TableEntryDesc getTableEntryDesc();
 };
 ```
 
@@ -215,6 +276,8 @@ public:
     int getRecordNum();
 
     size_t getRecordLen();
+    
+    TableEntryDesc getTableEntryDesc();
 
 };
 ```
