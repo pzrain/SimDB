@@ -6,9 +6,16 @@
 #include "filesystem/fileio/FileManager.h"
 
 void testTable(FileHandler* fileHandler) {
-    // char colName_1[] = "id0";
-    // char colName_2[] = "id2";
-    // char colName_3[] = "id3";
+    char colName_1[] = "id0";
+    char colName_2[] = "id2";
+    char colName_3[] = "id3";
+    TableEntry tableEntrys[] = {
+        TableEntry(colName_1, COL_INT),
+        TableEntry(colName_2, COL_FLOAT),
+        TableEntry(colName_3, COL_VARCHAR)
+    };
+    tableEntrys[2].colLen = 20;
+    fileHandler->operateTable(TB_INIT, nullptr, tableEntrys, 3);
     // TableEntry *tableEntry_1 = new TableEntry(colName_1, COL_INT);
     // TableEntry *tableEntry_2 = new TableEntry(colName_2, COL_FLOAT);
     // TableEntry *tableEntry_3 = new TableEntry(colName_3, COL_VARCHAR);
@@ -25,9 +32,9 @@ void testTable(FileHandler* fileHandler) {
     // tableEntry_1->colType = COL_FLOAT;
     // fileHandler->operateTable(TB_ALTER, nullptr, tableEntry_1);
 
-    char colName[10] = "id";
-    TableEntry* tableEntry = new TableEntry(colName, COL_INT);
-    fileHandler->operateTable(TB_ADD, nullptr, tableEntry);
+    // char colName[10] = "id";
+    // TableEntry* tableEntry = new TableEntry(colName, COL_INT);
+    // fileHandler->operateTable(TB_ADD, nullptr, tableEntry);
 
     // delete tableEntry;
     // delete tableEntry_1;
@@ -36,14 +43,47 @@ void testTable(FileHandler* fileHandler) {
 }
 
 void testRecords(FileHandler* fileHandler) {
-    RecordId recordId(1, 0);
+    RecordId recordId;
     Record record(10), result(10);
-    sprintf((char*)record.data, "%d   ", 3);
-    
-    // fileHandler->insertRecord(recordId, record);
-    // printf("%d %d\n", recordId.getPageId(), recordId.getSlotId());
+    std::vector<Record*> vecRecord;
+
+    for (int i = 0; i < 5; i++) {
+        sprintf((char*)record.data, "%d   ", i);
+        fileHandler->insertRecord(recordId, record);
+    }
+
     fileHandler->getRecord(recordId, result);
     printf("result = %s\n", (char*)result.data);
+    recordId.set(1, 0);
+    fileHandler->getRecord(recordId, result);
+    printf("result = %s\n", (char*)result.data);
+    
+    recordId.set(1, 1);
+    fileHandler->removeRecord(recordId);
+    recordId.set(1, 3);
+    fileHandler->removeRecord(recordId);
+    sprintf((char*)record.data, "%d   ", 6);
+    fileHandler->insertRecord(recordId, record);
+    recordId.set(1, 3);
+    sprintf((char*)record.data, "%d   ", 7);
+    fileHandler->updateRecord(recordId, record);
+    recordId.set(1, 2);
+    sprintf((char*)record.data, "%d   ", 8);
+    fileHandler->updateRecord(recordId, record);
+    
+    fileHandler->getAllRecords(vecRecord);
+    printf("Total record number = %d\n", fileHandler->getRecordNum());
+    for (auto rec : vecRecord) {
+        printf("data = %s\n", (char*)(rec->data));
+    }
+
+    // fileHandler->insertAllRecords(vecRecord);
+
+    // recycle the memory
+    for (auto rec : vecRecord) {
+        delete rec;
+    }
+    vecRecord.clear();
 }
 
 int main() {
@@ -60,7 +100,7 @@ int main() {
 
     // testTable(fileHandler);
     fileHandler->operateTable(TB_PRINT, nullptr, nullptr);
-    testRecords(fileHandler);
+    // testRecords(fileHandler);
 
     bufPageManager->close();
     recordManager->closeFile(fileHandler);

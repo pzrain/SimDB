@@ -84,7 +84,8 @@ public:
     int8_t entryHead;
     int16_t firstNotFullPage;
     uint16_t recordLen, totalPageNumber; // recordLen: length of one record
-    uint32_t recordSize; // total number of records/slots
+    uint32_t recordSize; // number of records/slots on one page
+    uint32_t recordNum; // total number of records;
     TableEntry entrys[TAB_MAX_COL_NUM];
     char tableName[TAB_MAX_NAME_LEN];
 
@@ -92,6 +93,7 @@ public:
 
     void init(TableEntry* entryHead_, int num);
     // num is the length of the TableEntry array
+    // Attention: init will not check same column name, thus should only be called to initial a tableHeader
 
     int getCol(char* colName, TableEntry& tableEntry);
 
@@ -115,11 +117,13 @@ struct PageHeader{
     int16_t nextFreePage;
     int16_t firstEmptySlot; // slot id starts at 0
     int16_t totalSlot;
+    int16_t maximumSlot;
 
     PageHeader() {
         nextFreePage = -1;
         firstEmptySlot = -1;
         totalSlot = 0;
+        maximumSlot = -1;
     }
 };
 

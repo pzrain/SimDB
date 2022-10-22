@@ -31,8 +31,7 @@ public:
 
     int operateTable(TB_OP_TYPE opCode, char* colName = nullptr, TableEntry* tableEntry = nullptr, int num = 0);
     /* 
-        when operating type is init, tableEntry represents the head of a linklist of TableEntry
-        DO NOT DELETE tableEntry by yourself! This is done by class TableHeader
+        when operating type is init, tableEntry represents an array of TableEntry
 
         @return: -1 if fail, 0 if succeed for all op other than TB_EXIST, which returns 0 or 1
      */
@@ -46,9 +45,14 @@ public:
 
     bool updateRecord(RecordId &recordId, const Record &record);
 
-    void getAllRecords(std::vector<Record>&);
+    void getAllRecords(std::vector<Record*>&);
 
-    void insertAllRecords(const std::vector<Record>&);
+    void insertAllRecords(const std::vector<Record*>&);
+
+    int getRecordNum();
+
+    size_t getRecordLen();
+
 };
 
 

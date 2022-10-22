@@ -39,6 +39,7 @@ TableHeader::TableHeader() {
     totalPageNumber = 1;
     recordSize = 0;
     recordLen = 0;
+    recordNum = 0;
 }
 
 bool TableHeader::existCol(char* colName) {
@@ -217,9 +218,12 @@ int TableHeader::addCol(TableEntry* tableEntry) {
 }
 
 void TableHeader::init(TableEntry* entryHead_, int num) {
+    entryHead = 0;
     for (int i = 0; i < num; i++) {
         entrys[i] = entryHead_[i];
+        entrys[i].next = (i + 1) == num ? -1 : (i + 1);
     }
+    colNum = num;
     calcRecordSizeAndLen();
     valid = 1;
 }
