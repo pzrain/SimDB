@@ -342,3 +342,7 @@ int FileHandler::getRecordNum() {
 size_t FileHandler::getRecordLen() {
     return tableHeader->recordLen - sizeof(int16_t);
 }
+
+TableEntryDesc FileHandler::getTableEntryDesc() {
+    return tableHeader->getTableEntryDesc();
+}

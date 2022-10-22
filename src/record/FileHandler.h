@@ -64,6 +64,8 @@ public:
 
     size_t getRecordLen();
 
+    TableEntryDesc getTableEntryDesc();
+
 };
 
 

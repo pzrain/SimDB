@@ -16,6 +16,10 @@ void testTable(FileHandler* fileHandler) {
     };
     tableEntrys[2].colLen = 20;
     fileHandler->operateTable(TB_INIT, nullptr, tableEntrys, 3);
+    fileHandler->operateTable(TB_REMOVE, colName_2);
+    char colName_4[] = "id4";
+    TableEntry* tableEntry_4 = new TableEntry(colName_4, COL_FLOAT);
+    fileHandler->operateTable(TB_ADD, nullptr, tableEntry_4);
     // TableEntry *tableEntry_1 = new TableEntry(colName_1, COL_INT);
     // TableEntry *tableEntry_2 = new TableEntry(colName_2, COL_FLOAT);
     // TableEntry *tableEntry_3 = new TableEntry(colName_3, COL_VARCHAR);
@@ -98,7 +102,7 @@ int main() {
     // recordManager->createFile(tableName);
     recordManager->openFile(tableName, fileHandler);
 
-    // testTable(fileHandler);
+    testTable(fileHandler);
     fileHandler->operateTable(TB_PRINT, nullptr, nullptr);
     // testRecords(fileHandler);
 

@@ -32,16 +32,28 @@ public:
     }
 };
 
-struct Record{
-    uint8_t* data;
+struct RecordDataNode{
+    union{
+        int* intContent;
+        float* floatContent;
+        char* charContent;
+    }content;
+    uint32_t len;
+    TB_COL_TYPE nodeType;
+    RecordDataNode* next;
 
-    Record(size_t len) {
-        data = new uint8_t[len];
-    }
+    ~RecordDataNode();
+};
 
-    ~Record() {
-        delete data;
-    }
+class Record;
+
+class RecordData{
+public:
+    RecordDataNode* head;
+    
+    bool serialize(Record& record);
+
+    ~RecordData();
 };
 
 struct TableEntry{
@@ -70,6 +82,34 @@ struct TableEntry{
     TableEntry(char* colName_, uint8_t colType_, bool checkConstraint_ = false, bool primaryKeyConstraint_ = false, \
                bool foreignKeyConstraint_ = false, uint32_t colLen_ = 0, bool hasDefault_ = false, \
                bool notNullConstraint_ = false, bool uniqueConstraint_ = false, bool isNull_ = false);
+};
+
+struct TableEntryDescNode{
+    uint8_t colType;
+    uint32_t colLen;
+    TableEntryDescNode* next;
+};
+
+class TableEntryDesc{
+public:
+    TableEntryDescNode* head;
+
+    ~TableEntryDesc();
+};
+
+class Record{
+public:
+    uint8_t* data;
+
+    Record(size_t len) {
+        data = new uint8_t[len];
+    }
+
+    ~Record() {
+        delete data;
+    }
+
+    bool deserialize(RecordData& rData, const TableEntryDesc& tableEntryDesc);
 };
 
 class TableHeader{
@@ -108,6 +148,8 @@ public:
     bool existCol(char* colName);
 
     void printInfo();
+
+    TableEntryDesc getTableEntryDesc();
 };
 
 typedef enum{
