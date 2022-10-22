@@ -9,6 +9,8 @@ class RecordId{
 private:
     int16_t pageId, slotId;
 public:
+    RecordId() {}
+
     RecordId(int16_t pageId_, int16_t slotId_) {
         pageId = pageId_;
         slotId = slotId_;
@@ -32,11 +34,14 @@ public:
 
 struct Record{
     uint8_t* data;
-};
 
-class RecordList {
-    Record record;
-    Record* next;
+    Record(size_t len) {
+        data = new uint8_t[len];
+    }
+
+    ~Record() {
+        delete data;
+    }
 };
 
 struct TableEntry{

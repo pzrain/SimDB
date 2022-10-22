@@ -33,7 +33,7 @@ FileHandler::FileHandler() {
     fileId = -1;
 }
 
-void FileHandler::init(BufPageManager* bufPageManager_, int fileId_, const char* filename) {
+void FileHandler::init(BufPageManager* bufPageManager_, int fileId_, const char* tableName) {
     bufPageManager = bufPageManager_;
     fileId = fileId_;
     if (loadTableHeader(bufPageManager, fileId, tableHeader) != 0) {
@@ -48,7 +48,7 @@ void FileHandler::init(BufPageManager* bufPageManager_, int fileId_, const char*
         tableHeader->totalPageNumber = 1;
         tableHeader->recordLen = 0;
         tableHeader->entryHead = -1;
-        strcpy(tableHeader->tableName, filename);
+        strcpy(tableHeader->tableName, tableName);
         tableHeader->valid = 1;
         if (writeTableHeader(bufPageManager, fileId, tableHeader) != 0) {
             printf("[Error] fail to write table header.\n");
@@ -132,7 +132,7 @@ bool FileHandler::getRecord(RecordId recordId, Record &record) {
 
     size_t offset;
     offset = sizeof(PageHeader) + slotId * tableHeader->recordLen;
-    uint8_t* recordData = (uint8_t*)(((uint8_t*)data)[offset]);    
+    uint8_t* recordData = (uint8_t*)(((uint8_t*)data) + offset);    
 
     if (((int16_t*)recordData)[0] != SLOT_DIRTY) {
         printf("[ERROR] specified slot is empty.\n");
@@ -140,19 +140,18 @@ bool FileHandler::getRecord(RecordId recordId, Record &record) {
     }
 
     offset = sizeof(int16_t);
-    memcpy(record.data, recordData + offset, tableHeader->recordLen);
+    memcpy(record.data, recordData + offset, tableHeader->recordLen - sizeof(int16_t));
     return true;
 }
 
 bool FileHandler::insertRecord(RecordId &recordId, const Record &record) {
     int16_t pageId = (tableHeader->firstNotFullPage);
     bool newPage = false;
-
     if (pageId < 0) { // alloc new page
         pageId = tableHeader->totalPageNumber++;
         newPage = true;
     }
-
+    
     int index, slotId;
     size_t offset;
     BufType data = bufPageManager->getPage(fileId, pageId, index);
@@ -169,7 +168,7 @@ bool FileHandler::insertRecord(RecordId &recordId, const Record &record) {
     if (slotId < 0) { // alloc new slot
         offset = sizeof(PageHeader) + pageHeader->totalSlot * tableHeader->recordLen;
         // initialize "slot head"
-        int16_t* writeSlot = (int16_t*)(((uint8_t*)data)[offset]);
+        int16_t* writeSlot = (int16_t*)(((uint8_t*)data) + offset);
         writeSlot[0] = SLOT_LAST_FREE;
 
         slotId = pageHeader->totalSlot;
@@ -179,10 +178,10 @@ bool FileHandler::insertRecord(RecordId &recordId, const Record &record) {
     assert(slotId < tableHeader->recordSize);
 
     offset = sizeof(PageHeader) + slotId * tableHeader->recordLen;
-    uint8_t* recordData = (uint8_t*)(((uint8_t*)data)[offset]);
+    uint8_t* recordData = (uint8_t*)(((uint8_t*)data) + offset);
     offset = sizeof(int16_t);
-    memcpy(recordData + offset, record.data, tableHeader->recordLen);
-    pageHeader->firstEmptySlot = ((uint16_t*)recordData)[0];
+    memcpy(recordData + offset, record.data, tableHeader->recordLen - sizeof(int16_t));
+    pageHeader->firstEmptySlot = ((int16_t*)recordData)[0];
     ((int16_t*)recordData)[0] = SLOT_DIRTY; // mark as dirty
     
     recordId.set(pageId, slotId);
@@ -191,6 +190,7 @@ bool FileHandler::insertRecord(RecordId &recordId, const Record &record) {
         tableHeader->firstNotFullPage = pageHeader->nextFreePage;
         pageHeader->nextFreePage = -1;
     }
+    writeTableHeader(bufPageManager, fileId, tableHeader);
     return true;
 }
 
@@ -213,7 +213,7 @@ bool FileHandler::removeRecord(RecordId &recordId) {
     }
 
     size_t offset = sizeof(PageHeader) + slotId * tableHeader->recordLen;
-    uint8_t* recordData = (uint8_t*)(((uint8_t*)data)[offset]);
+    uint8_t* recordData = (uint8_t*)(((uint8_t*)data) + offset);
 
     if (((int16_t*)recordData)[0] == SLOT_DIRTY) {
         ((int16_t*)recordData)[0] = pageHeader->firstEmptySlot;
@@ -223,6 +223,7 @@ bool FileHandler::removeRecord(RecordId &recordId) {
         return false;
     }
 
+    writeTableHeader(bufPageManager, fileId, tableHeader);
     return true;
 }
 
@@ -246,7 +247,7 @@ bool FileHandler::updateRecord(RecordId &recordId, const Record &record) {
 
     size_t offset;
     offset = sizeof(PageHeader) + slotId * tableHeader->recordLen;
-    uint8_t* recordData = (uint8_t*)(((uint8_t*)data)[offset]);
+    uint8_t* recordData = (uint8_t*)(((uint8_t*)data) + offset);
     
     if (((int16_t*)recordData)[0] != SLOT_DIRTY) {
         printf("[ERROR] specified slot is empty.\n");
@@ -254,6 +255,76 @@ bool FileHandler::updateRecord(RecordId &recordId, const Record &record) {
     }
 
     offset = sizeof(int16_t);
-    memcpy(recordData + offset, record.data, tableHeader->recordLen);
+    memcpy(recordData + offset, record.data, tableHeader->recordLen - sizeof(int16_t));
+    
+    writeTableHeader(bufPageManager, fileId, tableHeader);
     return true;
+}
+
+void FileHandler::getAllRecords(std::vector<Record>& records) {
+    records.clear();
+    Record record(tableHeader->recordLen);
+    
+    for (int pageId = 1; pageId < tableHeader->totalPageNumber; pageId++) {
+        int index;
+        BufType data = bufPageManager->getPage(fileId, pageId, index);
+        PageHeader* pageHeader = (PageHeader*)data;
+        size_t offset = sizeof(PageHeader);
+        for (int slotId = 0; slotId < pageHeader->totalSlot; slotId++) {
+            uint8_t* recordData = (uint8_t*)(((uint8_t*)data) + offset);
+            if (((int16_t*)recordData)[0] != SLOT_DIRTY) {
+                continue;
+            }
+            memcpy(record.data, recordData + sizeof(int16_t), tableHeader->recordLen - sizeof(int16_t));
+            records.push_back(record);
+
+            offset += tableHeader->recordLen;
+        }
+    }
+}
+
+void FileHandler::insertAllRecords(const std::vector<Record>& records) {
+    int total = records.size(), done = 0;
+
+    while (done < total) {
+        int16_t pageId = (tableHeader->firstNotFullPage);
+        bool newPage = false;
+        if (pageId < 0) {
+            pageId = tableHeader->totalPageNumber++;
+            newPage = true;
+        }
+        int index, slotId;
+        size_t offset;
+        BufType data = bufPageManager->getPage(fileId, pageId, index);
+        bufPageManager->markDirty(index);
+        PageHeader* pageHeader = (PageHeader*)data;
+        if (newPage) {
+            pageHeader->nextFreePage = tableHeader->firstNotFullPage;
+            tableHeader->firstNotFullPage = pageId;
+            pageHeader->firstEmptySlot = -1;
+            pageHeader->totalSlot = 0;
+        }
+        int num = tableHeader->recordSize - pageHeader->totalSlot;
+        if (num > total - done) {
+            num = total - done;
+        }
+        while (num--) {
+            slotId = pageHeader->firstEmptySlot;
+            if (slotId < 0) {
+                offset = sizeof(PageHeader) + pageHeader->totalSlot * tableHeader->recordLen;
+                int16_t* writeSlot = (int16_t*)(((uint8_t*)data) + offset);
+                writeSlot[0] = SLOT_LAST_FREE;
+                slotId = pageHeader->totalSlot;
+                pageHeader->firstEmptySlot = pageHeader->totalSlot++;
+            } else {
+                offset = sizeof(PageHeader) + slotId * tableHeader->recordLen;
+            }
+            uint8_t* recordData = (uint8_t*)(((uint8_t*)data) + offset);
+            offset = sizeof(int16_t);
+            memcpy(recordData + offset, records[done++].data, tableHeader->recordLen - sizeof(int16_t));
+            pageHeader->firstEmptySlot = ((int16_t*)recordData)[0];
+            ((int16_t*)recordData)[0] = SLOT_DIRTY;
+        }
+    }
+    writeTableHeader(bufPageManager, fileId, tableHeader);
 }

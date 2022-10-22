@@ -6,6 +6,7 @@
 
 /* DataBase Info */
 #define DB_MAX_TABLE_NUM 8
+#define DB_MAX_NAME_LEN 32
 
 /* Table Info */
 #define TAB_MAX_COL_NUM 10

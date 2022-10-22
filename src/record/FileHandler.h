@@ -3,6 +3,7 @@
 
 #include "RMComponent.h"
 #include "../filesystem/bufmanager/BufPageManager.h"
+#include <vector>
 
 typedef enum{
     TB_INIT = 0,
@@ -24,7 +25,7 @@ public:
 
     ~FileHandler();
 
-    void init(BufPageManager* bufPageManager_, int fileId_, const char* filename);
+    void init(BufPageManager* bufPageManager_, int fileId_, const char* tableName);
 
     int getFileId();
 
@@ -44,6 +45,10 @@ public:
     bool removeRecord(RecordId &recordId);
 
     bool updateRecord(RecordId &recordId, const Record &record);
+
+    void getAllRecords(std::vector<Record>&);
+
+    void insertAllRecords(const std::vector<Record>&);
 };
 
 

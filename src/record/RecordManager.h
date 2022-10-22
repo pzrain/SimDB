@@ -6,16 +6,17 @@
 class RecordManager{
 private:
     BufPageManager* bufPageManager;
+    char databaseName[DB_MAX_NAME_LEN];
 public:
-    RecordManager(BufPageManager*);
+    RecordManager(BufPageManager*, char* databaseName_);
 
     ~RecordManager();
 
-    int createFile(const char* filename); 
+    int createFile(const char* tableName); 
 
-    int removeFile(const char* filename);
+    int removeFile(const char* tableName);
 
-    int openFile(const char* filename, FileHandler* fileHandler);// one file corresponds with one fileHandler
+    int openFile(const char* tableName, FileHandler* fileHandler);// one file corresponds with one fileHandler
 
     int closeFile(FileHandler* fileHandler);
 };
