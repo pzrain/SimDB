@@ -90,6 +90,61 @@ void testRecords(FileHandler* fileHandler) {
     vecRecord.clear();
 }
 
+void testSerialize(FileHandler* fileHandler) {
+    char colName_1[] = "id";
+    char colName_2[] = "content";
+    TableEntry *tableEntry_1 = new TableEntry(colName_1, COL_FLOAT);
+    TableEntry *tableEntry_2 = new TableEntry(colName_2, COL_VARCHAR);
+    tableEntry_2->colLen = 10;
+    fileHandler->operateTable(TB_ADD, nullptr, tableEntry_1);
+    fileHandler->operateTable(TB_ADD, nullptr, tableEntry_2);
+    fileHandler->operateTable(TB_PRINT);
+
+    /* test serialize */
+    RecordDataNode* TSrecordDataNode1 = new RecordDataNode();
+    RecordDataNode* TSrecordDataNode2 = new RecordDataNode();
+    // TSrecordDataNode1->nodeType = COL_INT;
+    // TSrecordDataNode1->content.intContent = new int(3);
+    TSrecordDataNode1->nodeType = COL_FLOAT;
+    TSrecordDataNode1->content.floatContent = new float(9.12);
+    TSrecordDataNode1->next = TSrecordDataNode2;
+    TSrecordDataNode2->nodeType = COL_VARCHAR;
+    char content[] = "info";
+    TSrecordDataNode2->content.charContent = content;
+    TSrecordDataNode2->len = tableEntry_2->colLen;
+    RecordData TSrecordData;
+    TSrecordData.head = TSrecordDataNode1;
+
+    Record TSrecord(TSrecordData.getLen());
+    TSrecordData.serialize(TSrecord);
+    printf("result = %f %s.\n", ((float*)(TSrecord.data))[0], ((char*)(TSrecord.data) + sizeof(int)));
+    
+    /* test deserialize */
+    RecordData TDrecordData;
+    TableEntryDesc tableEntryDesc = fileHandler->getTableEntryDesc();
+    TSrecord.deserialize(TDrecordData, tableEntryDesc);
+    RecordDataNode* cur = TDrecordData.head;
+    while (cur) {
+        switch (cur->nodeType) {
+            case COL_INT:
+                printf("type = INT, content = %d\n", ((int*)(cur->content.intContent))[0]);
+                break;
+            case COL_FLOAT:
+                printf("type = FLOAT, content = %f\n", ((cur->content.floatContent))[0]);
+                break;
+            case COL_VARCHAR:
+                printf("type = VARCHAR(%d), content = %s\n", cur->len, ((char*)(cur->content.charContent)));
+                break;
+            default:
+                break;
+        }
+        cur = cur->next;
+    }
+
+    delete tableEntry_1;
+    delete tableEntry_2;
+}
+
 int main() {
     MyBitMap::initConst();
     FileManager* fileManager = new FileManager();
@@ -98,12 +153,13 @@ int main() {
     RecordManager* recordManager = new RecordManager(bufPageManager, databaseName);
     FileHandler* fileHandler = new FileHandler();
 
-    char tableName[] = "test";
-    // recordManager->createFile(tableName);
-    recordManager->openFile(tableName, fileHandler);
+    char tableName[] = "testserial";
 
-    testTable(fileHandler);
-    fileHandler->operateTable(TB_PRINT, nullptr, nullptr);
+    recordManager->createFile(tableName);
+    recordManager->openFile(tableName, fileHandler);
+    testSerialize(fileHandler);
+    // testTable(fileHandler);
+    // fileHandler->operateTable(TB_PRINT, nullptr, nullptr);
     // testRecords(fileHandler);
 
     bufPageManager->close();

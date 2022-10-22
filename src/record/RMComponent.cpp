@@ -269,62 +269,85 @@ TableEntryDesc TableHeader::getTableEntryDesc() {
             res.head = cur;
         }
         prev = cur;
+        head = entry.next;
     }
     return res;
 }
 
-bool Record::deserialize(RecordData& rData, const TableEntryDesc& tableEntryDesc) {
+size_t TableEntryDesc::getLen() {
+    if (len > 0)
+        return len;
+    size_t len_ = 0;
+    TableEntryDescNode* cur = head;
+    while (cur) {
+        switch (cur->colType) {
+            case COL_INT:
+                len_ += sizeof(int);
+                break;
+            case COL_FLOAT:
+                len_ += sizeof(float);
+                break;
+            case COL_VARCHAR:
+                len_ += cur->colLen;
+                break;
+            default:
+                break;
+        }
+        cur = cur->next;
+    }
+    return len = len_;
+}
+
+bool Record::deserialize(RecordData& rData, TableEntryDesc& tableEntryDesc) {
+    if (len != tableEntryDesc.getLen()) {
+        printf("[ERROR] unmatched length between record and recordData.\n");
+        return false;
+    }
+    
     RecordDataNode* cur;
     RecordDataNode* prev = nullptr;
     TableEntryDescNode* now = tableEntryDesc.head;
     uint8_t* buf = data;
     size_t offset;
+    
     while (now) {
         cur = new RecordDataNode();
         switch(now->colType) {
             case COL_INT:
                 offset = sizeof(int);
+                cur->nodeType = COL_INT;
+                cur->len = offset;
                 cur->content.intContent = new int;
                 memcpy(cur->content.intContent, buf, offset);
                 break;
             case COL_FLOAT:
                 offset = sizeof(float);
+                cur->nodeType = COL_FLOAT;
+                cur->len = offset;
                 cur->content.floatContent = new float;
                 memcpy(cur->content.floatContent, buf, offset);
                 break;
             case COL_VARCHAR:
                 offset = now->colLen;
-                cur->content.charContent = new char;
+                cur->nodeType = COL_VARCHAR;
+                cur->len = offset;
+                cur->content.charContent = new char[offset];
                 memcpy(cur->content.charContent, buf, offset);
                 break;
             default:
                 return false;
                 break;
         }
+        if (prev) {
+            prev->next = cur;
+        } else {
+            rData.head = cur;
+        }
+        prev = cur;
         buf += offset;
         now = now->next;
     }
-    printf("length = %d %d\n", (buf - data), strlen((char*)data));
-    return (buf - data) == strlen((char*)data);
-}
-
-RecordDataNode::~RecordDataNode() {
-    switch (nodeType) {
-        case COL_INT:
-            if (content.intContent)
-                delete content.intContent;
-            break;
-        case COL_FLOAT:
-            if (content.floatContent)
-                delete content.floatContent;
-                break;
-        case COL_VARCHAR:
-            if (content.charContent)
-                delete content.charContent;
-                break;
-        default:
-            break;
-    }
+    return true;
 }
 
 RecordData::~RecordData() {
@@ -337,6 +360,11 @@ RecordData::~RecordData() {
 }
 
 bool RecordData::serialize(Record& record) {
+    if (getLen() != record.len) {
+        printf("[ERROR] unmatched length between record and recordData.\n");
+        return false;
+    }
+
     RecordDataNode* cur = head;
     uint8_t* buf = record.data;
     size_t offset;
@@ -344,21 +372,46 @@ bool RecordData::serialize(Record& record) {
         switch (cur->nodeType) {
             case COL_INT:
                 offset = sizeof(int);
-                memcpy(buf, cur->content.intContent, offset);
+                memcpy(buf, (uint8_t*)(cur->content.intContent), offset);
                 break;
             case COL_FLOAT:
                 offset = sizeof(float);
-                memcpy(buf, cur->content.floatContent, offset);
+                memcpy(buf, (uint8_t*)(cur->content.floatContent), offset);
                 break;
             case COL_VARCHAR:
                 offset = cur->len;
-                memcpy(buf, cur->content.charContent, offset);
+                memcpy(buf, (uint8_t*)(cur->content.charContent), offset);
                 break;
             default:
                 return false;
                 break;
         }
         buf += offset;
+        cur = cur->next;
     }
     return true;
+}
+
+size_t RecordData::getLen() {
+    if (recordLen > 0)
+        return recordLen;
+    size_t len = 0;
+    RecordDataNode* cur = head;
+    while (cur) {
+        switch (cur->nodeType) {
+            case COL_INT:
+                len += sizeof(int);
+                break;
+            case COL_FLOAT:
+                len += sizeof(float);
+                break;
+            case COL_VARCHAR:
+                len += cur->len;
+                break;
+            default:
+                break;
+        }
+        cur = cur->next;
+    }
+    return recordLen = len;
 }

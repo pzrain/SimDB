@@ -40,18 +40,25 @@ struct RecordDataNode{
     }content;
     uint32_t len;
     TB_COL_TYPE nodeType;
-    RecordDataNode* next;
+    RecordDataNode* next = nullptr;
 
-    ~RecordDataNode();
+    ~RecordDataNode() {}
 };
 
 class Record;
 
 class RecordData{
 public:
-    RecordDataNode* head;
+    RecordDataNode* head; // attention : you should not delete head manually
+    size_t recordLen = 0;
+
+    RecordData() { head = nullptr; }
+
+    RecordData(RecordDataNode* head_): head(head_) {}
     
     bool serialize(Record& record);
+
+    size_t getLen();
 
     ~RecordData();
 };
@@ -91,25 +98,31 @@ struct TableEntryDescNode{
 };
 
 class TableEntryDesc{
+private:
+    size_t len = 0;
 public:
     TableEntryDescNode* head;
 
     ~TableEntryDesc();
+
+    size_t getLen();
 };
 
 class Record{
 public:
     uint8_t* data;
+    size_t len;
 
-    Record(size_t len) {
-        data = new uint8_t[len];
+    Record(size_t len_) {
+        len = len_;
+        data = new uint8_t[len_];
     }
 
     ~Record() {
         delete data;
     }
 
-    bool deserialize(RecordData& rData, const TableEntryDesc& tableEntryDesc);
+    bool deserialize(RecordData& rData, TableEntryDesc& tableEntryDesc);
 };
 
 class TableHeader{
