@@ -11,24 +11,26 @@
 ```C++
 class RecordId{
 private:
-    int pageId, slotId;
+    int16_t pageId, slotId;
 public:
-    RecordId(int pageId_, int slotId_) {
+    RecordId() {}
+
+    RecordId(int16_t pageId_, int16_t slotId_) {
         pageId = pageId_;
         slotId = slotId_;
     }
 
     ~RecordId() {}
 
-    int getpageId() {
+    int16_t getPageId() {
         return pageId;
     }
 
-    int getslotId() {
+    int16_t getSlotId() {
         return slotId;
     }
 
-    void set(int pageId_, int slotId_) {
+    void set(int16_t pageId_, int16_t slotId_) {
         pageId = pageId_;
         slotId = slotId_;
     }
@@ -39,11 +41,19 @@ public:
 
 > `src/record/RMComponent.h`
 
-描述了存放在文件里的一条记录，也即插入数据库表中的一条记录，为序列化之后的结果。
+描述了存放在文件里的一条记录，也即插入数据库表中的一条记录，为序列化之后的结果。创建时应当指定记录的长度。
 
 ```C++
 struct Record{
     uint8_t* data;
+
+    Record(size_t len) {
+        data = new uint8_t[len];
+    }
+
+    ~Record() {
+        delete data;
+    }
 };
 ```
 
@@ -53,19 +63,53 @@ struct Record{
 
 `src/record/RMComponent.h`
 
-页头。
+页头，记录某一页的一些基本信息
 
 ```C++
 struct PageHeader{
     int16_t nextFreePage;
     int16_t firstEmptySlot; // slot id starts at 0
     int16_t totalSlot;
+    int16_t maximumSlot;
 
     PageHeader() {
         nextFreePage = -1;
         firstEmptySlot = -1;
         totalSlot = 0;
+        maximumSlot = -1;
     }
+};
+```
+
+### TableEntry
+
+`src/record/RMComponent.h`
+
+记录的是表中某一列的基本信息，包括类型（`INT`，`FLOAT`，`VARCHAR`），约束等。需要注意的是，`TableEntry.next`是与所在表相关的，用来构建链表。
+
+```C++
+struct TableEntry{
+    uint8_t colType;
+    bool checkConstraint;
+    bool primaryKeyConstraint;
+    bool foreignKeyConstraint;
+    uint32_t colLen; // VARCHAR(%d), int(4), float(4)
+    char colName[TAB_MAX_NAME_LEN];
+    bool hasDefault;
+    bool notNullConstraint;
+    bool uniqueConstraint;
+    bool isNull;
+    union {
+        int defaultValInt;
+        char defaultValVarchar[TAB_MAX_LEN];
+        float defaultValFloat;
+    };
+    int8_t next; // don't forget to build the link 
+    /* 
+        TODO: implement of checkConstraint and foreignKeyConstraint
+     */
+
+    TableEntry();
 };
 ```
 
@@ -78,26 +122,32 @@ struct PageHeader{
 ```C++
 class TableHeader{
 private:
-    void calcRecordSizeAndLen(); // 计算其中一条记录的长度，以及一页可以存放的记录数
+    void calcRecordSizeAndLen();
+
+    int findFreeCol();
+
 public:
     uint8_t valid;
     uint8_t colNum;
+    int8_t entryHead;
     int16_t firstNotFullPage;
     uint16_t recordLen, totalPageNumber; // recordLen: length of one record
-    uint32_t recordSize; // total number of records/slots
-
-    TableEntry* entryHead;
+    uint32_t recordSize; // number of records/slots on one page
+    uint32_t recordNum; // total number of records;
+    TableEntry entrys[TAB_MAX_COL_NUM];
     char tableName[TAB_MAX_NAME_LEN];
 
     TableHeader();
 
-    ~TableHeader();
+    void init(TableEntry* entryHead_, int num);
+    // num is the length of the TableEntry array
+    // Attention: init will not check same column name, thus should only be called to initial a tableHeader
 
-    TableEntry* getCol(char* colName);
-
-    void init(TableEntry* entryHead_);
+    int getCol(char* colName, TableEntry& tableEntry);
 
     int alterCol(TableEntry* tableEntry);
+    // update a column
+    // according to the doc, this method may not be called
 
     int removeCol(char* colName);
 
@@ -127,22 +177,45 @@ public:
 
     ~FileHandler();
 
-    void init(BufPageManager* bufPageManager_, int fileId_, const char* filename);
+    void init(BufPageManager* bufPageManager_, int fileId_, const char* tableName);
 
     int getFileId();
 
-    int operateTable(TB_OP_TYPE opCode, char* colName = nullptr, TableEntry* tableEntry = nullptr);
-    // when operating type is init, tableEntry represents the head of a linklist of TableEntry
+    int operateTable(TB_OP_TYPE opCode, char* colName = nullptr, TableEntry* tableEntry = nullptr, int num = 0);
+    /* 
+        When operating type is TB_INIT, tableEntry represents an array of TableEntry
+
+        TB_REMOVE, TB_EXIST requires parameter colName
+        TB_INIT, TB_ALTER, TB_ADD requires parameter tableEntry
+        TB_INIT requires parameter num, which is the total number of tableEntry array
+
+        @return: -1 if fail, 
+                 0 if succeed for all op other than TB_EXIST 
+                 TB_EXIST returns 1 if exists otherwise 0
+     */
     
     bool getRecord(RecordId recordId, Record &record);
 
     bool insertRecord(RecordId &recordId, const Record &record);
+    // the page id and slot id of the inserted record will be stored in recordId
+    // at present, no constraints will be checked. (TODO)
 
-    bool removeRecord(const int recordId);
+    bool removeRecord(RecordId &recordId);
 
-    bool updateRecord(const Record &record);
+    bool updateRecord(RecordId &recordId, const Record &record);
+    // parameter recordId specifies the position of the record that needed to be updated
+    // parameter record will substitutes the old record
 
-    bool writeBack(const int pageNumber); // write page back to disk
+    void getAllRecords(std::vector<Record*>&);
+    // returns all records stores in this file
+
+    void insertAllRecords(const std::vector<Record*>&);
+    // insert records in bulk
+
+    int getRecordNum();
+
+    size_t getRecordLen();
+
 };
 ```
 
@@ -157,22 +230,21 @@ public:
 ```C++
 class RecordManager{
 private:
-    FileManager* fileManager;
+    BufPageManager* bufPageManager;
+    char databaseName[DB_MAX_NAME_LEN];
 public:
-    RecordManager(FileManager*);
+    RecordManager(BufPageManager*, char* databaseName_);
 
     ~RecordManager();
 
-    void createFile(const char* filename); 
+    int createFile(const char* tableName); 
 
-    void removeFile(const char* filename);
+    int removeFile(const char* tableName);
 
-    void openFile(const char* filename, FileHandler* fileHandler);// one file corresponds with one fileHandler
-    //根据数据库和表名确定文件路径，打开文件后将控制权传递给FileHandler
+    int openFile(const char* tableName, FileHandler* fileHandler);// one file corresponds with one fileHandler
 
-    void closeFile(FileHandler* fileHandler);
+    int closeFile(FileHandler* fileHandler);
 };
-
-#endif
 ```
 
+数据库的所有表文件存放在`database`文件夹下，命名为`{databaseName}_{tableName}.db`，以保证不会产生冲突。

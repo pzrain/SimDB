@@ -60,7 +60,7 @@ struct TableEntry{
         char defaultValVarchar[TAB_MAX_LEN];
         float defaultValFloat;
     };
-    int8_t next;
+    int8_t next; // don't forget to build the link 
     /* 
         TODO: implement of checkConstraint and foreignKeyConstraint
      */
@@ -98,6 +98,8 @@ public:
     int getCol(char* colName, TableEntry& tableEntry);
 
     int alterCol(TableEntry* tableEntry);
+    // update a column
+    // according to the doc, this method may not be called
 
     int removeCol(char* colName);
 

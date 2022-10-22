@@ -12,7 +12,7 @@ typedef enum{
     TB_ADD = 3,
     TB_EXIST = 4,
     TB_PRINT = 5,
-} TB_OP_TYPE;
+} TB_OP_TYPE; // type of operating a table
 
 class FileHandler{
 private:
@@ -31,23 +31,34 @@ public:
 
     int operateTable(TB_OP_TYPE opCode, char* colName = nullptr, TableEntry* tableEntry = nullptr, int num = 0);
     /* 
-        when operating type is init, tableEntry represents an array of TableEntry
+        When operating type is TB_INIT, tableEntry represents an array of TableEntry
 
-        @return: -1 if fail, 0 if succeed for all op other than TB_EXIST, which returns 0 or 1
+        TB_REMOVE, TB_EXIST requires parameter colName
+        TB_INIT, TB_ALTER, TB_ADD requires parameter tableEntry
+        TB_INIT requires parameter num, which is the total number of tableEntry array
+
+        @return: -1 if fail, 
+                 0 if succeed for all op other than TB_EXIST 
+                 TB_EXIST returns 1 if exists otherwise 0
      */
     
     bool getRecord(RecordId recordId, Record &record);
 
     bool insertRecord(RecordId &recordId, const Record &record);
     // the page id and slot id of the inserted record will be stored in recordId
+    // at present, no constraints will be checked. (TODO)
 
     bool removeRecord(RecordId &recordId);
 
     bool updateRecord(RecordId &recordId, const Record &record);
+    // parameter recordId specifies the position of the record that needed to be updated
+    // parameter record will substitutes the old record
 
     void getAllRecords(std::vector<Record*>&);
+    // returns all records stores in this file
 
     void insertAllRecords(const std::vector<Record*>&);
+    // insert records in bulk
 
     int getRecordNum();
 
