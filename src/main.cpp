@@ -177,9 +177,9 @@ void testSerializeAndGetACFields(FileHandler* fileHandler) {
     TableEntry *tableEntry_2 = new TableEntry(colName_2, COL_VARCHAR);
     TableEntry *tableEntry_3 = new TableEntry(colName_3, COL_INT);
     tableEntry_2->colLen = 10;
-    // fileHandler->operateTable(TB_ADD, nullptr, tableEntry_1);
-    // fileHandler->operateTable(TB_ADD, nullptr, tableEntry_2);
-    // fileHandler->operateTable(TB_ADD, nullptr, tableEntry_3);
+    fileHandler->operateTable(TB_ADD, nullptr, tableEntry_1);
+    fileHandler->operateTable(TB_ADD, nullptr, tableEntry_2);
+    fileHandler->operateTable(TB_ADD, nullptr, tableEntry_3);
     fileHandler->operateTable(TB_PRINT);
 
     RecordDataNode* TSrecordDataNode1 = new RecordDataNode();
@@ -227,12 +227,15 @@ void testSerializeAndGetACFields(FileHandler* fileHandler) {
     std::vector<Record*> records, result;
     records.push_back(&TSrecord1);
     records.push_back(&TSrecord2);
-    // fileHandler->insertAllRecords(records);
-    fileHandler->getAllRecordsAccordingToFields(result, 4);
+    fileHandler->insertAllRecords(records);
+    fileHandler->getAllRecordsAccordingToFields(result, 6);
     for (auto record : result) {
-        printf("bitmap = %d, result = %d\n", ((uint16_t*)record->data)[0], ((int*)(record->data + sizeof(uint16_t)))[0]);
+        printf("bitmap = %d, result = %s %d\n", ((uint16_t*)record->data)[0], ((char*)(record->data + sizeof(uint16_t))), ((int*)(record->data + sizeof(uint16_t) + tableEntry_2->colLen))[0]);
     }
 
+    delete tableEntry_1;
+    delete tableEntry_2;
+    delete tableEntry_3;
 }
 
 int main() {
@@ -246,7 +249,7 @@ int main() {
     // char tableName[] = "testserial";
     char tableName[] = "test";
 
-    // recordManager->createFile(tableName);
+    recordManager->createFile(tableName);
     recordManager->openFile(tableName, fileHandler);
     // testSerialize(fileHandler);
     // testTable(fileHandler);

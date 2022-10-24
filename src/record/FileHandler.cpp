@@ -316,6 +316,7 @@ bool FileHandler::getAllRecordsAccordingToFields(std::vector<Record*>& records, 
         totalLen += tableHeader->entrys[head].colLen;
         entryLen.push_back(tableHeader->entrys[head].colLen);
         entryIndex.push_back(i);
+        head = tableHeader->entrys[head].next;
     }
     if (entryIndex.size() == 0) {
         printf("[INFO] there's nothing to get with the specific fields.\n");
