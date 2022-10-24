@@ -297,6 +297,65 @@ void FileHandler::getAllRecords(std::vector<Record*>& records) {
     }
 }
 
+bool FileHandler::getAllRecordsAccordingToFields(std::vector<Record*>& records, const uint16_t enable) {
+    std::vector<int> entryLen, entryIndex;
+    int len = sizeof(int16_t) + sizeof(uint16_t), totalLen = sizeof(uint16_t);
+    int8_t head = tableHeader->entryHead;
+    for (int i = 0; i < tableHeader->colNum; i++) {
+        while (i < tableHeader->colNum && (enable & (1 << i)) == 0) {
+            len += tableHeader->entrys[head].colLen;
+            head = tableHeader->entrys[head].next;
+            i++;
+        }
+        entryLen.push_back(len);
+        len = 0;
+        if (i == tableHeader->colNum) {
+            break;
+        }
+        // enable & (1 << i) == 1
+        totalLen += tableHeader->entrys[head].colLen;
+        entryLen.push_back(tableHeader->entrys[head].colLen);
+        entryIndex.push_back(i);
+    }
+    if (entryIndex.size() == 0) {
+        printf("[INFO] there's nothing to get with the specific fields.\n");
+        return false;
+    }
+
+    int cnt = 0;
+    for (int pageId = 1; pageId < tableHeader->totalPageNumber; pageId++) {
+        int index;
+        BufType data = bufPageManager->getPage(fileId, pageId, index);
+        PageHeader* pageHeader = (PageHeader*)data;
+        size_t offset = sizeof(PageHeader);
+        for (int slotId = 0; slotId <= pageHeader->maximumSlot; slotId++) {
+            uint8_t* recordData = (uint8_t*)(((uint8_t*)data) + offset);
+            offset += tableHeader->recordLen;
+            if (((int16_t*)recordData)[0] != SLOT_DIRTY) {
+                continue;
+            }
+            uint16_t originBitmap = ((uint16_t*)recordData)[1];
+            uint16_t bitmap = 0;
+            int siz = entryIndex.size();
+            for (int i = 0; i < siz; i++) {
+                bitmap |= (((originBitmap & (1 << entryIndex[i])) >> entryIndex[i]) << i);
+            }
+            records.push_back(new Record(totalLen));
+            memcpy(records[cnt]->data, &bitmap, sizeof(uint16_t)); // write bitmap first
+            size_t offsetRecord = sizeof(uint16_t), offsetRecordData = 0;
+            siz = entryLen.size();
+            for (int i = 0; i < siz; i += 2) {
+                offsetRecordData += entryLen[i];
+                memcpy((records[cnt]->data) + offsetRecord, recordData + offsetRecordData, entryLen[i + 1]);
+                offsetRecord += entryLen[i + 1];
+                offsetRecordData += entryLen[i + 1];
+            }
+            cnt++;
+        }
+    }
+    return true;
+}
+
 bool FileHandler::insertAllRecords(const std::vector<Record*>& records) {
     for (Record* record : records) {
         if (!tableHeader->verifyConstraint(*record)) {

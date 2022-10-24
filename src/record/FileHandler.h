@@ -61,7 +61,7 @@ public:
     void getAllRecords(std::vector<Record*>&);
     // returns all records stores in this file
 
-    bool getAllRecordsAccordingToField(std::vector<Record*>&, uint16_t enable = 0);
+    bool getAllRecordsAccordingToFields(std::vector<Record*>&, const uint16_t enable = 0);
     // get specific fields of all records storing in this file
     // if you want get i-th field, please set the i-th bit of enable (from low to high) to 1
     // return true if succeed

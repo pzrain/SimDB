@@ -169,6 +169,72 @@ void testSerialize(FileHandler* fileHandler) {
     printf("==========  End  Test Serializing ==========\n\n");
 }
 
+void testSerializeAndGetACFields(FileHandler* fileHandler) {
+    char colName_1[] = "float";
+    char colName_2[] = "content";
+    char colName_3[] = "id";
+    TableEntry *tableEntry_1 = new TableEntry(colName_1, COL_FLOAT);
+    TableEntry *tableEntry_2 = new TableEntry(colName_2, COL_VARCHAR);
+    TableEntry *tableEntry_3 = new TableEntry(colName_3, COL_INT);
+    tableEntry_2->colLen = 10;
+    // fileHandler->operateTable(TB_ADD, nullptr, tableEntry_1);
+    // fileHandler->operateTable(TB_ADD, nullptr, tableEntry_2);
+    // fileHandler->operateTable(TB_ADD, nullptr, tableEntry_3);
+    fileHandler->operateTable(TB_PRINT);
+
+    RecordDataNode* TSrecordDataNode1 = new RecordDataNode();
+    RecordDataNode* TSrecordDataNode2 = new RecordDataNode();
+    RecordDataNode* TSrecordDataNode3 = new RecordDataNode();
+    TSrecordDataNode1->nodeType = COL_FLOAT;
+    TSrecordDataNode1->content.floatContent = new float(9.12);
+    TSrecordDataNode1->len = sizeof(float);
+    TSrecordDataNode1->next = TSrecordDataNode2;
+    TSrecordDataNode2->nodeType = COL_VARCHAR;
+    char content1[] = "info1";
+    TSrecordDataNode2->content.charContent = content1;
+    TSrecordDataNode2->len = tableEntry_2->colLen;
+    TSrecordDataNode2->next = TSrecordDataNode3;
+    TSrecordDataNode3->nodeType = COL_INT;
+    TSrecordDataNode3->content.intContent = new int(10);
+    TSrecordDataNode3->len = sizeof(int);
+    RecordData TSrecordData1;
+    TSrecordData1.head = TSrecordDataNode1;
+
+    Record TSrecord1(TSrecordData1.getLen());
+    TSrecordData1.serialize(TSrecord1);
+
+    RecordDataNode* TSrecordDataNode4 = new RecordDataNode();
+    RecordDataNode* TSrecordDataNode5 = new RecordDataNode();
+    RecordDataNode* TSrecordDataNode6 = new RecordDataNode();
+    TSrecordDataNode4->nodeType = COL_FLOAT;
+    TSrecordDataNode4->content.floatContent = new float(12.9);
+    TSrecordDataNode4->len = sizeof(float);
+    TSrecordDataNode4->next = TSrecordDataNode5;
+    TSrecordDataNode5->nodeType = COL_VARCHAR;
+    char content2[] = "info2";
+    TSrecordDataNode5->content.charContent = content2;
+    TSrecordDataNode5->len = tableEntry_2->colLen;
+    TSrecordDataNode5->next = TSrecordDataNode6;
+    TSrecordDataNode6->nodeType = COL_INT;
+    TSrecordDataNode6->content.intContent = new int(12);
+    TSrecordDataNode6->len = sizeof(int);
+    RecordData TSrecordData2;
+    TSrecordData2.head = TSrecordDataNode4;
+
+    Record TSrecord2(TSrecordData2.getLen());
+    TSrecordData2.serialize(TSrecord2);
+
+    std::vector<Record*> records, result;
+    records.push_back(&TSrecord1);
+    records.push_back(&TSrecord2);
+    // fileHandler->insertAllRecords(records);
+    fileHandler->getAllRecordsAccordingToFields(result, 4);
+    for (auto record : result) {
+        printf("bitmap = %d, result = %d\n", ((uint16_t*)record->data)[0], ((int*)(record->data + sizeof(uint16_t)))[0]);
+    }
+
+}
+
 int main() {
     MyBitMap::initConst();
     FileManager* fileManager = new FileManager();
@@ -180,17 +246,19 @@ int main() {
     // char tableName[] = "testserial";
     char tableName[] = "test";
 
-    recordManager->createFile(tableName);
+    // recordManager->createFile(tableName);
     recordManager->openFile(tableName, fileHandler);
     // testSerialize(fileHandler);
     // testTable(fileHandler);
     // fileHandler->operateTable(TB_PRINT, nullptr, nullptr);
-    testRecords(fileHandler);
+    // testRecords(fileHandler);
+    testSerializeAndGetACFields(fileHandler);
 
-
+    // attention : you should call the method BufPageManager.close() 
+    //             before you close the file!
+    bufPageManager->close();
     recordManager->closeFile(fileHandler);
     // recordManager->removeFile(tableName);
-    bufPageManager->close();
     delete fileHandler;
     delete recordManager;
     delete bufPageManager;
