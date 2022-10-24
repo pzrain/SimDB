@@ -25,6 +25,9 @@ TableEntry::TableEntry(char* colName_, uint8_t colType_, bool checkConstraint_, 
         case COL_FLOAT:
             colLen = sizeof(float);
             break;
+        case COL_NULL:
+            colLen = 0;
+            break;
         default:
             break;
     }
@@ -231,7 +234,7 @@ void TableHeader::init(TableEntry* entryHead_, int num) {
 void TableHeader::calcRecordSizeAndLen() {
     int8_t head = entryHead;
     TableEntry entry;
-    recordLen = sizeof(uint16_t); // record if slot is free
+    recordLen = sizeof(uint16_t) + sizeof(uint16_t); // record if slot is free + bitmap
     while (head >= 0) {
         entry = entrys[head];
         recordLen += entry.colLen;
@@ -277,7 +280,7 @@ TableEntryDesc TableHeader::getTableEntryDesc() {
 size_t TableEntryDesc::getLen() {
     if (len > 0)
         return len;
-    size_t len_ = 0;
+    size_t len_ = sizeof(uint16_t); // bitmap
     TableEntryDescNode* cur = head;
     while (cur) {
         switch (cur->colType) {
@@ -307,8 +310,9 @@ bool Record::deserialize(RecordData& rData, TableEntryDesc& tableEntryDesc) {
     RecordDataNode* cur;
     RecordDataNode* prev = nullptr;
     TableEntryDescNode* now = tableEntryDesc.head;
-    uint8_t* buf = data;
+    uint8_t* buf = data + sizeof(uint16_t); // bitmap
     size_t offset;
+    int index = 0;
     
     while (now) {
         cur = new RecordDataNode();
@@ -338,6 +342,9 @@ bool Record::deserialize(RecordData& rData, TableEntryDesc& tableEntryDesc) {
                 return false;
                 break;
         }
+        if (isNull(index++)) {
+            cur->nodeType = COL_NULL;
+        }
         if (prev) {
             prev->next = cur;
         } else {
@@ -361,13 +368,14 @@ RecordData::~RecordData() {
 
 bool RecordData::serialize(Record& record) {
     if (getLen() != record.len) {
-        printf("[ERROR] unmatched length between record and recordData.\n");
+        printf("[ERROR] unmatched length between recordData and record.\n");
         return false;
     }
 
     RecordDataNode* cur = head;
-    uint8_t* buf = record.data;
+    uint8_t* buf = record.data + sizeof(uint16_t);
     size_t offset;
+    int index = 0;
     while (cur) {
         switch (cur->nodeType) {
             case COL_INT:
@@ -382,12 +390,17 @@ bool RecordData::serialize(Record& record) {
                 offset = cur->len;
                 memcpy(buf, (uint8_t*)(cur->content.charContent), offset);
                 break;
+            case COL_NULL:
+                offset = cur->len;
+                record.setItemNull(index);
+                break;
             default:
                 return false;
                 break;
         }
         buf += offset;
         cur = cur->next;
+        index++;
     }
     return true;
 }
@@ -395,7 +408,7 @@ bool RecordData::serialize(Record& record) {
 size_t RecordData::getLen() {
     if (recordLen > 0)
         return recordLen;
-    size_t len = 0;
+    size_t len = sizeof(uint16_t); // bitmap
     RecordDataNode* cur = head;
     while (cur) {
         switch (cur->nodeType) {
@@ -406,6 +419,7 @@ size_t RecordData::getLen() {
                 len += sizeof(float);
                 break;
             case COL_VARCHAR:
+            case COL_NULL:
                 len += cur->len;
                 break;
             default:

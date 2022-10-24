@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstring>
 #include <stdint.h>
+#include "assert.h"
 
 class RecordId{
 private:
@@ -110,12 +111,32 @@ public:
 
 class Record{
 public:
-    uint8_t* data;
+    uint8_t* data; // The first two byte of data is set to be bitmap
     size_t len;
+    uint16_t* bitmap;
 
     Record(size_t len_) {
         len = len_;
         data = new uint8_t[len_];
+        bitmap = (uint16_t*)data;
+        *bitmap = 0;
+    }
+
+    void setItemNull(int index) {
+        assert(index >= 0 && index < 16);
+        *bitmap = (*bitmap) | (1 << index);
+    }
+
+    void setItemNotNull(int index) {
+        assert(index >= 0 && index < 16);
+        if ((*bitmap >> index) & 1) {
+            *bitmap = (*bitmap) ^ (1 << index);
+        }
+    }
+
+    bool isNull(int index) {
+        assert(index >= 0 && index < 16);
+        return (((*bitmap) >> index) & 1);
     }
 
     ~Record() {

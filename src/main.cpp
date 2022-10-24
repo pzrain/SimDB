@@ -91,39 +91,49 @@ void testRecords(FileHandler* fileHandler) {
 }
 
 void testSerialize(FileHandler* fileHandler) {
+    printf("========== Begin Test Serializing ==========\n");
     char colName_1[] = "id";
     char colName_2[] = "content";
+    char colName_3[] = "testNull";
     TableEntry *tableEntry_1 = new TableEntry(colName_1, COL_FLOAT);
     TableEntry *tableEntry_2 = new TableEntry(colName_2, COL_VARCHAR);
+    TableEntry *tableEntry_3 = new TableEntry(colName_3, COL_INT);
     tableEntry_2->colLen = 10;
     fileHandler->operateTable(TB_ADD, nullptr, tableEntry_1);
     fileHandler->operateTable(TB_ADD, nullptr, tableEntry_2);
+    fileHandler->operateTable(TB_ADD, nullptr, tableEntry_3);
     fileHandler->operateTable(TB_PRINT);
 
     /* test serialize */
     RecordDataNode* TSrecordDataNode1 = new RecordDataNode();
     RecordDataNode* TSrecordDataNode2 = new RecordDataNode();
+    RecordDataNode* TSrecordDataNode3 = new RecordDataNode();
     // TSrecordDataNode1->nodeType = COL_INT;
     // TSrecordDataNode1->content.intContent = new int(3);
     TSrecordDataNode1->nodeType = COL_FLOAT;
     TSrecordDataNode1->content.floatContent = new float(9.12);
+    TSrecordDataNode1->len = sizeof(float);
     TSrecordDataNode1->next = TSrecordDataNode2;
     TSrecordDataNode2->nodeType = COL_VARCHAR;
     char content[] = "info";
     TSrecordDataNode2->content.charContent = content;
     TSrecordDataNode2->len = tableEntry_2->colLen;
+    TSrecordDataNode2->next = TSrecordDataNode3;
+    TSrecordDataNode3->nodeType = COL_NULL;
+    TSrecordDataNode3->len = sizeof(int);
     RecordData TSrecordData;
     TSrecordData.head = TSrecordDataNode1;
-
+    
     Record TSrecord(TSrecordData.getLen());
     TSrecordData.serialize(TSrecord);
-    printf("result = %f %s.\n", ((float*)(TSrecord.data))[0], ((char*)(TSrecord.data) + sizeof(int)));
+    printf("Serializing result = bitmap(%d) %f %s.\n", *((uint16_t*)(TSrecord.data)), ((float*)(TSrecord.data + sizeof(uint16_t)))[0], ((char*)(TSrecord.data) + sizeof(uint16_t) + sizeof(int)));
     
     /* test deserialize */
     RecordData TDrecordData;
     TableEntryDesc tableEntryDesc = fileHandler->getTableEntryDesc();
     TSrecord.deserialize(TDrecordData, tableEntryDesc);
     RecordDataNode* cur = TDrecordData.head;
+    printf("Deserializing result:\n");
     while (cur) {
         switch (cur->nodeType) {
             case COL_INT:
@@ -135,6 +145,9 @@ void testSerialize(FileHandler* fileHandler) {
             case COL_VARCHAR:
                 printf("type = VARCHAR(%d), content = %s\n", cur->len, ((char*)(cur->content.charContent)));
                 break;
+            case COL_NULL:
+                printf("content = NULL\n");
+                break;
             default:
                 break;
         }
@@ -143,6 +156,8 @@ void testSerialize(FileHandler* fileHandler) {
 
     delete tableEntry_1;
     delete tableEntry_2;
+    delete tableEntry_3;
+    printf("==========  End  Test Serializing ==========\n\n");
 }
 
 int main() {
@@ -157,14 +172,15 @@ int main() {
 
     recordManager->createFile(tableName);
     recordManager->openFile(tableName, fileHandler);
-    // testSerialize(fileHandler);
-    testTable(fileHandler);
-    fileHandler->operateTable(TB_PRINT, nullptr, nullptr);
+    testSerialize(fileHandler);
+    // testTable(fileHandler);
+    // fileHandler->operateTable(TB_PRINT, nullptr, nullptr);
     // testRecords(fileHandler);
 
-    bufPageManager->close();
+
     recordManager->closeFile(fileHandler);
     // recordManager->removeFile(tableName);
+    bufPageManager->close();
     delete fileHandler;
     delete recordManager;
     delete bufPageManager;
