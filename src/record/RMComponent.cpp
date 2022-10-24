@@ -34,6 +34,11 @@ TableEntry::TableEntry(char* colName_, uint8_t colType_, bool checkConstraint_, 
     next = -1;
 }
 
+bool TableEntry::verifyConstraint(RecordDataNode* recordDataNode) {
+    //TODO
+    return true;
+}
+
 TableHeader::TableHeader() {
     valid = 0;
     colNum = 0;
@@ -275,6 +280,34 @@ TableEntryDesc TableHeader::getTableEntryDesc() {
         head = entry.next;
     }
     return res;
+}
+
+bool TableHeader::verifyConstraint(const RecordData& recordData) {
+    int8_t head = entryHead;
+    RecordDataNode* cur = recordData.head;
+    TableEntry entry;
+    while (head >= 0) {
+        entry = entrys[head];
+        if (!entry.verifyConstraint(cur)) {
+            return false;
+        }
+        head = entry.next;
+        cur = cur->next;
+    }
+    if (cur != nullptr) {
+        printf("[ERROR] unmatched size between recordData and TableHeader.\n");
+        return false;
+    }
+    return true;
+}
+
+bool TableHeader::verifyConstraint(Record& record) {
+    RecordData recordData;
+    TableEntryDesc tableEntryDesc = getTableEntryDesc();
+    if (record.deserialize(recordData, tableEntryDesc)) {
+        return verifyConstraint(recordData);
+    }
+    return false;
 }
 
 size_t TableEntryDesc::getLen() {

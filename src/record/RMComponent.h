@@ -90,6 +90,11 @@ struct TableEntry{
     TableEntry(char* colName_, uint8_t colType_, bool checkConstraint_ = false, bool primaryKeyConstraint_ = false, \
                bool foreignKeyConstraint_ = false, uint32_t colLen_ = 0, bool hasDefault_ = false, \
                bool notNullConstraint_ = false, bool uniqueConstraint_ = false, bool isNull_ = false);
+
+    bool verifyConstraint(RecordDataNode* data); // TODO
+    // verify checkConstraint, primaryKeyConstraint, notNullConstraint, UniqueConstraint
+    // on deserialized data
+    // return true if succeed else false
 };
 
 struct TableEntryDescNode{
@@ -184,6 +189,10 @@ public:
     void printInfo();
 
     TableEntryDesc getTableEntryDesc();
+
+    bool verifyConstraint(const RecordData& recordData);
+
+    bool verifyConstraint(Record& record);
 };
 
 typedef enum{

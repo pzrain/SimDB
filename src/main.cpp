@@ -47,8 +47,15 @@ void testTable(FileHandler* fileHandler) {
 }
 
 void testRecords(FileHandler* fileHandler) {
+    printf("========== Begin Test Records ==========\n");
+    char colName_1[] = "id";
+    TableEntry *tableEntry_1 = new TableEntry(colName_1, COL_VARCHAR);
+    tableEntry_1->colLen = 10;
+    fileHandler->operateTable(TB_ADD, nullptr, tableEntry_1);
+    fileHandler->operateTable(TB_PRINT);
+
     RecordId recordId;
-    Record record(10), result(10);
+    Record record(fileHandler->getRecordLen()), result(fileHandler->getRecordLen());
     std::vector<Record*> vecRecord;
 
     for (int i = 0; i < 5; i++) {
@@ -88,6 +95,8 @@ void testRecords(FileHandler* fileHandler) {
         delete rec;
     }
     vecRecord.clear();
+
+    printf("==========  End  Test Records ==========\n");
 }
 
 void testSerialize(FileHandler* fileHandler) {
@@ -168,14 +177,15 @@ int main() {
     RecordManager* recordManager = new RecordManager(bufPageManager, databaseName);
     FileHandler* fileHandler = new FileHandler();
 
-    char tableName[] = "testserial";
+    // char tableName[] = "testserial";
+    char tableName[] = "test";
 
     recordManager->createFile(tableName);
     recordManager->openFile(tableName, fileHandler);
-    testSerialize(fileHandler);
+    // testSerialize(fileHandler);
     // testTable(fileHandler);
     // fileHandler->operateTable(TB_PRINT, nullptr, nullptr);
-    // testRecords(fileHandler);
+    testRecords(fileHandler);
 
 
     recordManager->closeFile(fileHandler);
