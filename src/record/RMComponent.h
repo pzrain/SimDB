@@ -92,7 +92,7 @@ struct TableEntry{
                bool notNullConstraint_ = false, bool uniqueConstraint_ = false, bool isNull_ = false);
 
     bool verifyConstraint(RecordDataNode* data); // TODO
-    // verify checkConstraint, primaryKeyConstraint, notNullConstraint, UniqueConstraint
+    // verify checkConstraint, notNullConstraint, (primaryKeyConstraint, UniqueConstraint) (and foreighKeyConstraint ?)
     // on deserialized data
     // return true if succeed else false
 };

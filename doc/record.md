@@ -41,17 +41,37 @@ public:
 
 > `src/record/RMComponent.h`
 
-描述了存放在文件里的一条记录，也即插入数据库表中的一条记录，为序列化之后的结果。创建时应当指定记录的长度。
+描述了存放在文件里的一条记录，也即插入数据库表中的一条记录，为序列化之后的结果。`bitmap`是记录`record`中的每一项是否为`NULL`的位图。由于最多有10列，因此`bitmap`占用两字节的空间即可保证够用。**创建时应当指定记录的长度**，可以调用`FileHandler->getRecordLen()`得到。或者，通过`TableHeader->recordLen`得到，但是注意这里的`recordLen`应当减去2（即用于记录slot是否空闲的域的大小）。
 
 ```C++
 class Record{
 public:
-    uint8_t* data;
+    uint8_t* data; // The first two byte of data is set to be bitmap
     size_t len;
+    uint16_t* bitmap;
 
     Record(size_t len_) {
         len = len_;
         data = new uint8_t[len_];
+        bitmap = (uint16_t*)data;
+        *bitmap = 0;
+    }
+
+    void setItemNull(int index) {
+        assert(index >= 0 && index < 16);
+        *bitmap = (*bitmap) | (1 << index);
+    }
+
+    void setItemNotNull(int index) {
+        assert(index >= 0 && index < 16);
+        if ((*bitmap >> index) & 1) {
+            *bitmap = (*bitmap) ^ (1 << index);
+        }
+    }
+
+    bool isNull(int index) {
+        assert(index >= 0 && index < 16);
+        return (((*bitmap) >> index) & 1);
     }
 
     ~Record() {
@@ -146,6 +166,8 @@ struct PageHeader{
 
 记录的是表中某一列的基本信息，包括类型（`INT`，`FLOAT`，`VARCHAR`），约束等。需要注意的是，`TableEntry.next`是与所在表相关的，用来构建链表。
 
+还需要实现的是，设计记录`checkConstraint`以及`foreignKeyConstraint`的域，然后在接口`verifyConstraint`中对其进行判断。实际进行约束检查时，会调用`TableHeader->verifyConstraint()`来对整条记录进行判断，首先会将记录进行反序列化，然后依次遍历反序列化得到的记录中各项连成的列表，调用其对应的`TableEntry`的`verifyConstraint()`方法来检查。
+
 ```C++
 struct TableEntry{
     uint8_t colType;
@@ -169,6 +191,11 @@ struct TableEntry{
      */
 
     TableEntry();
+
+    bool verifyConstraint(RecordDataNode* data); // TODO
+    // verify checkConstraint, primaryKeyConstraint, notNullConstraint, UniqueConstraint
+    // on deserialized data
+    // return true if succeed else false
 };
 ```
 
@@ -217,6 +244,10 @@ public:
     void printInfo();
     
     TableEntryDesc getTableEntryDesc();
+    
+    bool verifyConstraint(const RecordData& recordData);
+
+    bool verifyConstraint(Record& record);
 };
 ```
 
@@ -232,15 +263,19 @@ private:
     BufPageManager* bufPageManager;
     TableHeader* tableHeader;
     int fileId;
+    char tableName[TAB_MAX_NAME_LEN];
+
 public:
 
     FileHandler();
 
     ~FileHandler();
 
-    void init(BufPageManager* bufPageManager_, int fileId_, const char* tableName);
+    void init(BufPageManager* bufPageManager_, int fileId_, const char* tableName_);
 
     int getFileId();
+
+    char* getTableName();
 
     int operateTable(TB_OP_TYPE opCode, char* colName = nullptr, TableEntry* tableEntry = nullptr, int num = 0);
     /* 
@@ -257,26 +292,26 @@ public:
     
     bool getRecord(RecordId recordId, Record &record);
 
-    bool insertRecord(RecordId &recordId, const Record &record);
+    bool insertRecord(RecordId &recordId, Record &record);
     // the page id and slot id of the inserted record will be stored in recordId
     // at present, no constraints will be checked. (TODO)
 
     bool removeRecord(RecordId &recordId);
 
-    bool updateRecord(RecordId &recordId, const Record &record);
+    bool updateRecord(RecordId &recordId, Record &record);
     // parameter recordId specifies the position of the record that needed to be updated
     // parameter record will substitutes the old record
 
     void getAllRecords(std::vector<Record*>&);
     // returns all records stores in this file
 
-    void insertAllRecords(const std::vector<Record*>&);
+    bool insertAllRecords(const std::vector<Record*>&);
     // insert records in bulk
 
     int getRecordNum();
 
     size_t getRecordLen();
-    
+
     TableEntryDesc getTableEntryDesc();
 
 };
