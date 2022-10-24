@@ -48,20 +48,20 @@ public:
     
     bool getRecord(RecordId recordId, Record &record);
 
-    bool insertRecord(RecordId &recordId, const Record &record);
+    bool insertRecord(RecordId &recordId, Record &record);
     // the page id and slot id of the inserted record will be stored in recordId
     // at present, no constraints will be checked. (TODO)
 
     bool removeRecord(RecordId &recordId);
 
-    bool updateRecord(RecordId &recordId, const Record &record);
+    bool updateRecord(RecordId &recordId, Record &record);
     // parameter recordId specifies the position of the record that needed to be updated
     // parameter record will substitutes the old record
 
     void getAllRecords(std::vector<Record*>&);
     // returns all records stores in this file
 
-    void insertAllRecords(const std::vector<Record*>&);
+    bool insertAllRecords(const std::vector<Record*>&);
     // insert records in bulk
 
     int getRecordNum();

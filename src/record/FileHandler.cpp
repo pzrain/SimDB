@@ -149,7 +149,11 @@ bool FileHandler::getRecord(RecordId recordId, Record &record) {
     return true;
 }
 
-bool FileHandler::insertRecord(RecordId &recordId, const Record &record) {
+bool FileHandler::insertRecord(RecordId &recordId, Record &record) {
+    if (!tableHeader->verifyConstraint(record)) {
+        printf("[ERROR] check constraint on record fails.\n");
+        return false;
+    }
     int16_t pageId = (tableHeader->firstNotFullPage);
     bool newPage = false;
     if (pageId < 0) { // alloc new page
@@ -236,7 +240,11 @@ bool FileHandler::removeRecord(RecordId &recordId) {
     return true;
 }
 
-bool FileHandler::updateRecord(RecordId &recordId, const Record &record) {
+bool FileHandler::updateRecord(RecordId &recordId, Record &record) {
+    if (!tableHeader->verifyConstraint(record)) {
+        printf("[ERROR] check constraint on record fails.\n");
+        return false;
+    }
     int16_t pageId = recordId.getPageId();
     int16_t slotId = recordId.getSlotId();
 
@@ -289,9 +297,15 @@ void FileHandler::getAllRecords(std::vector<Record*>& records) {
     }
 }
 
-void FileHandler::insertAllRecords(const std::vector<Record*>& records) {
-    int total = records.size(), done = 0;
+bool FileHandler::insertAllRecords(const std::vector<Record*>& records) {
+    for (Record* record : records) {
+        if (!tableHeader->verifyConstraint(*record)) {
+            printf("[ERROR] check constraint on record fails.\n");
+            return false;
+        }
+    }
 
+    int total = records.size(), done = 0;
     while (done < total) {
         int16_t pageId = (tableHeader->firstNotFullPage);
         bool newPage = false;
@@ -338,6 +352,7 @@ void FileHandler::insertAllRecords(const std::vector<Record*>& records) {
     }
     tableHeader->recordNum += total;
     writeTableHeader(bufPageManager, fileId, tableHeader);
+    return true;
 }
 
 int FileHandler::getRecordNum() {
