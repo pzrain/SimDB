@@ -157,9 +157,9 @@ int main() {
 
     recordManager->createFile(tableName);
     recordManager->openFile(tableName, fileHandler);
-    testSerialize(fileHandler);
-    // testTable(fileHandler);
-    // fileHandler->operateTable(TB_PRINT, nullptr, nullptr);
+    // testSerialize(fileHandler);
+    testTable(fileHandler);
+    fileHandler->operateTable(TB_PRINT, nullptr, nullptr);
     // testRecords(fileHandler);
 
     bufPageManager->close();

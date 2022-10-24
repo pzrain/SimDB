@@ -33,9 +33,10 @@ FileHandler::FileHandler() {
     fileId = -1;
 }
 
-void FileHandler::init(BufPageManager* bufPageManager_, int fileId_, const char* tableName) {
+void FileHandler::init(BufPageManager* bufPageManager_, int fileId_, const char* tableName_) {
     bufPageManager = bufPageManager_;
     fileId = fileId_;
+    strcpy(tableName, tableName_);
     if (loadTableHeader(bufPageManager, fileId, tableHeader) != 0) {
         printf("[Error] fail to load table header");
         return;
@@ -48,7 +49,7 @@ void FileHandler::init(BufPageManager* bufPageManager_, int fileId_, const char*
         tableHeader->totalPageNumber = 1;
         tableHeader->recordLen = 0;
         tableHeader->entryHead = -1;
-        strcpy(tableHeader->tableName, tableName);
+        strcpy(tableHeader->tableName, tableName_);
         tableHeader->valid = 1;
         if (writeTableHeader(bufPageManager, fileId, tableHeader) != 0) {
             printf("[Error] fail to write table header.\n");
@@ -62,6 +63,10 @@ FileHandler::~FileHandler() {
 
 int FileHandler::getFileId() {
     return fileId;
+}
+
+char* FileHandler::getTableName() {
+    return tableName;
 }
 
 int FileHandler::operateTable(TB_OP_TYPE opCode, char* colName, TableEntry* tableEntry, int num) {

@@ -19,15 +19,19 @@ private:
     BufPageManager* bufPageManager;
     TableHeader* tableHeader;
     int fileId;
+    char tableName[TAB_MAX_NAME_LEN];
+
 public:
 
     FileHandler();
 
     ~FileHandler();
 
-    void init(BufPageManager* bufPageManager_, int fileId_, const char* tableName);
+    void init(BufPageManager* bufPageManager_, int fileId_, const char* tableName_);
 
     int getFileId();
+
+    char* getTableName();
 
     int operateTable(TB_OP_TYPE opCode, char* colName = nullptr, TableEntry* tableEntry = nullptr, int num = 0);
     /* 
