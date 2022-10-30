@@ -11,4 +11,4 @@ cd ..
 
 echo "Done!"
 
-./bin/simDB
+./bin/SimDB

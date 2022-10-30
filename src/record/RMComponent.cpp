@@ -36,84 +36,102 @@ TableEntry::TableEntry(char* colName_, uint8_t colType_, bool checkConstraint_, 
 
 bool TableEntry::verifyConstraint(RecordDataNode* recordDataNode) {
     // uint8_t* content;
+    // printf("constraint: %d, %d\n", notNullConstraint, checkConstraint);
     if (notNullConstraint) {
         if (recordDataNode->nodeType == COL_NULL)
             return false;
     } else if (checkConstraint) {
         switch (recordDataNode->nodeType) {
-            case COL_INT:
+            case COL_INT: {
                 int intContent = *(recordDataNode->content.intContent);
                 for (uint32_t i = 0; i < checkKeyNum; i++) {
+                    // printf("now check\n");
                     int checkInt = *(checkContent.checkInt + i);
+                    // printf("now check int: %d\n", *(checkType + i));
                     switch (*(checkType + i)) {
-                        case EQUAL:
+                        case EQUAL: {
                             if (intContent != checkInt)
                                 return false;
                             break;
-                        case LESS:
+                        }
+                        case LESS: {
                             if (intContent >= checkInt)
                                 return false;
                             break;
-                        case LESS_EQUAL:
+                        }
+                        case LESS_EQUAL: {
                             if (intContent > checkInt)
                                 return false;
                             break;
-                        case GREATER:
+                        }
+                        case GREATER: {
                             if (intContent <= checkInt)
                                 return false;
                             break;
-                        case GREATER_EQUAL:
+                        }
+                        case GREATER_EQUAL: {
                             if (intContent < checkInt)
                                 return false;
                             break;
-                        case NOT_EQUAL:
+                        }
+                        case NOT_EQUAL: {
                             if (intContent == checkInt)
                                 return false;
                             break;
+                        }
                         default:
                             break;
                     }
                 }
                 break;
-            case COL_FLOAT:
+            }
+            case COL_FLOAT: {
                 float floatContent = *(recordDataNode->content.floatContent);
                 for (uint32_t i = 0; i < checkKeyNum; i++) {
                     int checkFloat = *(checkContent.checkFloat + i);
                     switch (*(checkType + i)) {
-                        case EQUAL:
+                        case EQUAL: {
                             if (floatContent != checkFloat)
                                 return false;
                             break;
-                        case LESS:
+                        }
+                        case LESS: {
                             if (floatContent >= checkFloat)
                                 return false;
                             break;
-                        case LESS_EQUAL:
+                        }
+                        case LESS_EQUAL: {
                             if (floatContent > checkFloat)
                                 return false;
                             break;
-                        case GREATER:
+                        }
+                        case GREATER: {
                             if (floatContent <= checkFloat)
                                 return false;
                             break;
-                        case GREATER_EQUAL:
+                        }
+                        case GREATER_EQUAL: {
                             if (floatContent < checkFloat)
                                 return false;
                             break;
-                        case NOT_EQUAL:
+                        }
+                        case NOT_EQUAL: {
                             if (floatContent == checkFloat)
                                 return false;
                             break;
+                        }
                         default:
                             break;
                     }
                 }
-                break;            
-            case COL_VARCHAR:
+                break;
+            }     
+            case COL_VARCHAR: {
                 // char *charContent, *checkVarchar;
                 // strcpy(charContent, recordDataNode->content.charContent);
                 // strcpy(checkVarchar, checkContent.checkVarchar);
                 break;
+            }
             default:
                 break;
         }   

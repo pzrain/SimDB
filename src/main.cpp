@@ -243,18 +243,20 @@ void testConstraint(FileHandler* fileHandler) {
     char colName_3[] = "char";
     TableEntry *tableEntry1 = new TableEntry(colName_1, COL_INT);
     TableEntry *tableEntry2 = new TableEntry(colName_2, COL_FLOAT);
-    TableEntry *tableEntry3 = new TableEntry(colName_2, COL_VARCHAR);
+    TableEntry *tableEntry3 = new TableEntry(colName_3, COL_VARCHAR);
     tableEntry3->colLen = 10;
     // set constraint
     CHECK_TYPE checkType1[] = {LESS, GREATER};
     int checkInt[] = {10, 1}; // 1 < x < 10
     tableEntry1->checkConstraint = true;
+    tableEntry1->checkType = checkType1;
     tableEntry1->checkContent.checkInt = checkInt;
     tableEntry1->checkKeyNum = 2;
 
     CHECK_TYPE checkType2[] = {NOT_EQUAL};
     float checkFloat[] = {2.33}; // != 2.33
     tableEntry2->checkConstraint = true;
+    tableEntry2->checkType = checkType2;
     tableEntry2->checkContent.checkFloat = checkFloat;
     tableEntry2->checkKeyNum = 1;
 
@@ -270,22 +272,35 @@ void testConstraint(FileHandler* fileHandler) {
     RecordDataNode* DataNode3 = new RecordDataNode();
 
     DataNode1->nodeType = COL_INT;
-    DataNode1->content.intContent = new int(5);
+    DataNode1->content.intContent = new int(7);
     DataNode1->len = sizeof(int);
     DataNode1->next = DataNode2;
 
     DataNode2->nodeType = COL_FLOAT;
-    DataNode2->content.floatContent = new float(0.33);
+    DataNode2->content.floatContent = new float(.33);
     DataNode2->len = sizeof(float);
     DataNode2->next = DataNode3;
 
-    char content1[] = "info1";
-    DataNode3->nodeType = COL_VARCHAR;
-    DataNode3->content.charContent = content1;
+    // char content1[] = "info1";
+    DataNode3->nodeType = COL_NULL;
+    // DataNode3->content.charContent = content1;
     DataNode3->len = tableEntry3->colLen;
     
     RecordData recordData1;
     recordData1.head = DataNode1;
+
+    Record record1(recordData1.getLen());
+    recordData1.serialize(record1);
+
+    std::vector<Record*> records, result;
+    records.push_back(&record1);
+    // records.push_back(record2);
+    fileHandler->insertAllRecords(records);
+    fileHandler->getAllRecordsAccordingToFields(result, 6);
+
+    delete tableEntry1;
+    delete tableEntry2;
+    delete tableEntry3;
 }
 int main() {
     MyBitMap::initConst();
@@ -304,7 +319,8 @@ int main() {
     // testTable(fileHandler);
     // fileHandler->operateTable(TB_PRINT, nullptr, nullptr);
     // testRecords(fileHandler);
-    testSerializeAndGetACFields(fileHandler);
+    // testSerializeAndGetACFields(fileHandler);
+    testConstraint(fileHandler);
 
     // attention : you should call the method BufPageManager.close() 
     //             before you close the file!
