@@ -273,15 +273,18 @@ void testConstraint(FileHandler* fileHandler) {
 
     DataNode1->nodeType = COL_INT;
     DataNode1->content.intContent = new int(7);
+    // DataNode1->content.intContent = new int(17);
     DataNode1->len = sizeof(int);
     DataNode1->next = DataNode2;
 
     DataNode2->nodeType = COL_FLOAT;
     DataNode2->content.floatContent = new float(.33);
+    // DataNode2->content.floatContent = new float(2.33);
     DataNode2->len = sizeof(float);
     DataNode2->next = DataNode3;
 
     // char content1[] = "info1";
+    // DataNode3->nodeType = COL_VARCHAR;
     DataNode3->nodeType = COL_NULL;
     // DataNode3->content.charContent = content1;
     DataNode3->len = tableEntry3->colLen;

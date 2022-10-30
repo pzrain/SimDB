@@ -35,8 +35,6 @@ TableEntry::TableEntry(char* colName_, uint8_t colType_, bool checkConstraint_, 
 }
 
 bool TableEntry::verifyConstraint(RecordDataNode* recordDataNode) {
-    // uint8_t* content;
-    // printf("constraint: %d, %d\n", notNullConstraint, checkConstraint);
     if (notNullConstraint) {
         if (recordDataNode->nodeType == COL_NULL)
             return false;
@@ -45,40 +43,26 @@ bool TableEntry::verifyConstraint(RecordDataNode* recordDataNode) {
             case COL_INT: {
                 int intContent = *(recordDataNode->content.intContent);
                 for (uint32_t i = 0; i < checkKeyNum; i++) {
-                    // printf("now check\n");
                     int checkInt = *(checkContent.checkInt + i);
-                    // printf("now check int: %d\n", *(checkType + i));
                     switch (*(checkType + i)) {
-                        case EQUAL: {
-                            if (intContent != checkInt)
-                                return false;
+                        case EQUAL:
+                            if (intContent != checkInt) return false;
                             break;
-                        }
-                        case LESS: {
-                            if (intContent >= checkInt)
-                                return false;
+                        case LESS:
+                            if (intContent >= checkInt) return false;
                             break;
-                        }
-                        case LESS_EQUAL: {
-                            if (intContent > checkInt)
-                                return false;
+                        case LESS_EQUAL:
+                            if (intContent > checkInt) return false;
                             break;
-                        }
-                        case GREATER: {
-                            if (intContent <= checkInt)
-                                return false;
+                        case GREATER:
+                            if (intContent <= checkInt) return false;
                             break;
-                        }
-                        case GREATER_EQUAL: {
-                            if (intContent < checkInt)
-                                return false;
+                        case GREATER_EQUAL:
+                            if (intContent < checkInt) return false;
                             break;
-                        }
-                        case NOT_EQUAL: {
-                            if (intContent == checkInt)
-                                return false;
+                        case NOT_EQUAL:
+                            if (intContent == checkInt) return false;
                             break;
-                        }
                         default:
                             break;
                     }
@@ -90,36 +74,24 @@ bool TableEntry::verifyConstraint(RecordDataNode* recordDataNode) {
                 for (uint32_t i = 0; i < checkKeyNum; i++) {
                     int checkFloat = *(checkContent.checkFloat + i);
                     switch (*(checkType + i)) {
-                        case EQUAL: {
-                            if (floatContent != checkFloat)
-                                return false;
+                        case EQUAL:
+                            if (floatContent != checkFloat) return false;
                             break;
-                        }
-                        case LESS: {
-                            if (floatContent >= checkFloat)
-                                return false;
+                        case LESS:
+                            if (floatContent >= checkFloat) return false;
                             break;
-                        }
-                        case LESS_EQUAL: {
-                            if (floatContent > checkFloat)
-                                return false;
+                        case LESS_EQUAL:
+                            if (floatContent > checkFloat) return false;
                             break;
-                        }
-                        case GREATER: {
-                            if (floatContent <= checkFloat)
-                                return false;
+                        case GREATER:
+                            if (floatContent <= checkFloat) return false;
                             break;
-                        }
-                        case GREATER_EQUAL: {
-                            if (floatContent < checkFloat)
-                                return false;
+                        case GREATER_EQUAL:
+                            if (floatContent < checkFloat) return false;
                             break;
-                        }
-                        case NOT_EQUAL: {
-                            if (floatContent == checkFloat)
-                                return false;
+                        case NOT_EQUAL:
+                            if (floatContent == checkFloat) return false;
                             break;
-                        }
                         default:
                             break;
                     }
