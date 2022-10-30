@@ -67,6 +67,16 @@ public:
 struct TableEntry{
     uint8_t colType;
     bool checkConstraint;
+
+    CHECK_TYPE* checkType;
+    union {
+        int* checkInt;
+        float* checkFloat;
+        // char* checkVarchar;
+    } checkContent;
+    uint32_t* checkKeyLen;
+    uint32_t checkKeyNum;
+    
     bool primaryKeyConstraint;
     bool foreignKeyConstraint;
     uint32_t colLen; // VARCHAR(%d), int(4), float(4)
@@ -81,9 +91,7 @@ struct TableEntry{
         float defaultValFloat;
     };
     int8_t next; // don't forget to build the link 
-    /* 
-        TODO: implement of checkConstraint and foreignKeyConstraint
-     */
+    
 
     TableEntry();
 

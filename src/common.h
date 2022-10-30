@@ -20,4 +20,12 @@ typedef enum {
     COL_FLOAT = 3
 } TB_COL_TYPE;
 
+typedef enum {
+    EQUAL = 0,
+    LESS = 1,
+    LESS_EQUAL = 2,
+    GREATER = 3,
+    GREATER_EQUAL = 4,
+    NOT_EQUAL = 5
+} CHECK_TYPE;
 #endif
