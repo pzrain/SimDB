@@ -237,7 +237,56 @@ void testSerializeAndGetACFields(FileHandler* fileHandler) {
     delete tableEntry_2;
     delete tableEntry_3;
 }
+void testConstraint(FileHandler* fileHandler) {
+    char colName_1[] = "int";
+    char colName_2[] = "float";
+    char colName_3[] = "char";
+    TableEntry *tableEntry1 = new TableEntry(colName_1, COL_INT);
+    TableEntry *tableEntry2 = new TableEntry(colName_2, COL_FLOAT);
+    TableEntry *tableEntry3 = new TableEntry(colName_2, COL_VARCHAR);
+    tableEntry3->colLen = 10;
+    // set constraint
+    CHECK_TYPE checkType1[] = {LESS, GREATER};
+    int checkInt[] = {10, 1}; // 1 < x < 10
+    tableEntry1->checkConstraint = true;
+    tableEntry1->checkContent.checkInt = checkInt;
+    tableEntry1->checkKeyNum = 2;
 
+    CHECK_TYPE checkType2[] = {NOT_EQUAL};
+    float checkFloat[] = {2.33}; // != 2.33
+    tableEntry2->checkConstraint = true;
+    tableEntry2->checkContent.checkFloat = checkFloat;
+    tableEntry2->checkKeyNum = 1;
+
+    tableEntry3->notNullConstraint = true;
+
+    fileHandler->operateTable(TB_ADD, nullptr, tableEntry1);
+    fileHandler->operateTable(TB_ADD, nullptr, tableEntry2);
+    fileHandler->operateTable(TB_ADD, nullptr, tableEntry3);
+    fileHandler->operateTable(TB_PRINT);
+
+    RecordDataNode* DataNode1 = new RecordDataNode();
+    RecordDataNode* DataNode2 = new RecordDataNode();
+    RecordDataNode* DataNode3 = new RecordDataNode();
+
+    DataNode1->nodeType = COL_INT;
+    DataNode1->content.intContent = new int(5);
+    DataNode1->len = sizeof(int);
+    DataNode1->next = DataNode2;
+
+    DataNode2->nodeType = COL_FLOAT;
+    DataNode2->content.floatContent = new float(0.33);
+    DataNode2->len = sizeof(float);
+    DataNode2->next = DataNode3;
+
+    char content1[] = "info1";
+    DataNode3->nodeType = COL_VARCHAR;
+    DataNode3->content.charContent = content1;
+    DataNode3->len = tableEntry3->colLen;
+    
+    RecordData recordData1;
+    recordData1.head = DataNode1;
+}
 int main() {
     MyBitMap::initConst();
     FileManager* fileManager = new FileManager();
