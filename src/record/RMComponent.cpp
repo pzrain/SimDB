@@ -111,6 +111,27 @@ bool TableEntry::verifyConstraint(RecordDataNode* recordDataNode) {
     return true;
 }
 
+void TableEntry::fillDefault(RecordDataNode* data) {
+    if (hasDefault && data->nodeType == COL_NULL) {
+        switch (colType) {
+            case COL_INT:
+                data->len = sizeof(int);
+                data->nodeType = COL_INT;
+                *(data->content.intContent) = defaultVal.defaultValInt;
+                break;
+            case COL_FLOAT:
+                data->len = sizeof(float);
+                data->nodeType = COL_FLOAT;
+                *(data->content.floatContent) = defaultVal.defaultValFloat;
+                break;
+            case COL_VARCHAR:
+                data->len = colLen;
+                data->nodeType = COL_VARCHAR;
+                memcpy(data->content.charContent, defaultVal.defaultValVarchar, data->len);
+        }
+    }
+}
+
 TableHeader::TableHeader() {
     valid = 0;
     colNum = 0;
@@ -167,19 +188,19 @@ void TableHeader::printInfo() {
             case COL_INT:
                 printf("INT");
                 if (entry.hasDefault) {
-                    printf(", Default value = %d", entry.defaultValInt);
+                    printf(", Default value = %d", entry.defaultVal.defaultValInt);
                 }
                 break;
             case COL_VARCHAR:
                 printf("VARCHAR(%d)", entry.colLen);
                 if (entry.hasDefault) {
-                    printf(", Default value = %s", entry.defaultValVarchar);
+                    printf(", Default value = %s", entry.defaultVal.defaultValVarchar);
                 }
                 break;
             case COL_FLOAT:
                 printf("FLOAT");
                 if (entry.hasDefault) {
-                    printf(", Default value = %f", entry.defaultValFloat);
+                    printf(", Default value = %f", entry.defaultVal.defaultValFloat);
                 }
                 break;
             case COL_NULL:
@@ -367,7 +388,7 @@ bool TableHeader::verifyConstraint(const RecordData& recordData) {
         cur = cur->next;
     }
     if (cur != nullptr) {
-        printf("[ERROR] unmatched size between recordData and TableHeader.\n");
+        printf("[ERROR] unmatched size between record and TableHeader.\n");
         return false;
     }
     return true;
@@ -378,6 +399,36 @@ bool TableHeader::verifyConstraint(Record& record) {
     TableEntryDesc tableEntryDesc = getTableEntryDesc();
     if (record.deserialize(recordData, tableEntryDesc)) {
         return verifyConstraint(recordData);
+    }
+    return false;
+}
+
+bool TableHeader::fillDefault(RecordData& recordData) {
+    int8_t head = entryHead;
+    RecordDataNode* cur = recordData.head;
+    TableEntry entry;
+    while (head >= 0) {
+        entry = entrys[head];
+        entry.fillDefault(cur);
+        head = entry.next;
+        cur = cur->next;
+    }
+    if (cur != nullptr) {
+        printf("[ERROR] unmatched size between record and TableHeader.\n");
+        return false;
+    }
+    return true;
+}
+
+bool TableHeader::fillDefault(Record& record) {
+    RecordData recordData;
+    TableEntryDesc tableEntryDesc = getTableEntryDesc();
+    if (record.deserialize(recordData, tableEntryDesc)) {
+        fillDefault(recordData);
+        recordData.serialize(record);
+        return true;
+    } else {
+        printf("[ERROR] fail to deserialize record.\n");
     }
     return false;
 }
@@ -477,6 +528,7 @@ bool RecordData::serialize(Record& record) {
         return false;
     }
 
+    record.clearBitmap();
     RecordDataNode* cur = head;
     uint8_t* buf = record.data + sizeof(uint16_t);
     size_t offset;

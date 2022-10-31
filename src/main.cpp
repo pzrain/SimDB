@@ -49,43 +49,63 @@ void testTable(FileHandler* fileHandler) {
 void testRecords(FileHandler* fileHandler) {
     printf("========== Begin Test Records ==========\n");
     char colName_1[] = "id";
+    char colName_2[] = "test default";
     TableEntry *tableEntry_1 = new TableEntry(colName_1, COL_VARCHAR);
+    TableEntry *tableEntry_2 = new TableEntry(colName_2, COL_INT);
     tableEntry_1->colLen = 10;
+    tableEntry_2->hasDefault = true;
+    tableEntry_2->defaultVal.defaultValInt = 9;
     fileHandler->operateTable(TB_ADD, nullptr, tableEntry_1);
+    fileHandler->operateTable(TB_ADD, nullptr, tableEntry_2);
     fileHandler->operateTable(TB_PRINT);
-
     RecordId recordId;
     Record record(fileHandler->getRecordLen()), result(fileHandler->getRecordLen());
     std::vector<Record*> vecRecord;
 
-    for (int i = 0; i < 5; i++) {
-        sprintf((char*)record.data, "%d   ", i);
+    RecordDataNode* DataNode1 = new RecordDataNode();
+    RecordDataNode* DataNode2 = new RecordDataNode();
+    DataNode1->nodeType = COL_VARCHAR;
+    DataNode1->len = tableEntry_1->colLen;
+    DataNode1->next = DataNode2;
+    char dataNode1Content[] = "4   ";
+    DataNode1->content.charContent = dataNode1Content;
+    DataNode2->nodeType = COL_INT;
+    DataNode2->len = sizeof(int);
+    DataNode2->content.intContent = new int(4);
+    RecordData recordData;
+    recordData.head = DataNode1;
+    for (int i = 0; i < 4; i++) {
+        sprintf((char*)(record.data + sizeof(uint16_t)), "%d   ", i);
+        record.setItemNull(1);
         fileHandler->insertRecord(recordId, record);
     }
+    recordData.serialize(record);
+    fileHandler->insertRecord(recordId, record);
+    record.setItemNull(1);
 
     fileHandler->getRecord(recordId, result);
-    printf("result = %s\n", (char*)result.data);
+    printf("result = %s %d\n", (char*)(result.data + sizeof(uint16_t)), *((int*)(result.data + sizeof(uint16_t) + tableEntry_1->colLen)));
     recordId.set(1, 0);
     fileHandler->getRecord(recordId, result);
-    printf("result = %s\n", (char*)result.data);
+    printf("result = %s %d\n", (char*)(result.data + sizeof(uint16_t)), *((int*)(result.data + sizeof(uint16_t) + tableEntry_1->colLen)));
     
     recordId.set(1, 1);
     fileHandler->removeRecord(recordId);
     recordId.set(1, 3);
     fileHandler->removeRecord(recordId);
-    sprintf((char*)record.data, "%d   ", 6);
+    sprintf((char*)(record.data + sizeof(uint16_t)), "%d   ", 6);
     fileHandler->insertRecord(recordId, record);
     recordId.set(1, 3);
-    sprintf((char*)record.data, "%d   ", 7);
+    sprintf((char*)(record.data + sizeof(uint16_t)), "%d   ", 7);
     fileHandler->updateRecord(recordId, record);
     recordId.set(1, 2);
-    sprintf((char*)record.data, "%d   ", 8);
+    sprintf((char*)(record.data + sizeof(uint16_t)), "%d   ", 8);
     fileHandler->updateRecord(recordId, record);
     
     fileHandler->getAllRecords(vecRecord);
     printf("Total record number = %d\n", fileHandler->getRecordNum());
     for (auto rec : vecRecord) {
-        printf("data = %s\n", (char*)(rec->data));
+        printf("data = %s %d\n", (char*)(rec->data + sizeof(uint16_t)), *((int*)(rec->data + sizeof(uint16_t) + tableEntry_1->colLen)));
     }
 
     // fileHandler->insertAllRecords(vecRecord);
@@ -95,6 +115,9 @@ void testRecords(FileHandler* fileHandler) {
         delete rec;
     }
     vecRecord.clear();
+    
+    delete tableEntry_1;
+    delete tableEntry_2;
 
     printf("==========  End  Test Records ==========\n");
 }
@@ -237,6 +260,7 @@ void testSerializeAndGetACFields(FileHandler* fileHandler) {
     delete tableEntry_2;
     delete tableEntry_3;
 }
+
 void testConstraint(FileHandler* fileHandler) {
     char colName_1[] = "int";
     char colName_2[] = "float";
@@ -305,6 +329,7 @@ void testConstraint(FileHandler* fileHandler) {
     delete tableEntry2;
     delete tableEntry3;
 }
+
 int main() {
     MyBitMap::initConst();
     FileManager* fileManager = new FileManager();
@@ -321,9 +346,9 @@ int main() {
     // testSerialize(fileHandler);
     // testTable(fileHandler);
     // fileHandler->operateTable(TB_PRINT, nullptr, nullptr);
-    // testRecords(fileHandler);
+    testRecords(fileHandler);
     // testSerializeAndGetACFields(fileHandler);
-    testConstraint(fileHandler);
+    // testConstraint(fileHandler);
 
     // attention : you should call the method BufPageManager.close() 
     //             before you close the file!

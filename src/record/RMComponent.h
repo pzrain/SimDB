@@ -89,7 +89,7 @@ struct TableEntry{
         int defaultValInt;
         char defaultValVarchar[TAB_MAX_LEN];
         float defaultValFloat;
-    };
+    } defaultVal;
     int8_t next; // don't forget to build the link 
     
 
@@ -103,6 +103,8 @@ struct TableEntry{
     // verify checkConstraint, notNullConstraint, (primaryKeyConstraint, UniqueConstraint) (and foreighKeyConstraint ?)
     // on deserialized data
     // return true if succeed else false
+
+    void fillDefault(RecordDataNode* data);
 };
 
 struct TableEntryDescNode{
@@ -132,6 +134,10 @@ public:
         len = len_;
         data = new uint8_t[len_];
         bitmap = (uint16_t*)data;
+        *bitmap = 0;
+    }
+
+    void clearBitmap() {
         *bitmap = 0;
     }
 
@@ -201,6 +207,10 @@ public:
     bool verifyConstraint(const RecordData& recordData);
 
     bool verifyConstraint(Record& record);
+
+    bool fillDefault(RecordData& recordData);
+
+    bool fillDefault(Record& record);
 };
 
 typedef enum{

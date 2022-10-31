@@ -150,6 +150,10 @@ bool FileHandler::getRecord(RecordId recordId, Record &record) {
 }
 
 bool FileHandler::insertRecord(RecordId &recordId, Record &record) {
+    if (!tableHeader->fillDefault(record)) {
+        printf("[ERROR] fail to fill default value to record.\n");
+        return false;
+    }
     if (!tableHeader->verifyConstraint(record)) {
         printf("[ERROR] check constraint on record fails.\n");
         return false;
@@ -241,6 +245,10 @@ bool FileHandler::removeRecord(RecordId &recordId) {
 }
 
 bool FileHandler::updateRecord(RecordId &recordId, Record &record) {
+    if (!tableHeader->fillDefault(record)) {
+        printf("[ERROR] fail to fill default value to record.\n");
+        return false;
+    }
     if (!tableHeader->verifyConstraint(record)) {
         printf("[ERROR] check constraint on record fails.\n");
         return false;
@@ -359,6 +367,10 @@ bool FileHandler::getAllRecordsAccordingToFields(std::vector<Record*>& records, 
 
 bool FileHandler::insertAllRecords(const std::vector<Record*>& records) {
     for (Record* record : records) {
+        if (!tableHeader->fillDefault(*record)) {
+            printf("[ERROR] fail to fill default value to record.\n");
+            return false;
+        }
         if (!tableHeader->verifyConstraint(*record)) {
             printf("[ERROR] check constraint on record fails.\n");
             return false;
