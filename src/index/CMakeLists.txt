@@ -1,0 +1,14 @@
+set(SOURCE
+    ${SOURCE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/BPlusTree.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/IndexPage.cpp
+    PARENT_SCOPE
+)
+
+set(HEADERS
+    ${HEADERS}
+	${CMAKE_CURRENT_SOURCE_DIR}/BPlusTree.h
+	${CMAKE_CURRENT_SOURCE_DIR}/IndexPage.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Compare.h
+    PARENT_SCOPE
+)
