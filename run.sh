@@ -11,4 +11,5 @@ cd ..
 
 echo "Done!"
 
+mkdir -p database
 ./bin/SimDB
