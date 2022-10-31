@@ -1,0 +1,15 @@
+set(SOURCE
+    ${SOURCE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/FileHandler.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/RecordManager.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/RMComponent.cpp
+    PARENT_SCOPE
+)
+
+set(HEADERS
+    ${HEADERS}
+	${CMAKE_CURRENT_SOURCE_DIR}/FileHandler.h
+	${CMAKE_CURRENT_SOURCE_DIR}/RecordManager.h
+	${CMAKE_CURRENT_SOURCE_DIR}/RMComponent.h
+    PARENT_SCOPE
+)
