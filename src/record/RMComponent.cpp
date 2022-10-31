@@ -25,10 +25,111 @@ TableEntry::TableEntry(char* colName_, uint8_t colType_, bool checkConstraint_, 
         case COL_FLOAT:
             colLen = sizeof(float);
             break;
+        case COL_NULL:
+            colLen = 0;
+            break;
         default:
             break;
     }
     next = -1;
+}
+
+bool TableEntry::verifyConstraint(RecordDataNode* recordDataNode) {
+    if (notNullConstraint) {
+        if (recordDataNode->nodeType == COL_NULL)
+            return false;
+    } else if (checkConstraint) {
+        switch (recordDataNode->nodeType) {
+            case COL_INT: {
+                int intContent = *(recordDataNode->content.intContent);
+                for (uint32_t i = 0; i < checkKeyNum; i++) {
+                    int checkInt = *(checkContent.checkInt + i);
+                    switch (*(checkType + i)) {
+                        case EQUAL:
+                            if (intContent != checkInt) return false;
+                            break;
+                        case LESS:
+                            if (intContent >= checkInt) return false;
+                            break;
+                        case LESS_EQUAL:
+                            if (intContent > checkInt) return false;
+                            break;
+                        case GREATER:
+                            if (intContent <= checkInt) return false;
+                            break;
+                        case GREATER_EQUAL:
+                            if (intContent < checkInt) return false;
+                            break;
+                        case NOT_EQUAL:
+                            if (intContent == checkInt) return false;
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                break;
+            }
+            case COL_FLOAT: {
+                float floatContent = *(recordDataNode->content.floatContent);
+                for (uint32_t i = 0; i < checkKeyNum; i++) {
+                    int checkFloat = *(checkContent.checkFloat + i);
+                    switch (*(checkType + i)) {
+                        case EQUAL:
+                            if (floatContent != checkFloat) return false;
+                            break;
+                        case LESS:
+                            if (floatContent >= checkFloat) return false;
+                            break;
+                        case LESS_EQUAL:
+                            if (floatContent > checkFloat) return false;
+                            break;
+                        case GREATER:
+                            if (floatContent <= checkFloat) return false;
+                            break;
+                        case GREATER_EQUAL:
+                            if (floatContent < checkFloat) return false;
+                            break;
+                        case NOT_EQUAL:
+                            if (floatContent == checkFloat) return false;
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                break;
+            }     
+            case COL_VARCHAR: {
+                // char *charContent, *checkVarchar;
+                // strcpy(charContent, recordDataNode->content.charContent);
+                // strcpy(checkVarchar, checkContent.checkVarchar);
+                break;
+            }
+            default:
+                break;
+        }   
+    }
+    return true;
+}
+
+void TableEntry::fillDefault(RecordDataNode* data) {
+    if (hasDefault && data->nodeType == COL_NULL) {
+        switch (colType) {
+            case COL_INT:
+                data->len = sizeof(int);
+                data->nodeType = COL_INT;
+                *(data->content.intContent) = defaultVal.defaultValInt;
+                break;
+            case COL_FLOAT:
+                data->len = sizeof(float);
+                data->nodeType = COL_FLOAT;
+                *(data->content.floatContent) = defaultVal.defaultValFloat;
+                break;
+            case COL_VARCHAR:
+                data->len = colLen;
+                data->nodeType = COL_VARCHAR;
+                memcpy(data->content.charContent, defaultVal.defaultValVarchar, data->len);
+        }
+    }
 }
 
 TableHeader::TableHeader() {
@@ -39,6 +140,7 @@ TableHeader::TableHeader() {
     totalPageNumber = 1;
     recordSize = 0;
     recordLen = 0;
+    recordNum = 0;
 }
 
 bool TableHeader::existCol(char* colName) {
@@ -86,19 +188,19 @@ void TableHeader::printInfo() {
             case COL_INT:
                 printf("INT");
                 if (entry.hasDefault) {
-                    printf(", Default value = %d", entry.defaultValInt);
+                    printf(", Default value = %d", entry.defaultVal.defaultValInt);
                 }
                 break;
             case COL_VARCHAR:
                 printf("VARCHAR(%d)", entry.colLen);
                 if (entry.hasDefault) {
-                    printf(", Default value = %s", entry.defaultValVarchar);
+                    printf(", Default value = %s", entry.defaultVal.defaultValVarchar);
                 }
                 break;
             case COL_FLOAT:
                 printf("FLOAT");
                 if (entry.hasDefault) {
-                    printf(", Default value = %f", entry.defaultValFloat);
+                    printf(", Default value = %f", entry.defaultVal.defaultValFloat);
                 }
                 break;
             case COL_NULL:
@@ -217,9 +319,12 @@ int TableHeader::addCol(TableEntry* tableEntry) {
 }
 
 void TableHeader::init(TableEntry* entryHead_, int num) {
+    entryHead = 0;
     for (int i = 0; i < num; i++) {
         entrys[i] = entryHead_[i];
+        entrys[i].next = (i + 1) == num ? -1 : (i + 1);
     }
+    colNum = num;
     calcRecordSizeAndLen();
     valid = 1;
 }
@@ -227,7 +332,7 @@ void TableHeader::init(TableEntry* entryHead_, int num) {
 void TableHeader::calcRecordSizeAndLen() {
     int8_t head = entryHead;
     TableEntry entry;
-    recordLen = sizeof(uint16_t); // record if slot is free
+    recordLen = sizeof(uint16_t) + sizeof(uint16_t); // record if slot is free + bitmap
     while (head >= 0) {
         entry = entrys[head];
         recordLen += entry.colLen;
@@ -236,4 +341,248 @@ void TableHeader::calcRecordSizeAndLen() {
     if (recordLen > 0) {
         recordSize = (PAGE_SIZE - sizeof(PageHeader)) / recordLen;
     }
+}
+
+TableEntryDesc::~TableEntryDesc() {
+    TableEntryDescNode* cur = head;
+    while (cur) {
+        TableEntryDescNode* next = cur->next;
+        delete cur;
+        cur = next;
+    }
+}
+
+TableEntryDesc TableHeader::getTableEntryDesc() {
+    TableEntryDesc res;
+    TableEntryDescNode* cur;
+    TableEntryDescNode* prev = nullptr;
+    int8_t head = entryHead;
+    TableEntry entry;
+    while (head >= 0) {
+        entry = entrys[head];
+        cur = new TableEntryDescNode();
+        cur->colType = entry.colType;
+        cur->colLen = entry.colLen;
+        cur->next = nullptr;
+        if (prev) {
+            prev->next = cur;
+        } else {
+            res.head = cur;
+        }
+        prev = cur;
+        head = entry.next;
+    }
+    return res;
+}
+
+bool TableHeader::verifyConstraint(const RecordData& recordData) {
+    int8_t head = entryHead;
+    RecordDataNode* cur = recordData.head;
+    TableEntry entry;
+    while (head >= 0) {
+        entry = entrys[head];
+        if (!entry.verifyConstraint(cur)) {
+            return false;
+        }
+        head = entry.next;
+        cur = cur->next;
+    }
+    if (cur != nullptr) {
+        printf("[ERROR] unmatched size between record and TableHeader.\n");
+        return false;
+    }
+    return true;
+}
+
+bool TableHeader::verifyConstraint(Record& record) {
+    RecordData recordData;
+    TableEntryDesc tableEntryDesc = getTableEntryDesc();
+    if (record.deserialize(recordData, tableEntryDesc)) {
+        return verifyConstraint(recordData);
+    }
+    return false;
+}
+
+bool TableHeader::fillDefault(RecordData& recordData) {
+    int8_t head = entryHead;
+    RecordDataNode* cur = recordData.head;
+    TableEntry entry;
+    while (head >= 0) {
+        entry = entrys[head];
+        entry.fillDefault(cur);
+        head = entry.next;
+        cur = cur->next;
+    }
+    if (cur != nullptr) {
+        printf("[ERROR] unmatched size between record and TableHeader.\n");
+        return false;
+    }
+    return true;
+}
+
+bool TableHeader::fillDefault(Record& record) {
+    RecordData recordData;
+    TableEntryDesc tableEntryDesc = getTableEntryDesc();
+    if (record.deserialize(recordData, tableEntryDesc)) {
+        fillDefault(recordData);
+        recordData.serialize(record);
+        return true;
+    } else {
+        printf("[ERROR] fail to deserialize record.\n");
+    }
+    return false;
+}
+
+size_t TableEntryDesc::getLen() {
+    if (len > 0)
+        return len;
+    size_t len_ = sizeof(uint16_t); // bitmap
+    TableEntryDescNode* cur = head;
+    while (cur) {
+        switch (cur->colType) {
+            case COL_INT:
+                len_ += sizeof(int);
+                break;
+            case COL_FLOAT:
+                len_ += sizeof(float);
+                break;
+            case COL_VARCHAR:
+                len_ += cur->colLen;
+                break;
+            default:
+                break;
+        }
+        cur = cur->next;
+    }
+    return len = len_;
+}
+
+bool Record::deserialize(RecordData& rData, TableEntryDesc& tableEntryDesc) {
+    if (len != tableEntryDesc.getLen()) {
+        printf("[ERROR] unmatched length between record and recordData.\n");
+        return false;
+    }
+    
+    RecordDataNode* cur;
+    RecordDataNode* prev = nullptr;
+    TableEntryDescNode* now = tableEntryDesc.head;
+    uint8_t* buf = data + sizeof(uint16_t); // bitmap
+    size_t offset;
+    int index = 0;
+    
+    while (now) {
+        cur = new RecordDataNode();
+        switch(now->colType) {
+            case COL_INT:
+                offset = sizeof(int);
+                cur->nodeType = COL_INT;
+                cur->len = offset;
+                cur->content.intContent = new int;
+                memcpy(cur->content.intContent, buf, offset);
+                break;
+            case COL_FLOAT:
+                offset = sizeof(float);
+                cur->nodeType = COL_FLOAT;
+                cur->len = offset;
+                cur->content.floatContent = new float;
+                memcpy(cur->content.floatContent, buf, offset);
+                break;
+            case COL_VARCHAR:
+                offset = now->colLen;
+                cur->nodeType = COL_VARCHAR;
+                cur->len = offset;
+                cur->content.charContent = new char[offset];
+                memcpy(cur->content.charContent, buf, offset);
+                break;
+            default:
+                return false;
+                break;
+        }
+        if (isNull(index++)) {
+            cur->nodeType = COL_NULL;
+        }
+        if (prev) {
+            prev->next = cur;
+        } else {
+            rData.head = cur;
+        }
+        prev = cur;
+        buf += offset;
+        now = now->next;
+    }
+    return true;
+}
+
+RecordData::~RecordData() {
+    RecordDataNode* cur = head;
+    while (cur) {
+        RecordDataNode* next = cur->next;
+        delete cur;
+        cur = next;
+    }
+}
+
+bool RecordData::serialize(Record& record) {
+    if (getLen() != record.len) {
+        printf("[ERROR] unmatched length between recordData and record.\n");
+        return false;
+    }
+
+    record.clearBitmap();
+    RecordDataNode* cur = head;
+    uint8_t* buf = record.data + sizeof(uint16_t);
+    size_t offset;
+    int index = 0;
+    while (cur) {
+        switch (cur->nodeType) {
+            case COL_INT:
+                offset = sizeof(int);
+                memcpy(buf, (uint8_t*)(cur->content.intContent), offset);
+                break;
+            case COL_FLOAT:
+                offset = sizeof(float);
+                memcpy(buf, (uint8_t*)(cur->content.floatContent), offset);
+                break;
+            case COL_VARCHAR:
+                offset = cur->len;
+                memcpy(buf, (uint8_t*)(cur->content.charContent), offset);
+                break;
+            case COL_NULL:
+                offset = cur->len;
+                record.setItemNull(index);
+                break;
+            default:
+                return false;
+                break;
+        }
+        buf += offset;
+        cur = cur->next;
+        index++;
+    }
+    return true;
+}
+
+size_t RecordData::getLen() {
+    if (recordLen > 0)
+        return recordLen;
+    size_t len = sizeof(uint16_t); // bitmap
+    RecordDataNode* cur = head;
+    while (cur) {
+        switch (cur->nodeType) {
+            case COL_INT:
+                len += sizeof(int);
+                break;
+            case COL_FLOAT:
+                len += sizeof(float);
+                break;
+            case COL_VARCHAR:
+            case COL_NULL:
+                len += cur->len;
+                break;
+            default:
+                break;
+        }
+        cur = cur->next;
+    }
+    return recordLen = len;
 }

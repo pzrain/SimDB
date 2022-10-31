@@ -6,6 +6,7 @@
 
 /* DataBase Info */
 #define DB_MAX_TABLE_NUM 8
+#define DB_MAX_NAME_LEN 32
 
 /* Table Info */
 #define TAB_MAX_COL_NUM 10
@@ -19,4 +20,12 @@ typedef enum {
     COL_FLOAT = 3
 } TB_COL_TYPE;
 
+typedef enum {
+    EQUAL = 0,
+    LESS = 1,
+    LESS_EQUAL = 2,
+    GREATER = 3,
+    GREATER_EQUAL = 4,
+    NOT_EQUAL = 5
+} CHECK_TYPE;
 #endif
