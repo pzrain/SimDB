@@ -18,7 +18,7 @@ private:
 
     int searchUpperBound(void* data);
 
-    void recycle(std::vector<IndexPage*> &rec, std::vector<int> &pageIndex);
+    void recycle(std::vector<IndexPage*> &rec, std::vector<int> &pageIndex, bool writeback = false);
 
 public:
     IndexPage* root;
@@ -27,7 +27,7 @@ public:
 
     ~BPlusTree();
 
-    
+    void search(void* data, std::vector<int> &res);
 };
 
 #endif

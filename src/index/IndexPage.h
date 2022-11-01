@@ -46,6 +46,8 @@ public:
 
     void changePageType(uint8_t newPageType);
 
+    Compare* getCompare();
+
     uint8_t getPageType();
 
     uint16_t getPageId();

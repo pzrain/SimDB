@@ -52,6 +52,10 @@ uint16_t IndexPage::getCapacity() {
     return capacity;
 }
 
+Compare* IndexPage::getCompare() {
+    return compare;
+}
+
 void IndexPage::changePageType(uint8_t newPageType) {
     indexPageHeader->pageType = newPageType;
 }
