@@ -6,15 +6,20 @@
 #include <stdint.h>
 #include <vector>
 
+typedef enum{
+    INDEX_PAGE_INTERIOR = 0,
+    INDEX_PAGE_LEAF = 1
+} INDEX_PAGE_TYPE;
+
 struct IndexPageHeader{
     uint8_t isInitialized;
     uint8_t colType;
+    uint8_t pageType;
     int16_t nextPage; // related to B+ tree
     int16_t lastPage;
     int16_t firstIndex;
     int16_t firstEmptyIndex;
     uint16_t totalIndex;
-    uint16_t childIndex;
     uint16_t indexLen;
     uint8_t maxContent[TAB_MAX_LEN];
 
@@ -28,14 +33,22 @@ private:
     IndexPageHeader* indexPageHeader;
     Compare* compare;
     uint16_t capacity;
+    uint16_t pageId;
+
 public:
     uint8_t* data;
 
-    IndexPage(uint8_t* pageData, uint16_t indexLen, uint8_t colType);
+    IndexPage(uint8_t* pageData, uint16_t indexLen, uint8_t colType, uint16_t pageId_);
 
     ~IndexPage();
 
     uint16_t getCapacity();
+
+    void changePageType(uint8_t newPageType);
+
+    uint8_t getPageType();
+
+    uint16_t getPageId();
 
     bool overflow();
 
@@ -46,6 +59,10 @@ public:
     void* getData(int id);
 
     int getVal(int id);
+
+    uint32_t getNextDataIndex(int id);
+
+    uint32_t getLastDataIndex(int id);
 
     int16_t getNextIndex(int id);
 

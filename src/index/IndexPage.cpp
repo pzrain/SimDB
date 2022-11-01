@@ -6,24 +6,26 @@ void IndexPageHeader::initialize(uint16_t indexLen_, uint8_t colType_) {
     nextPage = -1;
     lastPage = -1;
     totalIndex = 0;
-    childIndex = -1;
     indexLen = indexLen_;
     isInitialized = 1;
     colType = colType_;
+    pageType = INDEX_PAGE_LEAF;
 }
 
 inline uint16_t IndexPageHeader::getTotalLen() {
-    // nextIndex + lastIndex + childIndex + content + val
-    return sizeof(int16_t) + sizeof(int16_t) + sizeof(int16_t) + indexLen + sizeof(int);
+    // nextIndex + lastIndex + childIndex + sizeof(in16_t) + content + val
+    // nextDataIndex(uint32_t) + lastDataIndex(uint32_t)
+    return 4 * sizeof(int16_t) + indexLen + sizeof(int);
 }
 
-IndexPage::IndexPage(uint8_t* pageData, uint16_t indexLen, uint8_t colType) {
+IndexPage::IndexPage(uint8_t* pageData, uint16_t indexLen, uint8_t colType, uint16_t pageId_) {
     data = pageData;
     indexPageHeader = (IndexPageHeader*)data;
     if (indexPageHeader->isInitialized == 0) { // uninitialized but not zero?
         indexPageHeader->initialize(indexLen, colType);
     }
     capacity = ((PAGE_SIZE - sizeof(IndexPageHeader)) / indexPageHeader->getTotalLen()) - 1;
+    pageId = pageId_;
     switch (colType) {
         case COL_INT:
             compare = new IntCompare();
@@ -50,6 +52,18 @@ uint16_t IndexPage::getCapacity() {
     return capacity;
 }
 
+void IndexPage::changePageType(uint8_t newPageType) {
+    indexPageHeader->pageType = newPageType;
+}
+
+uint8_t IndexPage::getPageType() {
+    return indexPageHeader->pageType;
+}
+
+uint16_t IndexPage::getPageId() {
+    return pageId;
+}
+
 bool IndexPage::overflow() {
     return indexPageHeader->totalIndex > capacity;
 }
@@ -70,12 +84,22 @@ uint8_t* IndexPage::accessData(int id) {
 
 void* IndexPage::getData(int id) {
     uint8_t* data = accessData(id);
-    return data + 3 * sizeof(int16_t);
+    return data + 4 * sizeof(int16_t);
+}
+
+uint32_t IndexPage::getNextDataIndex(int id) {
+    uint8_t* data = accessData(id);
+    return ((uint32_t*)data)[0];
+}
+
+uint32_t IndexPage::getLastDataIndex(int id) {
+    uint8_t* data = accessData(id);
+    return ((uint32_t*)data)[1];
 }
 
 int IndexPage::getVal(int id) {
     uint8_t* data = accessData(id);
-    return *((int*)(data + 3 * sizeof(int16_t) + indexPageHeader->indexLen));
+    return *((int*)(data + 4 * sizeof(int16_t) + indexPageHeader->indexLen));
 }
 
 int16_t IndexPage::getNextIndex(int id) {
@@ -121,8 +145,8 @@ int IndexPage::insert(void* data, const int val, const int16_t childIndex_) {
     int16_t* nextIndex = (int16_t*)emptySlot;
     int16_t* lastIndex = ((int16_t*)emptySlot) + 1;
     int16_t* childIndex = ((int16_t*)emptySlot) + 2;
-    void* emptyData = emptySlot + 3 * sizeof(int16_t);
-    int* emptyVal = (int*)(emptySlot + 3 * sizeof(int16_t) + indexPageHeader->indexLen);
+    void* emptyData = emptySlot + 4 * sizeof(int16_t);
+    int* emptyVal = (int*)(emptySlot + 4 * sizeof(int16_t) + indexPageHeader->indexLen);
     *nextIndex = head;
     *lastIndex = last;
     if (last >= 0) {
