@@ -52,6 +52,7 @@ int BPlusTree::searchUpperBound(void* data) {
 }
 
 void BPlusTree::search(void* data, std::vector<int> &res) {
+    res.clear();
     int pos = searchUpperBound(data), pageId, slotId;
     int curPageId = -1, index;
     IndexPage* cur = nullptr;
@@ -63,13 +64,77 @@ void BPlusTree::search(void* data, std::vector<int> &res) {
             cur = new IndexPage((uint8_t*)(bufPageManger->getPage(fileId, pageId, index)), indexLen, colType, pageId);
             curPageId = pageId;
             rec.push_back(cur);
-            pageIndex.push_back(pageId);
+            pageIndex.push_back(index);
         }
         if (!cur->getCompare()->equ(data, cur->getData(slotId))) {
             break;
         }
         res.push_back(cur->getVal(slotId));
         pos = cur->getNextDataIndex(slotId);
+    }
+    recycle(rec, pageIndex);
+}
+
+void BPlusTree::searchBetween(void* ldata, void* rdata, std::vector<int> &res) {
+    res.clear();
+    if (ldata == nullptr && rdata == nullptr) {
+        return;
+    }
+    int pos, pageId, slotId;
+    int curPageId = -1, index;
+    IndexPage* cur = nullptr;
+    std::vector<IndexPage*> rec;
+    std::vector<int> pageIndex;
+    if (ldata != nullptr) {
+        pos = searchUpperBound(ldata);
+        while (pos >= 0) {
+            transform(pos, pageId, slotId);
+            if (pageId != curPageId) {
+                cur = new IndexPage((uint8_t*)(bufPageManger->getPage(fileId, pageId, index)), indexLen, colType, pageId);
+                curPageId = pageId;
+                rec.push_back(cur);
+                pageIndex.push_back(index);
+            }
+            if (rdata && cur->getCompare()->gt(cur->getData(slotId), rdata)) {
+                break;
+            }
+            res.push_back(cur->getVal(slotId));
+            pos = cur->getNextDataIndex(slotId);
+        }
+    } else { // rdata != nullptr && ldata == nullptr
+        pos = searchUpperBound(rdata);
+        transform(pos, pageId, slotId);
+        cur = new IndexPage((uint8_t*)(bufPageManger->getPage(fileId, pageId, index)), indexLen, colType, pageId);
+        curPageId = pageId;
+        rec.push_back(cur);
+        pageIndex.push_back(index);
+        int lastPos = cur->getLastDataIndex(slotId);
+        while (pos >= 0) {
+            transform(pos, pageId, slotId);
+            if (pageId != curPageId) {
+                cur = new IndexPage((uint8_t*)(bufPageManger->getPage(fileId, pageId, index)), indexLen, colType, pageId);
+                curPageId = pageId;
+                rec.push_back(cur);
+                pageIndex.push_back(index);
+            }
+            if (cur->getCompare()->gt(cur->getData(slotId), rdata)) {
+                break;
+            }
+            res.push_back(cur->getVal(slotId));
+            pos = cur->getNextDataIndex(slotId);
+        }
+        pos = lastPos;
+        while (pos >= 0) {
+            transform(pos, pageId, slotId);
+            if (pageId != curPageId) {
+                cur = new IndexPage((uint8_t*)(bufPageManger->getPage(fileId, pageId, index)), indexLen, colType, pageId);
+                curPageId = pageId;
+                rec.push_back(cur);
+                pageIndex.push_back(index);
+            }
+            res.push_back(cur->getVal(slotId));
+            pos = cur->getLastDataIndex(slotId);
+        }
     }
     recycle(rec, pageIndex);
 }

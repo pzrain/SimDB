@@ -28,6 +28,11 @@ public:
     ~BPlusTree();
 
     void search(void* data, std::vector<int> &res);
+    // attention res will be cleared first
+
+    void searchBetween(void* ldata, void* rdata, std::vector<int> &res);
+    // bound [ldata, rdata]
+    // set ldata or rdata to nullptr if want a one-way search
 };
 
 #endif
