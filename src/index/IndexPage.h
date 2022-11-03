@@ -18,10 +18,12 @@ struct IndexPageHeader{
     int16_t nextPage; // related to B+ tree
     int16_t lastPage;
     int16_t firstIndex;
+    int16_t lastIndex;
     int16_t firstEmptyIndex;
+    int16_t nextFreePage;
     uint16_t totalIndex;
     uint16_t indexLen;
-    uint8_t maxContent[TAB_MAX_LEN];
+    int fatherIndex; // fatherIndex will be built from B+ tree
 
     void initialize(uint16_t indexLen_, uint8_t colType_);
 
@@ -62,24 +64,31 @@ public:
 
     int getVal(int id);
 
-    uint32_t getNextDataIndex(int id);
+    int* getNextDataIndex(int id);
 
-    uint32_t getLastDataIndex(int id);
+    int* getLastDataIndex(int id);
 
-    int16_t getNextIndex(int id);
+    int16_t* getNextIndex(int id);
 
-    int16_t getLastIndex(int id);
+    int16_t* getLastIndex(int id); // return the last index of this slot
 
-    int16_t getChildIndex(int id);
+    int16_t* getLastIndex(); // return the last index on this pae
+
+    int16_t* getChildIndex(int id);
+
+    int* getFatherIndex();
+
+    int cut(int k);
 
     int insert(void* data, const int val, const int16_t childIndex_ = -1); // key and value
+                                                                           // return the slot index of the inserted value
 
     void searchEQ(void* data, std::vector<int> &res);
 
     int searchLowerBound(void* data); // return the uppermost index of slots whose value is no greater than data
                                       // -1 if all value are greater than data
-
-    int searchUpperBound(void* data);
+    
+    int searchUpperBound(void* data); // similar to searchLowerBound()
 
     void remove(void* data, std::vector<int> &res);
 };

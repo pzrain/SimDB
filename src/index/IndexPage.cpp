@@ -2,7 +2,10 @@
 
 void IndexPageHeader::initialize(uint16_t indexLen_, uint8_t colType_) {
     firstIndex = -1;
+    lastIndex = -1;
+    fatherIndex = -1;
     firstEmptyIndex = -1;
+    nextFreePage = -1;
     nextPage = -1;
     lastPage = -1;
     totalIndex = 0;
@@ -14,7 +17,7 @@ void IndexPageHeader::initialize(uint16_t indexLen_, uint8_t colType_) {
 
 inline uint16_t IndexPageHeader::getTotalLen() {
     // nextIndex + lastIndex + childIndex + sizeof(in16_t) + content + val
-    // nextDataIndex(uint32_t) + lastDataIndex(uint32_t)
+    // nextDataIndex(int) + lastDataIndex(int)
     return 4 * sizeof(int16_t) + indexLen + sizeof(int);
 }
 
@@ -24,7 +27,7 @@ IndexPage::IndexPage(uint8_t* pageData, uint16_t indexLen, uint8_t colType, uint
     if (indexPageHeader->isInitialized == 0) { // uninitialized but not zero?
         indexPageHeader->initialize(indexLen, colType);
     }
-    capacity = ((PAGE_SIZE - sizeof(IndexPageHeader)) / indexPageHeader->getTotalLen()) - 1;
+    capacity = ((PAGE_SIZE - sizeof(IndexPageHeader)) / indexPageHeader->getTotalLen()) - 2;
     pageId = pageId_;
     switch (colType) {
         case COL_INT:
@@ -79,7 +82,7 @@ bool IndexPage::underflow() {
 uint8_t* IndexPage::accessData(int id) {
     if (id < 0 || id > capacity) {
         // id == capacity will result in overflow
-        printf("[ERROR] fetch slot with wrong id.\n");
+        printf("[ERROR] fetch slot with wrong id:%d.\n", id);
         return nullptr;
     }
     uint16_t totalLen = indexPageHeader->getTotalLen();
@@ -91,14 +94,14 @@ void* IndexPage::getData(int id) {
     return data + 4 * sizeof(int16_t);
 }
 
-uint32_t IndexPage::getNextDataIndex(int id) {
+int* IndexPage::getNextDataIndex(int id) {
     uint8_t* data = accessData(id);
-    return ((uint32_t*)data)[0];
+    return ((int*)data);
 }
 
-uint32_t IndexPage::getLastDataIndex(int id) {
+int* IndexPage::getLastDataIndex(int id) {
     uint8_t* data = accessData(id);
-    return ((uint32_t*)data)[1];
+    return ((int*)data) + 1;
 }
 
 int IndexPage::getVal(int id) {
@@ -106,19 +109,44 @@ int IndexPage::getVal(int id) {
     return *((int*)(data + 4 * sizeof(int16_t) + indexPageHeader->indexLen));
 }
 
-int16_t IndexPage::getNextIndex(int id) {
+int16_t* IndexPage::getNextIndex(int id) {
     uint8_t* data = accessData(id);
-    return *((int16_t*)data);
+    return ((int16_t*)data);
 }
 
-int16_t IndexPage::getLastIndex(int id) {
+int16_t* IndexPage::getLastIndex(int id) {
     uint8_t* data = accessData(id);
-    return *((int16_t*)(data + sizeof(int16_t)));
+    return ((int16_t*)(data + sizeof(int16_t)));
 }
 
-int16_t IndexPage::getChildIndex(int id) {
+int16_t* IndexPage::getLastIndex() {
+    return &(indexPageHeader->lastIndex);
+}
+
+int16_t* IndexPage::getChildIndex(int id) {
     uint8_t* data = accessData(id);
-    return *((int16_t*)(data + 2 * sizeof(int16_t)));
+    return ((int16_t*)(data + 2 * sizeof(int16_t)));
+}
+
+int* IndexPage::getFatherIndex() {
+    return &(indexPageHeader->fatherIndex);
+}
+
+int IndexPage::cut(int k) {
+    if (k < 0 || k > indexPageHeader->totalIndex) {
+        printf("[ERROR] cut number should fall between [0, totalIndex].\n");
+        return -1;
+    }
+    int head = indexPageHeader->firstIndex;
+    while (k--) {
+        if (indexPageHeader->pageType == INDEX_PAGE_INTERIOR) {
+            head = *(getNextIndex(head));
+        } else {
+            head = *(getNextDataIndex(head));
+            head = head % capacity;
+        }
+    }
+    return head;
 }
 
 int IndexPage::insert(void* data, const int val, const int16_t childIndex_) {
@@ -134,15 +162,19 @@ int IndexPage::insert(void* data, const int val, const int16_t childIndex_) {
     uint8_t* emptySlot = accessData(emptyIndex);
     indexPageHeader->firstEmptyIndex = ((int16_t*)emptySlot)[0];
 
-    if (head < 0) {
+    if (head < 0) { // empty page
         indexPageHeader->firstIndex = emptyIndex;
+        indexPageHeader->lastIndex = emptyIndex;
     } else {
         while (head >= 0) {
             if (compare->lte(data, getData(head))) {
                 break;
             }
             last = head;
-            head = getNextIndex(head);
+            head = *getNextIndex(head);
+        }
+        if (head < 0) { // inserted data is the greatest of all
+            indexPageHeader->lastIndex = emptyIndex;
         }
     }
 
@@ -185,7 +217,7 @@ int IndexPage::searchLowerBound(void* data) {
             break;
         }
         last = head;
-        head = getNextIndex(head);
+        head = *getNextIndex(head);
     }
     return last;
 }
@@ -196,6 +228,7 @@ int IndexPage::searchUpperBound(void* data) {
         if (compare->lte(data, getData(head))) {
             break;
         }
+        head = *getNextIndex(head);
     }
     return head;
 }
@@ -203,9 +236,12 @@ int IndexPage::searchUpperBound(void* data) {
 void IndexPage::remove(void* data, std::vector<int> &res) {
     int16_t head = indexPageHeader->firstIndex, last = -1;
     while (head >= 0) {
-        int next = getNextIndex(head);
+        int next = *getNextIndex(head);
         if (compare->equ(data, getData(head))) {
             res.push_back(head);
+            if (head == indexPageHeader->lastIndex) { // remove last index
+                indexPageHeader->lastIndex = *getLastIndex(indexPageHeader->lastIndex);
+            }
             if (last >= 0) {
                 uint8_t* lastData = accessData(last);
                 ((int16_t*)lastData)[0] = next;
