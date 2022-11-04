@@ -39,6 +39,7 @@ public:
 
     void search(void* data, std::vector<int> &res);
     // attention that res will be cleared first
+    // return value of those slots whose data_ is equla to data
 
     void searchBetween(void* ldata, void* rdata, std::vector<int> &res);
     // bound [ldata, rdata]

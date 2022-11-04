@@ -50,6 +50,10 @@ IndexPage::~IndexPage() {
     }
 }
 
+void IndexPage::initialize(uint16_t indexLen_, uint8_t colType_) {
+    indexPageHeader->initialize(indexLen_, colType_);
+}
+
 uint16_t IndexPage::getCapacity() {
     return capacity;
 }
@@ -89,7 +93,7 @@ uint8_t* IndexPage::accessData(int id) {
         return nullptr;
     }
     uint16_t totalLen = indexPageHeader->getTotalLen();
-    return data + sizeof(indexPageHeader) + id * totalLen;
+    return data + sizeof(IndexPageHeader) + id * totalLen;
 }
 
 void* IndexPage::getData(int id) {
@@ -156,26 +160,32 @@ int IndexPage::cut(int k) {
 int IndexPage::insert(void* data, const int val, const int16_t childIndex_) {
     int16_t head = indexPageHeader->firstIndex, last = -1;
     int16_t emptyIndex = indexPageHeader->firstEmptyIndex;
-    indexPageHeader->totalIndex++;
+    uint8_t* emptySlot = nullptr;
     if (emptyIndex < 0) {
         // new empty slot, create and initialize
         emptyIndex = indexPageHeader->totalIndex;
-        uint8_t* newEmptySlot = accessData(emptyIndex);
-        ((int16_t*)newEmptySlot)[0] = -1;
+        emptySlot = accessData(emptyIndex);
+        ((int16_t*)emptySlot)[0] = -1;
+        ((int16_t*)emptySlot)[1] = -1;
+    } else {
+        emptySlot = accessData(emptyIndex);
+        indexPageHeader->firstEmptyIndex = ((int16_t*)emptySlot)[0];
     }
-    uint8_t* emptySlot = accessData(emptyIndex);
-    indexPageHeader->firstEmptyIndex = ((int16_t*)emptySlot)[0];
-
+    indexPageHeader->totalIndex++;
     if (head < 0) { // empty page
         indexPageHeader->firstIndex = emptyIndex;
         indexPageHeader->lastIndex = emptyIndex;
     } else {
+        int originHead = head;
         while (head >= 0) {
             if (compare->lte(data, getData(head))) {
                 break;
             }
             last = head;
             head = *getNextIndex(head);
+        }
+        if (head == originHead) { // inserted data is the smallest of all
+            indexPageHeader->firstIndex = emptyIndex;
         }
         if (head < 0) { // inserted data is the greatest of all
             indexPageHeader->lastIndex = emptyIndex;
@@ -268,7 +278,7 @@ void IndexPage::remove(void* data, std::vector<int> &res) {
     }
 }
 
-void IndexPage::removeFrom(int16_t index, std::vector<void*> removeData, std::vector<int> removeVal, std::vector<int16_t> removeChildIndex) {
+void IndexPage::removeFrom(int16_t index, std::vector<void*>& removeData, std::vector<int>& removeVal, std::vector<int16_t>& removeChildIndex) {
     removeData.clear();
     removeVal.clear();
     removeChildIndex.clear();
@@ -291,7 +301,7 @@ void IndexPage::removeFrom(int16_t index, std::vector<void*> removeData, std::ve
     }
 }
 
-void IndexPage::insertFrom(std::vector<void*> insertData, std::vector<int> insertVal, std::vector<int16_t> insertChildIndex) {
+void IndexPage::insertFrom(const std::vector<void*> insertData, const std::vector<int> insertVal, const std::vector<int16_t> insertChildIndex) {
     int siz = insertData.size();
     for (int i = 0; i < siz; i++) {
         int16_t* nextIndex = getNextIndex(i);

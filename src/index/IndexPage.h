@@ -44,6 +44,8 @@ public:
 
     ~IndexPage();
 
+    void initialize(uint16_t indexLen_, uint8_t colType);
+
     uint16_t getCapacity();
 
     void changePageType(uint8_t newPageType);
@@ -98,11 +100,11 @@ public:
 
     void remove(void* data, std::vector<int> &res);
 
-    void removeFrom(int16_t index, std::vector<void*> removeData, std::vector<int> removeVal, std::vector<int16_t> removeChildIndex);
+    void removeFrom(int16_t index, std::vector<void*>& removeData, std::vector<int>& removeVal, std::vector<int16_t>& removeChildIndex);
     // attention: void* in removeData will only be temporary valid, the value it point to may be overwrite!
     // this interface can only be used in spliting a page, afterwards writing part of its content to another page
 
-    void insertFrom(std::vector<void*> insertData, std::vector<int> val, std::vector<int16_t> insertChildIndex);
+    void insertFrom(const std::vector<void*> insertData, const std::vector<int> val, const std::vector<int16_t> insertChildIndex);
     // attention: insertData and insertVal should come directly from removeData and removeVal in removeFrom, respectively
     // this interface can only be used in spliting a page, afterwards writing part of its content to another page
 };
