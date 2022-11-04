@@ -37,6 +37,8 @@ private:
     uint16_t capacity;
     uint16_t pageId;
 
+    void removeFrom(int16_t index);
+
 public:
     uint8_t* data;
 
@@ -64,17 +66,21 @@ public:
 
     int getVal(int id);
 
-    int* getNextDataIndex(int id);
-
-    int* getLastDataIndex(int id);
-
     int16_t* getNextIndex(int id);
 
     int16_t* getLastIndex(int id); // return the last index of this slot
 
-    int16_t* getLastIndex(); // return the last index on this pae
+    int16_t* getLastIndex(); // return the last index on this page
+
+    int16_t* getFirstIndex();
 
     int16_t* getChildIndex(int id);
+
+    int16_t* getNextPage();
+
+    int16_t* getLastPage();
+
+    int16_t* getFirstEmptyIndex();
 
     int* getFatherIndex();
 
