@@ -5,7 +5,7 @@
 
 class Compare {
 public:
-    virtual ~Compare() = 0;
+    virtual ~Compare() {}
     virtual bool gt(void*, void*) = 0;      // >
     virtual bool gte(void*, void*) = 0;     // >=
     virtual bool lt(void*, void*) = 0;      // <
@@ -87,7 +87,7 @@ public:
 
 class CharCompare: public Compare{
 public:
-    ~CharCompare();
+    ~CharCompare() {}
 
     bool gt(void* aa, void* bb) override {
         char* a = (char*)aa;

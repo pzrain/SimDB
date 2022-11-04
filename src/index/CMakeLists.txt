@@ -2,6 +2,8 @@ set(SOURCE
     ${SOURCE}
     ${CMAKE_CURRENT_SOURCE_DIR}/BPlusTree.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/IndexPage.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/IndexManager.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/testIndex.cpp
     PARENT_SCOPE
 )
 
@@ -10,5 +12,7 @@ set(HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/BPlusTree.h
 	${CMAKE_CURRENT_SOURCE_DIR}/IndexPage.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Compare.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/IndexManager.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/IndexComponent.h
     PARENT_SCOPE
 )

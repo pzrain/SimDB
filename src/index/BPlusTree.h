@@ -11,7 +11,7 @@ private:
     int rootIndex, tableIndex;
     uint16_t indexLen;
     uint8_t colType;
-    BufPageManager* bufPageManger;
+    BufPageManager* bufPageManager;
     IndexHeader* indexHeader;
 
     void writeIndexTable();
