@@ -1,4 +1,5 @@
 #include "BPlusTree.h"
+#include "assert.h"
 
 
 BPlusTree::BPlusTree(int fileId_, BufPageManager* bufpageManager, uint16_t indexLen_, uint8_t colType_) {
@@ -20,6 +21,7 @@ BPlusTree::~BPlusTree() {
 }
 
 void BPlusTree::writeIndexTable() {
+    bufPageManger->markDirty(tableIndex);
     bufPageManger->writeBack(tableIndex);
 }
 
@@ -88,15 +90,59 @@ int BPlusTree::searchUpperBound(void* data) {
 }
 
 void BPlusTree::dealOverFlow(IndexPage* indexPage, std::vector<IndexPage*> &rec, std::vector<int> &pageIndex) {
+    assert(indexPage->getTotalIndex() == indexPage->getCapacity() + 1);
     int lNum = (indexPage->getCapacity() + 1) / 2;
     int rNum = (indexPage->getCapacity() + 1) - lNum;
     int head = indexPage->cut(lNum);
     int newPageId = getNextFreePage(), index;
     IndexPage* newIndexPage = new IndexPage((uint8_t*)(bufPageManger->getPage(fileId, newPageId, index)), indexLen, colType, newPageId);
+    bufPageManger->markDirty(index);
     rec.push_back(newIndexPage);
     pageIndex.push_back(index);
 
-    //TODO
+    std::vector<void*> removeData;
+    std::vector<int> removeVal;
+    std::vector<int16_t> removeChildIndex;
+    indexPage->removeFrom(head, removeData, removeVal, removeChildIndex);
+    newIndexPage->insertFrom(removeData, removeVal, removeChildIndex);
+    *newIndexPage->getNextPage() = *indexPage->getNextPage();
+    *indexPage->getNextPage() = newPageId;
+    *newIndexPage->getLastPage() = indexPage->getPageId();
+    newIndexPage->changePageType(indexPage->getPageType());
+
+    int fatherPos = *indexPage->getFatherIndex(), fatherPageId, fatherSlot;
+    IndexPage* fatherPage = nullptr;
+    if (fatherPos >= 0) {
+        transformR(fatherPos, fatherPageId, fatherSlot);
+        fatherPage = new IndexPage((uint8_t*)(bufPageManger->getPage(fileId, fatherPageId, index)), indexLen, colType, fatherPageId);
+        bufPageManger->markDirty(index);
+        if (fatherPageId != indexHeader->rootPageId) {
+            rec.push_back(fatherPage);
+            pageIndex.push_back(index);
+        }
+
+        memcpy(fatherPage->getData(fatherSlot), indexPage->getData(*indexPage->getLastIndex()), indexLen);
+        int insertIndex = fatherPage->insert(newIndexPage->getData(*newIndexPage->getLastIndex()), 0, newPageId);
+        int newIndexPageFatherIndex;
+        transform(newIndexPageFatherIndex, fatherPageId, insertIndex);
+        *newIndexPage->getFatherIndex() = newIndexPageFatherIndex; 
+    } else { // new root
+        fatherPageId = getNextFreePage();
+        fatherPage = new IndexPage((uint8_t*)(bufPageManger->getPage(fileId, fatherPageId, index)), indexLen, colType, fatherPageId);
+        bufPageManger->markDirty(index);
+        int lInsertIndex = fatherPage->insert(indexPage->getData(*indexPage->getLastIndex()), 0, indexPage->getPageId());
+        int rInsertIndex = fatherPage->insert(newIndexPage->getData(*newIndexPage->getLastIndex()), 0, newIndexPage->getPageId());
+        int lFatherPos, rFatherPos;
+        transform(lFatherPos, fatherPageId, lInsertIndex);
+        transform(rFatherPos, fatherPageId, rInsertIndex);
+        *indexPage->getFatherIndex() = lFatherPos;
+        *newIndexPage->getFatherIndex() = rFatherPos;
+        root = fatherPage;
+        indexHeader->rootPageId = fatherPageId;
+    }
+    if (fatherPage->overflow()) {
+        dealOverFlow(fatherPage, rec, pageIndex);
+    }
 }
 
 void BPlusTree::update(IndexPage* indexPage, void* updateData, std::vector<IndexPage*> &rec, std::vector<int> &pageIndex) {
@@ -109,8 +155,11 @@ void BPlusTree::update(IndexPage* indexPage, void* updateData, std::vector<Index
     IndexPage* fatherIndexPage = new IndexPage((uint8_t*)(bufPageManger->getPage(fileId, pageId, index)), indexLen, colType, pageId);
     void* data = fatherIndexPage->getData(slotId);
     memcpy(data, updateData, indexLen);
-    rec.push_back(fatherIndexPage);
-    pageIndex.push_back(index);
+    bufPageManger->markDirty(index);
+    if (pageId != indexHeader->rootPageId) {
+        rec.push_back(fatherIndexPage);
+        pageIndex.push_back(index);
+    }
     update(fatherIndexPage, updateData, rec, pageIndex);
 }
 
@@ -126,19 +175,23 @@ void BPlusTree::search(void* data, std::vector<int> &res) {
         if (pageId != curPageId) {
             cur = new IndexPage((uint8_t*)(bufPageManger->getPage(fileId, pageId, index)), indexLen, colType, pageId);
             curPageId = pageId;
-            rec.push_back(cur);
-            pageIndex.push_back(index);
+            if (pageId != indexHeader->rootPageId) {
+                rec.push_back(cur);
+                pageIndex.push_back(index);
+            }
         }
         if (!cur->getCompare()->equ(data, cur->getData(slotId))) {
             break;
         }
-        res.push_back(cur->getVal(slotId));
+        res.push_back(*cur->getVal(slotId));
         int nextSlot = *(cur->getNextIndex(slotId));
         if (nextSlot < 0 && *(cur->getNextPage()) >= 0) {
             curPageId = *(cur->getNextPage());
             cur = new IndexPage((uint8_t*)(bufPageManger->getPage(fileId, curPageId, index)), indexLen, colType, curPageId);
-            rec.push_back(cur);
-            pageIndex.push_back(index);
+            if (curPageId != indexHeader->rootPageId) {
+                rec.push_back(cur);
+                pageIndex.push_back(index);
+            }
             transform(pos, curPageId, *(cur->getFirstIndex()));
         } else if (nextSlot >= 0){
             transform(pos, curPageId, nextSlot);
@@ -166,19 +219,23 @@ void BPlusTree::searchBetween(void* ldata, void* rdata, std::vector<int> &res) {
             if (pageId != curPageId) {
                 cur = new IndexPage((uint8_t*)(bufPageManger->getPage(fileId, pageId, index)), indexLen, colType, pageId);
                 curPageId = pageId;
-                rec.push_back(cur);
-                pageIndex.push_back(index);
+                if (pageId != indexHeader->rootPageId) {
+                    rec.push_back(cur);
+                    pageIndex.push_back(index);
+                }
             }
             if (rdata && cur->getCompare()->gt(cur->getData(slotId), rdata)) {
                 break;
             }
-            res.push_back(cur->getVal(slotId));
+            res.push_back(*cur->getVal(slotId));
             int nextSlot = *(cur->getNextIndex(slotId));
             if (nextSlot < 0 && *(cur->getNextPage()) >= 0) {
                 curPageId = *(cur->getNextPage());
                 cur = new IndexPage((uint8_t*)(bufPageManger->getPage(fileId, curPageId, index)), indexLen, colType, curPageId);
-                rec.push_back(cur);
-                pageIndex.push_back(index);
+                if (curPageId != indexHeader->rootPageId) {
+                    rec.push_back(cur);
+                    pageIndex.push_back(index);
+                }
                 transform(pos, curPageId, *(cur->getFirstIndex()));
             } else if (nextSlot >= 0) {
                 transform(pos, curPageId, nextSlot);
@@ -191,15 +248,19 @@ void BPlusTree::searchBetween(void* ldata, void* rdata, std::vector<int> &res) {
         transform(pos, pageId, slotId);
         cur = new IndexPage((uint8_t*)(bufPageManger->getPage(fileId, pageId, index)), indexLen, colType, pageId);
         curPageId = pageId;
-        rec.push_back(cur);
-        pageIndex.push_back(index);
+        if (pageId != indexHeader->rootPageId) {
+            rec.push_back(cur);
+            pageIndex.push_back(index);
+        }
         int lastSlot = *(cur->getLastIndex(slotId)), lastPage, lastPos;
         IndexPage* lastIndexPage = nullptr;
         if (lastSlot < 0 && *(cur->getLastPage()) >= 0) {
             lastPage = *(cur->getLastPage());
             lastIndexPage = new IndexPage((uint8_t*)(bufPageManger->getPage(fileId, lastPage, index)), indexLen, colType, lastPage);
-            rec.push_back(lastIndexPage);
-            pageIndex.push_back(index);
+            if (lastPage != indexHeader->rootPageId) {
+                rec.push_back(lastIndexPage);
+                pageIndex.push_back(index);
+            }
             transform(pos, lastPage, *lastIndexPage->getLastIndex());
         } else if (lastSlot >= 0) {
             lastPage = pageId;
@@ -212,19 +273,23 @@ void BPlusTree::searchBetween(void* ldata, void* rdata, std::vector<int> &res) {
             if (pageId != curPageId) {
                 cur = new IndexPage((uint8_t*)(bufPageManger->getPage(fileId, pageId, index)), indexLen, colType, pageId);
                 curPageId = pageId;
-                rec.push_back(cur);
-                pageIndex.push_back(index);
+                if (pageId != indexHeader->rootPageId) {
+                    rec.push_back(cur);
+                    pageIndex.push_back(index);
+                }
             }
             if (cur->getCompare()->gt(cur->getData(slotId), rdata)) {
                 break;
             }
-            res.push_back(cur->getVal(slotId));
+            res.push_back(*cur->getVal(slotId));
             int nextSlot = *(cur->getNextIndex(slotId));
             if (nextSlot < 0 && *(cur->getNextPage()) >= 0) {
                 curPageId = *(cur->getNextPage());
                 cur = new IndexPage((uint8_t*)(bufPageManger->getPage(fileId, curPageId, index)), indexLen, colType, curPageId);
-                rec.push_back(cur);
-                pageIndex.push_back(index);
+                if (curPageId != indexHeader->rootPageId) {
+                    rec.push_back(cur);
+                    pageIndex.push_back(index);
+                }
                 transform(pos, curPageId, *(cur->getFirstIndex()));
             } else if (nextSlot >= 0){
                 transform(pos, curPageId, nextSlot);
@@ -238,16 +303,20 @@ void BPlusTree::searchBetween(void* ldata, void* rdata, std::vector<int> &res) {
             if (pageId != curPageId) {
                 cur = new IndexPage((uint8_t*)(bufPageManger->getPage(fileId, pageId, index)), indexLen, colType, pageId);
                 curPageId = pageId;
-                rec.push_back(cur);
-                pageIndex.push_back(index);
+                if (curPageId != indexHeader->rootPageId) {
+                    rec.push_back(cur);
+                    pageIndex.push_back(index);
+                }
             }
-            res.push_back(cur->getVal(slotId));
+            res.push_back(*cur->getVal(slotId));
             int lastSlot = *(cur->getLastIndex(slotId));
             if (lastSlot < 0 && *(cur->getLastPage()) >= 0) {
                 curPageId = *(cur->getLastPage());
                 cur = new IndexPage((uint8_t*)(bufPageManger->getPage(fileId, curPageId, index)), indexLen, colType, curPageId);
-                rec.push_back(cur);
-                pageIndex.push_back(index);
+                if (curPageId != indexHeader->rootPageId) {
+                    rec.push_back(cur);
+                    pageIndex.push_back(index);
+                }
                 transform(pos, curPageId, *(cur->getLastIndex()));
             } else if (lastSlot >= 0) {
                 transform(pos, curPageId, lastSlot);
@@ -271,14 +340,16 @@ void BPlusTree::insert(void* data, const int val) {
     }
     indexPage = new IndexPage((uint8_t*)(bufPageManger->getPage(fileId, pageId, index)), indexLen, colType, pageId);
     slotId = indexPage->insert(data, val);
-    rec.push_back(indexPage);
-    pageIndex.push_back(index);
+    bufPageManger->markDirty(index);
+    if (pageId != indexHeader->rootPageId) {
+        rec.push_back(indexPage);
+        pageIndex.push_back(index);
+    }
+    if (slotId == *(indexPage->getLastIndex())) {
+        update(indexPage, data, rec, pageIndex);
+    }
     if (indexPage->overflow()) {
         dealOverFlow(indexPage, rec, pageIndex);
-    } else {
-        if (slotId == *(indexPage->getLastIndex())) {
-            update(indexPage, data, rec, pageIndex);
-        }
     }
     recycle(rec, pageIndex, true);
 }

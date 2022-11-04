@@ -66,6 +66,10 @@ uint8_t IndexPage::getPageType() {
     return indexPageHeader->pageType;
 }
 
+uint16_t IndexPage::getTotalIndex() {
+    return indexPageHeader->totalIndex;
+}
+
 uint16_t IndexPage::getPageId() {
     return pageId;
 }
@@ -93,9 +97,9 @@ void* IndexPage::getData(int id) {
     return data + 3 * sizeof(int16_t);
 }
 
-int IndexPage::getVal(int id) {
+int* IndexPage::getVal(int id) {
     uint8_t* data = accessData(id);
-    return *((int*)(data + 3 * sizeof(int16_t) + indexPageHeader->indexLen));
+    return ((int*)(data + 3 * sizeof(int16_t) + indexPageHeader->indexLen));
 }
 
 int16_t* IndexPage::getNextIndex(int id) {
@@ -251,7 +255,7 @@ void IndexPage::remove(void* data, std::vector<int> &res) {
                 ((int16_t*)(nextData + sizeof(int16_t)))[0] = last;
             }
             uint8_t* emptyData = accessData(head);
-            // set empty index
+            // set empty index link
             ((int16_t*)emptyData)[0] = indexPageHeader->firstEmptyIndex;
             indexPageHeader->firstEmptyIndex = head;
 
@@ -262,4 +266,46 @@ void IndexPage::remove(void* data, std::vector<int> &res) {
             head = next;
         }
     }
+}
+
+void IndexPage::removeFrom(int16_t index, std::vector<void*> removeData, std::vector<int> removeVal, std::vector<int16_t> removeChildIndex) {
+    removeData.clear();
+    removeVal.clear();
+    removeChildIndex.clear();
+    indexPageHeader->lastIndex = *(getLastIndex(index));
+    int16_t* lastSlotNextIndex = getNextIndex(indexPageHeader->lastIndex);
+    *lastSlotNextIndex = -1;
+    while (index >= 0) {
+        void* data = getData(index);
+        int16_t childIndex = *getChildIndex(index);
+        int val = *getVal(index);
+        int16_t* nextIndex = getNextIndex(index);
+        int temp = *nextIndex;
+        *nextIndex = indexPageHeader->firstEmptyIndex;
+        indexPageHeader->firstEmptyIndex = index;
+        indexPageHeader->totalIndex--;
+        removeData.push_back(data);
+        removeVal.push_back(val);
+        removeChildIndex.push_back(childIndex);
+        index = temp;
+    }
+}
+
+void IndexPage::insertFrom(std::vector<void*> insertData, std::vector<int> insertVal, std::vector<int16_t> insertChildIndex) {
+    int siz = insertData.size();
+    for (int i = 0; i < siz; i++) {
+        int16_t* nextIndex = getNextIndex(i);
+        int16_t* lastIndex = getLastIndex(i);
+        int16_t* childIndex = getChildIndex(i);
+        void* data = getData(i);
+        int* val = getVal(i);
+        *nextIndex = (i + 1 == siz) ? -1 : (i + 1);
+        *lastIndex = i - 1;
+        *childIndex = insertChildIndex[i];
+        memcpy(data, insertData[i], indexPageHeader->indexLen);
+        *val = insertVal[i];
+    }
+    indexPageHeader->firstIndex = 0;
+    indexPageHeader->lastIndex = siz - 1;
+    indexPageHeader->totalIndex = siz;
 }

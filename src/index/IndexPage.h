@@ -37,8 +37,6 @@ private:
     uint16_t capacity;
     uint16_t pageId;
 
-    void removeFrom(int16_t index);
-
 public:
     uint8_t* data;
 
@@ -54,17 +52,19 @@ public:
 
     uint8_t getPageType();
 
+    uint16_t getTotalIndex();
+
     uint16_t getPageId();
 
     bool overflow();
 
     bool underflow();
 
-    uint8_t* accessData(int id);
+    uint8_t* accessData(int id); // get one item accordin to specified slotId
 
-    void* getData(int id);
+    void* getData(int id); // get true data
 
-    int getVal(int id);
+    int* getVal(int id);
 
     int16_t* getNextIndex(int id);
 
@@ -97,6 +97,14 @@ public:
     int searchUpperBound(void* data); // similar to searchLowerBound()
 
     void remove(void* data, std::vector<int> &res);
+
+    void removeFrom(int16_t index, std::vector<void*> removeData, std::vector<int> removeVal, std::vector<int16_t> removeChildIndex);
+    // attention: void* in removeData will only be temporary valid, the value it point to may be overwrite!
+    // this interface can only be used in spliting a page, afterwards writing part of its content to another page
+
+    void insertFrom(std::vector<void*> insertData, std::vector<int> val, std::vector<int16_t> insertChildIndex);
+    // attention: insertData and insertVal should come directly from removeData and removeVal in removeFrom, respectively
+    // this interface can only be used in spliting a page, afterwards writing part of its content to another page
 };
 
 #endif
