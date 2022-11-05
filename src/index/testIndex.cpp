@@ -4,20 +4,21 @@
 #include "BPlusTree.h"
 
 void testBPlusTree(BPlusTree* bPlusTree) {
-    int data[100];
-    int val[100];
-    int num = 22;
+    int data[5000];
+    int val[5000];
+    int num = 4000;
     for (int i = 0; i < num; i++) {
-        data[i] = num - 1 - i;
+        data[i] = i;
         val[i] = i * 10;
     }
-    std::vector<int> res;
     for (int i = 0; i < num; i++) {
         bPlusTree->insert(&data[i], val[i]);
     }
+    printf("total = %d\n", bPlusTree->root->getTotalIndex());
     printf("Insert Done!\n");
-    int lData = 0, rData = 30, searchData = 20;
-    bPlusTree->searchBetween(&lData, &rData, res);
+    std::vector<int> res;
+    int lData = 0, rData = 30, searchData = 2345;
+    bPlusTree->searchBetween(&lData, nullptr, res);
     // bPlusTree->search(&searchData, res);
     for (int i = 0; i < res.size(); i++) {
         printf("result %d = %d\n", i, res[i]);
@@ -30,7 +31,8 @@ int main() {
     MyBitMap::initConst();
     FileManager* fileManager = new FileManager();
     BufPageManager* bufPageManager = new BufPageManager(fileManager);
-    char fileName[] = "testIndex.index";
+    char fileName[] = "database/testIndex.index";
+    bufPageManager->fileManager->removeFile(fileName);
     bufPageManager->fileManager->createFile(fileName);
     int fileId;
     bufPageManager->fileManager->openFile(fileName, fileId);
@@ -40,8 +42,9 @@ int main() {
 
     testBPlusTree(bPlusTree);
 
+    bufPageManager->close();
     bufPageManager->fileManager->closeFile(fileId);
-    bufPageManager->fileManager->removeFile(fileName);
+    // bufPageManager->fileManager->removeFile(fileName);
 
     delete bPlusTree;
     delete bufPageManager;
