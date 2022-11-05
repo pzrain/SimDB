@@ -46,6 +46,8 @@ public:
 
     void initialize(uint16_t indexLen_, uint8_t colType);
 
+    void clear();
+
     uint16_t getCapacity();
 
     void changePageType(uint8_t newPageType);
@@ -91,6 +93,13 @@ public:
     int insert(void* data, const int val, const int16_t childIndex_ = -1); // key and value
                                                                            // return the slot index of the inserted value
 
+    int insert(std::vector<void*> data, std::vector<int> val, std::vector<int16_t> childIndex, bool front);
+    // return 0 if all the data can fit in this page
+    // otherwise -1, and no data will be inserted
+    // attention: data should be aranged in no descending order
+    //            those data will be inserted right in the end of this page(front = false)
+    //                                           or in the front of this page(front = true)
+
     void searchEQ(void* data, std::vector<int> &res);
 
     int searchLowerBound(void* data); // return the uppermost index of slots whose value is no greater than data
@@ -98,7 +107,14 @@ public:
     
     int searchUpperBound(void* data); // similar to searchLowerBound()
 
-    void remove(void* data, std::vector<int> &res);
+    void remove(void* data, std::vector<int> &res, int cnt = -1);
+    // remove data from page
+    // cnt defines the amount of data you want to remove. to remove all, set cnt to -1
+
+    void removeSlot(int slotId);
+    // remove data of the specified slot, return 0 if succeed, -1 if fail
+    // attention: this method will do extra test(like if the slot is empty or not)
+    //            SO CAREFULLY CALL!
 
     void removeFrom(int16_t index, std::vector<void*>& removeData, std::vector<int>& removeVal, std::vector<int16_t>& removeChildIndex);
     // attention: void* in removeData will only be temporary valid, the value it point to may be overwrite!

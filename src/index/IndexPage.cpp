@@ -54,6 +54,10 @@ void IndexPage::initialize(uint16_t indexLen_, uint8_t colType_) {
     indexPageHeader->initialize(indexLen_, colType_);
 }
 
+void IndexPage::clear() {
+    indexPageHeader->isInitialized = 0;
+}
+
 uint16_t IndexPage::getCapacity() {
     return capacity;
 }
@@ -213,6 +217,61 @@ int IndexPage::insert(void* data, const int val, const int16_t childIndex_) {
     return emptyIndex;
 }
 
+int IndexPage::insert(std::vector<void*> data, std::vector<int> val, std::vector<int16_t> childIndex, bool front) {
+    int siz = data.size();
+    if (siz + indexPageHeader->totalIndex > capacity) {
+        printf("[ERROR] number of inserted data surpasses capacity.\n");
+        return -1;
+    }
+    if (siz == 0) {
+        return 0;
+    }
+    std::vector<int16_t> emptyIndex;
+    for (int i = 0; i < siz; i++) {
+        int curIndex = indexPageHeader->firstEmptyIndex;
+        if (curIndex < 0) {
+            curIndex = indexPageHeader->totalIndex;
+            *getNextIndex(curIndex) = -1;
+            *getLastIndex(curIndex) = -1;
+        } else {
+            indexPageHeader->firstEmptyIndex = *getNextIndex(curIndex);
+        }
+        indexPageHeader->totalIndex++;
+        emptyIndex.push_back(curIndex);
+    }
+    for (int i = 0; i < siz; i++) {
+        if (i > 0) {
+            *getLastIndex(emptyIndex[i]) = emptyIndex[i - 1];
+        }
+        if (i < siz - 1) {
+            *getNextIndex(emptyIndex[i]) = emptyIndex[i + 1];
+        }
+        memcpy(getData(emptyIndex[i]), data[i], indexPageHeader->indexLen);
+        *getVal(emptyIndex[i]) = val[i];
+        *getChildIndex(emptyIndex[i]) = childIndex[i];
+    }
+    if (!front) {
+        int head = indexPageHeader->firstIndex;
+        if (head >= 0) {
+            while (*getNextIndex(head) >= 0) {
+                head = *getNextIndex(head);
+            }
+        } else {
+            indexPageHeader->firstIndex = emptyIndex[0];
+        }
+        *getLastIndex(emptyIndex[0]) = head;
+        indexPageHeader->lastIndex = emptyIndex[siz - 1];
+    } else {
+        int head = indexPageHeader->firstIndex;
+        *getNextIndex(emptyIndex[siz - 1]) = head;
+        indexPageHeader->firstIndex = emptyIndex[0];
+        if (head < 0) {
+            indexPageHeader->lastIndex = emptyIndex[siz - 1];
+        }
+    }
+    return 0;
+}
+
 void IndexPage::searchEQ(void* data, std::vector<int> &res) {
     int16_t head = indexPageHeader->firstIndex;
     while (head >= 0) {
@@ -247,10 +306,13 @@ int IndexPage::searchUpperBound(void* data) {
     return head;
 }
 
-void IndexPage::remove(void* data, std::vector<int> &res) {
+void IndexPage::remove(void* data, std::vector<int> &res, int cnt) {
     int16_t head = indexPageHeader->firstIndex, last = -1;
     while (head >= 0) {
         int next = *getNextIndex(head);
+        if (cnt-- == 0) {
+            break;
+        }
         if (compare->equ(data, getData(head))) {
             res.push_back(head);
             if (head == indexPageHeader->lastIndex) { // remove last index
@@ -276,6 +338,24 @@ void IndexPage::remove(void* data, std::vector<int> &res) {
             head = next;
         }
     }
+}
+
+void IndexPage::removeSlot(int slotId) {
+    int16_t* lastIndex = getLastIndex(slotId);
+    int16_t* nextIndex = getNextIndex(slotId);
+    if (*lastIndex >= 0) {
+        *getNextIndex(*lastIndex) = *nextIndex;
+    } else {
+        indexPageHeader->firstIndex = *nextIndex;
+    }
+    if (*nextIndex >= 0) {
+        *getLastIndex(*nextIndex) = *lastIndex;
+    } else {
+        indexPageHeader->lastIndex;
+    }
+    *getNextIndex(slotId) = indexPageHeader->firstEmptyIndex;
+    indexPageHeader->firstEmptyIndex = slotId;
+    indexPageHeader->totalIndex--;
 }
 
 void IndexPage::removeFrom(int16_t index, std::vector<void*>& removeData, std::vector<int>& removeVal, std::vector<int16_t>& removeChildIndex) {

@@ -28,6 +28,8 @@ private:
 
     void dealOverFlow(IndexPage* indexPage, std::vector<IndexPage*> &rec, std::vector<int> &pageIndex);
 
+    void dealUnderFlow(IndexPage* indexPage, std::vector<IndexPage*> &rec, std::vector<int> &pageIndex);
+
     void update(IndexPage* indexPage, void* updateData, std::vector<IndexPage*> &rec, std::vector<int> &pageIndex);
 
 public:
@@ -46,6 +48,8 @@ public:
     // set ldata or rdata to nullptr if want a one-way search
 
     void insert(void* data, const int val);
+
+    void remove(void* data);
 };
 
 #endif

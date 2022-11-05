@@ -14,6 +14,9 @@ BPlusTree::BPlusTree(int fileId_, BufPageManager* bufPageManager_, uint16_t inde
     BufType data = bufPageManager->getPage(fileId, indexHeader->rootPageId, rootIndex);
     root = new IndexPage((uint8_t*)data, indexLen_, colType_, indexHeader->rootPageId);
     bufPageManager->markDirty(rootIndex);
+    if (root->getCapacity() <= 2) {
+        printf("[WARNING] index page capacity less than 2!\n");
+    }
 }
 
 BPlusTree::~BPlusTree() {
@@ -165,6 +168,77 @@ void BPlusTree::dealOverFlow(IndexPage* indexPage, std::vector<IndexPage*> &rec,
     }
 }
 
+void BPlusTree::dealUnderFlow(IndexPage* indexPage, std::vector<IndexPage*> &rec, std::vector<int> &pageIndex) {
+    assert(indexPage->getTotalIndex() == ((indexPage->getCapacity() + 1) / 2) - 1);
+    int lastPageId = *indexPage->getLastPage();
+    int nextPageId = *indexPage->getNextPage();
+    int brotherPageId = -1, index;
+    IndexPage* brotherPage = nullptr;
+    if (lastPageId >= 0) {
+        brotherPage = new IndexPage((uint8_t*)(bufPageManager->getPage(fileId, lastPageId, index)), indexLen, colType, lastPageId);
+        rec.push_back(brotherPage);
+        pageIndex.push_back(index);
+        if (brotherPage->getTotalIndex() > (indexPage->getCapacity() + 1) / 2) {
+            brotherPageId = lastPageId;
+        }
+    } else if (nextPageId >= 0) {
+        brotherPage = new IndexPage((uint8_t*)(bufPageManager->getPage(fileId, nextPageId, index)), indexLen, colType, nextPageId);
+        rec.push_back(brotherPage);
+        pageIndex.push_back(index);
+        if (brotherPage->getTotalIndex() > (indexPage->getCapacity() + 1) / 2) {
+            brotherPageId = nextPageId;
+        }
+    }
+
+    std::vector<void*> removeData;
+    std::vector<int> removeVal;
+    std::vector<int16_t> removeChildIndex;
+    IndexPage* fatherPage = nullptr;
+    int fatherPos = -1, fatherPageId, fatherSlotId;
+    if (brotherPageId >= 0) { // borrow from brotherPage
+        int head = brotherPage->cut(brotherPage->getTotalIndex() - 1);
+        brotherPage->removeFrom(head, removeData, removeVal, removeChildIndex);
+        assert(removeData.size() == 1);
+        indexPage->insert(removeData[0], removeVal[0], removeChildIndex[0]);
+        // due to brotherPage, fatherPage should exist
+        fatherPos = *brotherPage->getFatherIndex();
+        transformR(fatherPos, fatherPageId, fatherSlotId);
+        fatherPage = new IndexPage((uint8_t*)(bufPageManager->getPage(fileId, fatherPageId, index)), indexLen, colType, fatherPageId);
+        rec.push_back(fatherPage);
+        pageIndex.push_back(index);
+        memcpy(fatherPage->getData(fatherSlotId), brotherPage->getData(*brotherPage->getLastIndex()), indexLen);
+        bufPageManager->markDirty(index);
+    } else {
+        if (brotherPage == nullptr) { // no brother, which means father is root, then root will be changed
+            rec.push_back(root);
+            pageIndex.push_back(rootIndex);
+            indexHeader->rootPageId = indexPage->getPageId();
+            writeIndexTable();
+            root = new IndexPage((uint8_t*)(bufPageManager->getPage(fileId, indexPage->getPageId(), rootIndex)), indexLen, colType, indexPage->getPageId());
+        } else {
+            bufPageManager->markDirty(index);
+            indexPage->removeFrom(*indexPage->getFirstIndex(), removeData, removeVal, removeChildIndex);
+            indexPage->clear();
+            brotherPage->insert(removeData, removeVal, removeChildIndex, lastPageId < 0);
+            fatherPos = *indexPage->getFatherIndex();
+            transformR(fatherPos, fatherPageId, fatherSlotId);
+            fatherPage = new IndexPage((uint8_t*)(bufPageManager->getPage(fileId, fatherPageId, index)), indexLen, colType, fatherPageId);
+            rec.push_back(fatherPage);
+            pageIndex.push_back(index);
+            bufPageManager->markDirty(index);
+            fatherPage->removeSlot(fatherSlotId);
+            if (lastPageId >= 0) { // update value in fatherPage
+                fatherPos = *brotherPage->getFatherIndex();
+                transformR(fatherPos, fatherPageId, fatherSlotId);
+                memcpy(fatherPage->getData(fatherSlotId), removeData[removeData.size() - 1], indexLen);
+            }
+            if (fatherPage->getPageId() != indexHeader->rootPageId && fatherPage->underflow()) {
+                dealOverFlow(fatherPage, rec, pageIndex);
+            }
+        }
+    }
+}
+
 void BPlusTree::update(IndexPage* indexPage, void* updateData, std::vector<IndexPage*> &rec, std::vector<int> &pageIndex) {
     int fatherIndex = *(indexPage->getFatherIndex());
     if (fatherIndex < 0) {
@@ -173,11 +247,14 @@ void BPlusTree::update(IndexPage* indexPage, void* updateData, std::vector<Index
     int pageId, slotId, index;
     transformR(fatherIndex, pageId, slotId);
     IndexPage* fatherIndexPage = new IndexPage((uint8_t*)(bufPageManager->getPage(fileId, pageId, index)), indexLen, colType, pageId);
+    rec.push_back(fatherIndexPage);
+    pageIndex.push_back(index);
+    if (slotId != *fatherIndexPage->getLastIndex()) {
+        return;
+    }
     void* data = fatherIndexPage->getData(slotId);
     memcpy(data, updateData, indexLen);
     bufPageManager->markDirty(index);
-    rec.push_back(fatherIndexPage);
-    pageIndex.push_back(index);
     update(fatherIndexPage, updateData, rec, pageIndex);
 }
 
@@ -363,6 +440,53 @@ void BPlusTree::insert(void* data, const int val) {
     }
     if (indexPage->overflow()) {
         dealOverFlow(indexPage, rec, pageIndex);
+    }
+    recycle(rec, pageIndex, true);
+}
+
+void BPlusTree::remove(void* data) {
+    int curPageId = -1, index;
+    IndexPage* cur = nullptr;
+    std::vector<IndexPage*> rec;
+    std::vector<int> pageIndex;
+    while (true) {
+        int pos = searchUpperBound(data), pageId, slotId;
+        while (pos >= 0) {
+            transformR(pos, pageId, slotId);
+            if (pageId != curPageId) {
+                cur = new IndexPage((uint8_t*)(bufPageManager->getPage(fileId, pageId, index)), indexLen, colType, pageId);
+                curPageId = pageId;
+                rec.push_back(cur);
+                pageIndex.push_back(index);
+            }
+            int nextSlot = *cur->getNextIndex(slotId), nextPageId, nextPos;
+            int lastSlot = *cur->getLastIndex(slotId);
+            cur->removeSlot(slotId);
+            if ((cur->getPageId() != indexHeader->rootPageId) && cur->underflow()) {
+                dealUnderFlow(cur, rec, pageIndex);
+                break;
+            } else {
+                if (nextSlot < 0 && *(cur->getNextPage()) >= 0) {
+                    // the last index of this page is deleted
+                    // under this condition, the father index should be updated
+                    update(cur, cur->getData(lastSlot), rec, pageIndex);
+                    nextPageId = *(cur->getNextPage());
+                    IndexPage* nextIndexPage = new IndexPage((uint8_t*)(bufPageManager->getPage(fileId, nextPageId, index)), indexLen, colType, nextPageId);
+                    rec.push_back(nextIndexPage);
+                    pageIndex.push_back(index);
+                    transform(nextPos, nextPageId, *nextIndexPage->getFirstIndex());
+                } else if (nextSlot >= 0) {
+                    nextPageId = pageId;
+                    transform(nextPos, nextPageId, nextSlot);
+                } else {
+                    nextPos = -1;
+                }
+                pos = nextPageId;
+            }
+        }
+        if (pos < 0) {
+            break;
+        }
     }
     recycle(rec, pageIndex, true);
 }

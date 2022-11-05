@@ -3,7 +3,7 @@
 #include "../filesystem/fileio/FileManager.h"
 #include "BPlusTree.h"
 
-void testBPlusTree(BPlusTree* bPlusTree) {
+void testBPlusTreeInsert(BPlusTree* bPlusTree) {
     int data[5000];
     int val[5000];
     int num = 4000;
@@ -14,7 +14,6 @@ void testBPlusTree(BPlusTree* bPlusTree) {
     for (int i = 0; i < num; i++) {
         bPlusTree->insert(&data[i], val[i]);
     }
-    printf("total = %d\n", bPlusTree->root->getTotalIndex());
     printf("Insert Done!\n");
     std::vector<int> res;
     int lData = 0, rData = 30, searchData = 2345;
@@ -23,6 +22,10 @@ void testBPlusTree(BPlusTree* bPlusTree) {
     for (int i = 0; i < res.size(); i++) {
         printf("result %d = %d\n", i, res[i]);
     }
+}
+
+void testBPlusTreeRemove(BPlusTree* bPlusTree) {
+
 }
 
 int main() {
@@ -40,7 +43,8 @@ int main() {
     BPlusTree* bPlusTree = new BPlusTree(fileId, bufPageManager, 1000, COL_INT);
     printf("Capacity = %d\n", bPlusTree->root->getCapacity());
 
-    testBPlusTree(bPlusTree);
+    // testBPlusTreeInsert(bPlusTree);
+    testBPlusTreeRemove(bPlusTree);
 
     bufPageManager->close();
     bufPageManager->fileManager->closeFile(fileId);
