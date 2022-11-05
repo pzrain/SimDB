@@ -141,6 +141,10 @@ int16_t* IndexPage::getLastPage() {
     return &(indexPageHeader->lastPage);
 }
 
+int16_t* IndexPage::getNextFreePage() {
+    return &(indexPageHeader->nextFreePage);
+}
+
 int16_t* IndexPage::getFirstEmptyIndex() {
     return &(indexPageHeader->firstEmptyIndex);
 }
@@ -239,6 +243,8 @@ int IndexPage::insert(std::vector<void*> data, std::vector<int> val, std::vector
         indexPageHeader->totalIndex++;
         emptyIndex.push_back(curIndex);
     }
+    *getLastIndex(emptyIndex[0]) = -1;
+    *getNextIndex(emptyIndex[siz - 1]) = -1;
     for (int i = 0; i < siz; i++) {
         if (i > 0) {
             *getLastIndex(emptyIndex[i]) = emptyIndex[i - 1];
@@ -260,10 +266,16 @@ int IndexPage::insert(std::vector<void*> data, std::vector<int> val, std::vector
             indexPageHeader->firstIndex = emptyIndex[0];
         }
         *getLastIndex(emptyIndex[0]) = head;
+        if (head >= 0) {
+            *getNextIndex(head) = emptyIndex[0];
+        }
         indexPageHeader->lastIndex = emptyIndex[siz - 1];
     } else {
         int head = indexPageHeader->firstIndex;
         *getNextIndex(emptyIndex[siz - 1]) = head;
+        if (head >= 0) {
+            *getLastIndex(head) = emptyIndex[siz - 1];
+        }
         indexPageHeader->firstIndex = emptyIndex[0];
         if (head < 0) {
             indexPageHeader->lastIndex = emptyIndex[siz - 1];
@@ -363,8 +375,12 @@ void IndexPage::removeFrom(int16_t index, std::vector<void*>& removeData, std::v
     removeVal.clear();
     removeChildIndex.clear();
     indexPageHeader->lastIndex = *(getLastIndex(index));
-    int16_t* lastSlotNextIndex = getNextIndex(indexPageHeader->lastIndex);
-    *lastSlotNextIndex = -1;
+    if (indexPageHeader->lastIndex >= 0) {
+        int16_t* lastSlotNextIndex = getNextIndex(indexPageHeader->lastIndex);
+        *lastSlotNextIndex = -1;
+    } else {
+        indexPageHeader->firstIndex = -1;
+    }
     while (index >= 0) {
         void* data = getData(index);
         int16_t childIndex = *getChildIndex(index);

@@ -84,6 +84,8 @@ public:
 
     int16_t* getLastPage();
 
+    int16_t* getNextFreePage();
+
     int16_t* getFirstEmptyIndex();
 
     int* getFatherIndex();

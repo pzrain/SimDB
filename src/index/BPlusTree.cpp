@@ -196,8 +196,16 @@ void BPlusTree::dealUnderFlow(IndexPage* indexPage, std::vector<IndexPage*> &rec
     IndexPage* fatherPage = nullptr;
     int fatherPos = -1, fatherPageId, fatherSlotId;
     if (brotherPageId >= 0) { // borrow from brotherPage
-        int head = brotherPage->cut(brotherPage->getTotalIndex() - 1);
-        brotherPage->removeFrom(head, removeData, removeVal, removeChildIndex);
+        if (lastPageId >= 0) {
+            int head = brotherPage->cut(brotherPage->getTotalIndex() - 1);
+            brotherPage->removeFrom(head, removeData, removeVal, removeChildIndex);
+        } else {
+            int head = *brotherPage->getFirstIndex();
+            removeData.push_back(brotherPage->getData(head));
+            removeVal.push_back(*brotherPage->getVal(head));
+            removeChildIndex.push_back(*brotherPage->getChildIndex(head));
+            brotherPage->removeSlot(head);
+        }
         assert(removeData.size() == 1);
         indexPage->insert(removeData[0], removeVal[0], removeChildIndex[0]);
         // due to brotherPage, fatherPage should exist
@@ -218,6 +226,9 @@ void BPlusTree::dealUnderFlow(IndexPage* indexPage, std::vector<IndexPage*> &rec
         } else {
             bufPageManager->markDirty(index);
             indexPage->removeFrom(*indexPage->getFirstIndex(), removeData, removeVal, removeChildIndex);
+            *indexPage->getNextFreePage() = indexHeader->firstEmptyPage;
+            indexHeader->firstEmptyPage = indexPage->getPageId();
+            indexHeader->totalPageNumber--;
             indexPage->clear();
             brotherPage->insert(removeData, removeVal, removeChildIndex, lastPageId < 0);
             fatherPos = *indexPage->getFatherIndex();
@@ -231,6 +242,24 @@ void BPlusTree::dealUnderFlow(IndexPage* indexPage, std::vector<IndexPage*> &rec
                 fatherPos = *brotherPage->getFatherIndex();
                 transformR(fatherPos, fatherPageId, fatherSlotId);
                 memcpy(fatherPage->getData(fatherSlotId), removeData[removeData.size() - 1], indexLen);
+            }
+            IndexPage* temp = nullptr;
+            if (lastPageId >= 0) {
+                if (*indexPage->getNextPage() >= 0) {
+                    temp = new IndexPage((uint8_t*)(bufPageManager->getPage(fileId, *indexPage->getNextPage(), index)), indexLen, colType, *indexPage->getNextPage());
+                    *temp->getLastPage() = brotherPage->getPageId();
+                    rec.push_back(temp);
+                    pageIndex.push_back(index);
+                }
+                *brotherPage->getNextPage() = *indexPage->getNextPage();
+            } else {
+                if (*indexPage->getLastPage() >= 0) {
+                    temp = new IndexPage((uint8_t*)(bufPageManager->getPage(fileId, *indexPage->getLastPage(), index)), indexLen, colType, *indexPage->getLastPage());
+                    *temp->getNextPage() = brotherPage->getPageId();
+                    rec.push_back(temp);
+                    pageIndex.push_back(index);
+                }
+                *brotherPage->getLastPage() = *indexPage->getLastPage();
             }
             if (fatherPage->getPageId() != indexHeader->rootPageId && fatherPage->underflow()) {
                 dealOverFlow(fatherPage, rec, pageIndex);
@@ -459,6 +488,10 @@ void BPlusTree::remove(void* data) {
                 rec.push_back(cur);
                 pageIndex.push_back(index);
             }
+            if (!cur->getCompare()->equ(data, cur->getData(slotId))) {
+                pos = -1;
+                break;
+            }
             int nextSlot = *cur->getNextIndex(slotId), nextPageId, nextPos;
             int lastSlot = *cur->getLastIndex(slotId);
             cur->removeSlot(slotId);
@@ -481,7 +514,7 @@ void BPlusTree::remove(void* data) {
                 } else {
                     nextPos = -1;
                 }
-                pos = nextPageId;
+                pos = nextPos;
             }
         }
         if (pos < 0) {

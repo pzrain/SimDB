@@ -25,7 +25,43 @@ void testBPlusTreeInsert(BPlusTree* bPlusTree) {
 }
 
 void testBPlusTreeRemove(BPlusTree* bPlusTree) {
-
+    int data[10], val[10];
+    int num = 7;
+    for (int i = 0; i < num; i++) {
+        data[i] = i;
+        val[i] = i * 10;
+    }
+    for (int i = 0; i < num; i++) {
+        bPlusTree->insert(&data[i], val[i]);
+    }
+    // printf("Insert Done!\n");
+    int removeData = 1;
+    bPlusTree->remove(&removeData);
+    removeData = 4;
+    bPlusTree->remove(&removeData);
+    removeData = 2;
+    bPlusTree->remove(&removeData);
+    removeData = 3;
+    bPlusTree->remove(&removeData);
+    removeData = 0;
+    bPlusTree->remove(&removeData);
+    // removeData = 5;
+    // bPlusTree->remove(&removeData);
+    // removeData = 6;
+    // bPlusTree->remove(&removeData);
+    // bPlusTree->insert(&data[3], val[3]);
+    // bPlusTree->insert(&data[4], val[4]);
+    // bPlusTree->insert(&data[0], val[0]);
+    // bPlusTree->insert(&data[2], val[2]);
+    // bPlusTree->insert(&data[1], val[1]);
+    // printf("Remove Done!\n");
+    std::vector<int> res;
+    int lData = 0, rData = 30, searchData = 2345;
+    bPlusTree->searchBetween(&lData, nullptr, res);
+    // bPlusTree->search(&searchData, res);
+    for (int i = 0; i < res.size(); i++) {
+        printf("result %d = %d\n", i, res[i]);
+    }
 }
 
 int main() {
