@@ -15,9 +15,9 @@ using namespace std;
 class DatabaseManager {
 private:
     string BASE_PATH;
-    TableManager tableManager;
+    TableManager* tableManager;
 
-    bool checkName(string name);
+    inline bool checkName(string name);
 public:
     DatabaseManager();
     ~DatabaseManager();
