@@ -3,16 +3,17 @@
 
 BPlusTree::BPlusTree(int fileId_, BufPageManager* bufPageManager_, uint16_t indexLen_, uint8_t colType_) {
     fileId = fileId_;
-    indexLen = indexLen_;
-    colType = colType_;
     bufPageManager = bufPageManager_;
     indexHeader = new IndexHeader((uint8_t*)bufPageManager->getPage(fileId, 0, tableIndex));
     if (indexHeader->valid == 0) {
-        indexHeader->init();
+        assert(indexLen_ >= 0 && colType_ >= 0);
+        indexHeader->init(indexLen_, colType_);
         writeIndexTable();
     }
+    indexLen = indexHeader->indexLen;
+    colType = indexHeader->colType;
     BufType data = bufPageManager->getPage(fileId, indexHeader->rootPageId, rootIndex);
-    root = new IndexPage((uint8_t*)data, indexLen_, colType_, indexHeader->rootPageId);
+    root = new IndexPage((uint8_t*)data, indexLen, colType, indexHeader->rootPageId);
     bufPageManager->markDirty(rootIndex);
     if (root->getCapacity() <= 2) {
         printf("[WARNING] index page capacity less than 3!\n");
@@ -26,7 +27,7 @@ BPlusTree::~BPlusTree() {
 void BPlusTree::writeIndexTable() {
     int index;
     BufType data = bufPageManager->getPage(fileId, 0, index);
-    memcpy(data, indexHeader, sizeof(indexHeader));
+    memcpy(data, indexHeader, sizeof(IndexHeader));
     bufPageManager->markDirty(index);
 }
 
