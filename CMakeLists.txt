@@ -9,6 +9,7 @@ ENDIF()
 
 set(SOURCE
 	${SOURCE}
+	src/main.cpp
 )
 
 set(HEADERS
