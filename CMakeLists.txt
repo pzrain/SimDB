@@ -19,6 +19,7 @@ set(HEADERS
 
 add_subdirectory(src/record)
 add_subdirectory(src/filesystem)
+add_subdirectory(src/index)
 
 SET(GCC_COVERAGE_COMPILE_FLAGS "-g")
 
