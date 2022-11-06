@@ -15,7 +15,7 @@ BPlusTree::BPlusTree(int fileId_, BufPageManager* bufPageManager_, uint16_t inde
     root = new IndexPage((uint8_t*)data, indexLen_, colType_, indexHeader->rootPageId);
     bufPageManager->markDirty(rootIndex);
     if (root->getCapacity() <= 2) {
-        printf("[WARNING] index page capacity less than 2!\n");
+        printf("[WARNING] index page capacity less than 3!\n");
     }
 }
 
@@ -218,6 +218,7 @@ void BPlusTree::dealUnderFlow(IndexPage* indexPage, std::vector<IndexPage*> &rec
         bufPageManager->markDirty(index);
     } else {
         if (brotherPage == nullptr) { // no brother, which means father is root, then root will be changed
+            *indexPage->getFatherIndex() = -1;
             rec.push_back(root);
             pageIndex.push_back(rootIndex);
             indexHeader->rootPageId = indexPage->getPageId();

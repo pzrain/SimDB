@@ -45,6 +45,9 @@ void testBPlusTreeRemove(BPlusTree* bPlusTree) {
     bPlusTree->remove(&removeData);
     removeData = 0;
     bPlusTree->remove(&removeData);
+    for (int i = 0; i < num; i++) {
+        bPlusTree->insert(&data[i], val[i]);
+    }
     // removeData = 5;
     // bPlusTree->remove(&removeData);
     // removeData = 6;
@@ -57,7 +60,7 @@ void testBPlusTreeRemove(BPlusTree* bPlusTree) {
     // printf("Remove Done!\n");
     std::vector<int> res;
     int lData = 0, rData = 30, searchData = 2345;
-    bPlusTree->searchBetween(&lData, nullptr, res);
+    bPlusTree->searchBetween(&lData, &rData, res);
     // bPlusTree->search(&searchData, res);
     for (int i = 0; i < res.size(); i++) {
         printf("result %d = %d\n", i, res[i]);
@@ -74,7 +77,9 @@ int main() {
     bufPageManager->fileManager->removeFile(fileName);
     bufPageManager->fileManager->createFile(fileName);
     int fileId;
-    bufPageManager->fileManager->openFile(fileName, fileId);
+    if (!bufPageManager->fileManager->openFile(fileName, fileId)) {
+        return 1;
+    }
 
     BPlusTree* bPlusTree = new BPlusTree(fileId, bufPageManager, 1000, COL_INT);
     printf("Capacity = %d\n", bPlusTree->root->getCapacity());
