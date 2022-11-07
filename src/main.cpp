@@ -336,6 +336,10 @@ int main() {
     BufPageManager* bufPageManager = new BufPageManager(fileManager);
     char databaseName[] = "testdata";
     RecordManager* recordManager = new RecordManager(bufPageManager, databaseName);
+    if (!recordManager->isValid()) {
+        printf("[ERROR] cannot establish recordManager.\n");
+        exit(1);
+    }
     FileHandler* fileHandler = new FileHandler();
 
     // char tableName[] = "testserial";

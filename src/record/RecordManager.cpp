@@ -1,15 +1,33 @@
 #include "RecordManager.h"
 #include <cstdio>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 // Section for Record Manager
 
 RecordManager::RecordManager(BufPageManager* bufPageManager_, char* databaseName_) {
+    valid = true;
     bufPageManager = bufPageManager_;
+    struct stat info;
+    char databaseDirectory[DB_MAX_NAME_LEN + 30];
+    sprintf(databaseDirectory, "database/%s", databaseName_);
+    if(stat(databaseDirectory, &info ) != 0) {
+        valid = false;
+        printf("[ERROR] There is no directory %s.\n", databaseDirectory);
+    }
+    else if(!(info.st_mode & S_IFDIR)) {
+        valid = false;
+        printf("[ERROR] %s is not a directory.\n", databaseDirectory);
+    }
     strcpy(databaseName, databaseName_);
     currentIndex = -1;
     for (int i = 0; i < DB_MAX_TABLE_NUM; i++) {
         fileHandlers[i] = nullptr;
     }
+}
+
+bool RecordManager::isValid() {
+    return valid;
 }
 
 RecordManager::~RecordManager() {}
@@ -48,7 +66,7 @@ inline int initFile(BufPageManager* bufPageManager, const char* filename) {
 
 int RecordManager::createFile(const char* tableName) {
     char filename[TAB_MAX_NAME_LEN];
-    sprintf(filename, "database/%s_%s.db", databaseName, tableName);
+    sprintf(filename, "database/%s/%s.db", databaseName, tableName);
     if (bufPageManager->fileManager->createFile(filename)) {
         return initFile(bufPageManager, filename);
     }
@@ -57,7 +75,7 @@ int RecordManager::createFile(const char* tableName) {
 
 int RecordManager::removeFile(const char* tableName) {
     char filename[TAB_MAX_NAME_LEN];
-    sprintf(filename, "database/%s_%s.db", databaseName, tableName);
+    sprintf(filename, "database/%s/%s.db", databaseName, tableName);
     return bufPageManager->fileManager->removeFile(filename);
 }
 
@@ -72,7 +90,7 @@ int RecordManager::openFile(const char* tableName, FileHandler* fileHandler) {
         return -1;
     }
     char filename[TAB_MAX_NAME_LEN];
-    sprintf(filename, "database/%s_%s.db", databaseName, tableName);
+    sprintf(filename, "database/%s/%s.db", databaseName, tableName);
     int fileId;
     if (bufPageManager->fileManager->openFile(filename, fileId)) {
         fileHandler->init(bufPageManager, fileId, tableName);
