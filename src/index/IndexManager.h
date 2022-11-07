@@ -5,6 +5,7 @@
 #include <vector>
 class IndexManager{
 private:
+    bool valid;
     BufPageManager* bufPageManager;
     char databaseName[DB_MAX_NAME_LEN];
     char tableNames[DB_MAX_TABLE_NUM][TAB_MAX_NAME_LEN];
@@ -51,6 +52,8 @@ public:
 
     int remove(const char* tableName, const char* indexName, void* data);
     // remove those index whose key is equal to data
+
+    bool isValid();
 };
 
 #endif

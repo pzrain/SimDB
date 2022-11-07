@@ -3,16 +3,18 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-struct stat info;
-
 IndexManager::IndexManager(BufPageManager* bufPageManager_, char* databaseName_) {
+    valid = true;
     bufPageManager = bufPageManager_;
+    struct stat info;
     char databaseDirectory[DB_MAX_NAME_LEN + 30];
     sprintf(databaseDirectory, "database/%s", databaseName_);
     if(stat(databaseDirectory, &info ) != 0) {
+        valid = false;
         printf("[ERROR] There is no directory %s.\n", databaseDirectory);
     }
     else if(!(info.st_mode & S_IFDIR)) {
+        valid = false;
         printf("[ERROR] %s is not a directory.\n", databaseDirectory);
     }
     strcpy(databaseName, databaseName_);
@@ -21,6 +23,10 @@ IndexManager::IndexManager(BufPageManager* bufPageManager_, char* databaseName_)
             bPlusTree[i][j] = nullptr;
         }
     }
+}
+
+bool IndexManager::isValid() {
+    return valid;
 }
 
 IndexManager::~IndexManager() {
