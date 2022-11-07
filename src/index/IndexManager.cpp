@@ -1,8 +1,20 @@
 #include "IndexManager.h"
 #include "unistd.h"
+#include <sys/types.h>
+#include <sys/stat.h>
+
+struct stat info;
 
 IndexManager::IndexManager(BufPageManager* bufPageManager_, char* databaseName_) {
     bufPageManager = bufPageManager_;
+    char databaseDirectory[DB_MAX_NAME_LEN + 30];
+    sprintf(databaseDirectory, "database/%s", databaseName_);
+    if(stat(databaseDirectory, &info ) != 0) {
+        printf("[ERROR] There is no directory %s.\n", databaseDirectory);
+    }
+    else if(!(info.st_mode & S_IFDIR)) {
+        printf("[ERROR] %s is not a directory.\n", databaseDirectory);
+    }
     strcpy(databaseName, databaseName_);
     for (int i = 0; i < DB_MAX_TABLE_NUM; i++) {
         for (int j = 0; j < TAB_MAX_COL_NUM; j++) {
@@ -55,7 +67,7 @@ BPlusTree* IndexManager::findIndex(const char* tableName, const char* indexName)
     strcpy(tableNames[emptyI], tableName);
     strcpy(indexNames[emptyI][emptyJ], indexName);
     char fileName[DB_MAX_NAME_LEN + TAB_MAX_NAME_LEN + TAB_MAX_NAME_LEN + 30];
-    sprintf(fileName, "database/%s_%s_%s.index", databaseName, tableName, indexName);
+    sprintf(fileName, "database/%s/%s_%s.index", databaseName, tableName, indexName);
     if (bufPageManager->fileManager->openFile(fileName, fileIds[emptyI][emptyJ])) {
         bPlusTree[emptyI][emptyJ] = new BPlusTree(fileIds[emptyI][emptyJ], bufPageManager, -1, -1);
         return bPlusTree[emptyI][emptyJ];
@@ -65,7 +77,7 @@ BPlusTree* IndexManager::findIndex(const char* tableName, const char* indexName)
 
 bool IndexManager::hasIndex(const char* tableName, const char* indexName) {
     char fileName[DB_MAX_NAME_LEN + TAB_MAX_NAME_LEN + TAB_MAX_NAME_LEN + 30];
-    sprintf(fileName, "database/%s_%s_%s.index", databaseName, tableName, indexName);
+    sprintf(fileName, "database/%s/%s_%s.index", databaseName, tableName, indexName);
     return (access(fileName, 0) != -1);
 }
 
@@ -75,7 +87,7 @@ int IndexManager::createIndex(const char* tableName, const char* indexName, uint
         return 0;
     }
     char fileName[DB_MAX_NAME_LEN + TAB_MAX_NAME_LEN + TAB_MAX_NAME_LEN + 30];
-    sprintf(fileName, "database/%s_%s_%s.index", databaseName, tableName, indexName);
+    sprintf(fileName, "database/%s/%s_%s.index", databaseName, tableName, indexName);
     if (bufPageManager->fileManager->createFile(fileName)) {
         int fileId, emptyI, emptyJ;
         if (bufPageManager->fileManager->openFile(fileName, fileId)) {
@@ -99,7 +111,7 @@ int IndexManager::removeIndex(const char* tableName, const char* indexName) {
         return -1;
     }
     char fileName[DB_MAX_NAME_LEN + TAB_MAX_NAME_LEN + TAB_MAX_NAME_LEN + 30];
-    sprintf(fileName, "database/%s_%s_%s.index", databaseName, tableName, indexName);
+    sprintf(fileName, "database/%s/%s_%s.index", databaseName, tableName, indexName);
     if (bufPageManager->fileManager->removeFile(fileName)) {
         for (int i = 0; i < DB_MAX_TABLE_NUM; i++) {
             if (strcmp(tableNames[i], tableName) != 0) {
