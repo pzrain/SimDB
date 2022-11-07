@@ -131,6 +131,10 @@ int main() {
     char tableName[] = "testIndexTable";
     char indexName[] = "intIndex";
     IndexManager* indexManager = new IndexManager(bufPageManager, databaseName);
+    if (!indexManager->isValid()) {
+        printf("[ERROR] cannot establish indexManager.\n");
+        exit(1);
+    }
     printf("has index = %d\n", indexManager->hasIndex(tableName, indexName));
     indexManager->createIndex(tableName, indexName, 1000, COL_INT);
     printf("has index = %d\n", indexManager->hasIndex(tableName, indexName));
