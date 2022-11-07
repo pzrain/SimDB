@@ -16,6 +16,10 @@
 
 具体的，需要先`createIndex`，然后调用`insert`将现有的索引全部插入。调用`search`或`searchBetween`进行查询。查询结束后可以`dropIndex`来删除之前建立的索引。
 
+需要注意，建立好`IndexManager`后，可以调用`isValid()`判断其是否有效。（例如，如果对应数据库还没有建立，就试图建立`IndexManager`，`isValid()`就会返回`false`）
+
+所有`index`文件放在`database`目录下，命名为`{databaseName}/{tableName}_{indexName}.index`。
+
 ```C++
 
 class IndexManager{
@@ -66,9 +70,9 @@ public:
 
     int remove(const char* tableName, const char* indexName, void* data);
     // remove those index whose key is equal to data
+    
+    bool isValid();
 };
-
-#endif
 ```
 
 ### BPlusTree
