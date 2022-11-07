@@ -325,6 +325,8 @@ public:
 
 用于管理所有打开的文件，或是对文件进行创建、删除等操作。可以理解为统一管理对于一个数据库下的多张表，而每一张表的具体处理由`FileHandler`来实行。
 
+建立好`RecordManager`后，可以调用`isValid()`来判断其是否有效。（例如，如果相应的数据库还没有建立，就试图对其建立`RecordManager`，那么`isValid()`就会返回`false`）
+
 ```C++
 class RecordManager{
 private:
@@ -342,7 +344,9 @@ public:
     int openFile(const char* tableName, FileHandler* fileHandler);// one file corresponds with one fileHandler
 
     int closeFile(FileHandler* fileHandler);
+   
+    bool isValid();
 };
 ```
 
-数据库的所有表文件存放在`database`文件夹下，命名为`{databaseName}_{tableName}.db`，以保证不会产生冲突。
+数据库的所有表文件存放在`database`文件夹下，命名为`{databaseName}/{tableName}.db`，以保证不会产生冲突。
