@@ -1,5 +1,5 @@
 #include <string>
-#include "antlr/SQLLexer.h"
+#include "antlr4/SQLLexer.h"
 #include "MySQLVisitor.h"
 #include <iostream>
 
@@ -16,6 +16,6 @@ std::string parse(std::string SQL) {
 }
 
 int main() {
-    std::cout << "Hello World!" << std::endl;
+    std::cout << "Hello World!!" << std::endl;
     return 0;
 }

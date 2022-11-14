@@ -2,7 +2,7 @@
 #define __ASTBASE_H__
 #include <iostream>
 #include <cstring>
-#include "antlr/SQLBaseVisitor.h"
+#include "antlr4/SQLBaseVisitor.h"
 
 class ASTBase{
 private:

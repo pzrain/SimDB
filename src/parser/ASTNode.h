@@ -3,7 +3,7 @@
 #include <vector>
 #include <cstring>
 #include "ASTBase.h"
-#include "antlr/SQLBaseVisitor.h"
+#include "antlr4/SQLBaseVisitor.h"
 
 class Identifier: public ASTBase {
 public:
