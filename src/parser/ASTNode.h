@@ -2,72 +2,86 @@
 #define __ASTNODE_H__
 #include <vector>
 #include <cstring>
+#include "ASTBase.h"
 #include "antlr/SQLBaseVisitor.h"
 
-class Identifier {
+class Identifier: public ASTBase {
 public:
     std::string ident;
-    Identifier(std::string ident_): ident(ident_) {}
+    Identifier(std::string ident_):ASTBase("identifier"), ident(ident_) {}
+
+    void accept(SQLBaseVisitor* visitor) override {
+        
+    }
 };
 
-class Integer {
+class Integer: public ASTBase {
 public:
     int value;
-    Integer(int value_): value(value_) {}
+    Integer(int value_):ASTBase("integer"), value(value_) {}
 };
 
-class String {
+class String: public ASTBase {
 public:
     std::string value;
-    String(std::string value_): value(value_) {}
-}
+    String(std::string value_):ASTBase("string"), value(value_) {}
+};
 
-class Float {
+class Float: public ASTBase {
 public:
     float value;
-    Float(float value_): value(value_) {}
-}
+    Float(float value_):ASTBase("float"), value(value_) {}
+};
 
-class Whitespace {
+class Whitespace: public ASTBase {
 public:
-    Whitespace() {}
-}
+    Whitespace(): ASTBase("whitespace") {}
+};
 
-class Annotation {
+class Annotation: public ASTBase {
 public:
     std::string annotation;
-    Annotation(std::string annotation_): annotation(annotation_) {}
-}
+    Annotation(std::string annotation_):ASTBase("annotation"), annotation(annotation_) {}
+};
 
-class Statement {
+class Statement: public ASTBase {
 public:
+    Statement(std::string name): ASTBase(name) {}
     virtual ~Statement();
 };
 
 class DBStatement: public Statement {
 public:  
+    DBStatement(): Statement("dbstatement") {}
+
     ~DBStatement() {}
 };
 
 class IOStatement: public Statement {
 public:
+    IOStatement(): Statement("iostatement") {}
+
     ~IOStatement() {}
-}
+};
 
 class TABLEStatement: public Statement {
 public:
+    TABLEStatement(): Statement("dbstatement") {}
+
     ~TABLEStatement() {}
-}
+};
 
 class ALTERStatement: public Statement {
 public:
-    ~ALTERStatement() {}
-}
+    ALTERStatement(): Statement("dbstatement") {}
 
-class Program {
+    ~ALTERStatement() {}
+};
+
+class Program: public ASTBase {
 public:
     std::vector<Statement*>* statements;
-    Program(std::vector<Statement*>* statements_) {
+    Program(std::vector<Statement*>* statements_): ASTBase("program") {
         statements = statements_;
     }
     ~Program() {

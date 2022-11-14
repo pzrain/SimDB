@@ -8,7 +8,6 @@
 
 
 
-
 class  SQLParser : public antlr4::Parser {
 public:
   enum {
