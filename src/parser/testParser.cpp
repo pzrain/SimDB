@@ -11,11 +11,10 @@ std::string parse(std::string SQL) {
     // Parser
     SQLParser iParser(&sTokenStream);
     auto iTree = iParser.program();
-    std::cout << iTree << std::endl;
-    return "";
+    return "Hello World!";
 }
 
 int main() {
-    std::cout << "Hello World!!" << std::endl;
+    std::cout << parse("CREATE DATABASE mysql;") << std::endl;
     return 0;
 }
