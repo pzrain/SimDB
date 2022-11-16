@@ -9,24 +9,53 @@
 
 #include <string>
 #include "TableManager.h"
-#include "../common.h"
+#include "../filesystem/fileio/FileManager.h"
+#include "../filesystem/bufmanager/BufPageManager.h"
+
 using namespace std;
 
+struct DBMeta {
+    int tableNum;
+    char tableNames[DB_MAX_TABLE_NUM][TAB_MAX_NAME_LEN];
+    // more ...
+};
 class DatabaseManager {
 private:
     string BASE_PATH;
+    string databaseUsedName;
+    FileManager* fileManager;
+    BufPageManager* bufPageManager;
     TableManager* tableManager;
+    int databaseStroeFileId;
+    DBMeta* metaData;
 
     inline bool checkName(string name);
+
+    inline bool checkExist(string name);
+
+    int readMetaData(int fileId, DBMeta* metaData);
+
+    int writeMetaData(int fileId, DBMeta* metaData);
+
 public:
     DatabaseManager();
     ~DatabaseManager();
 
 
     int createDatabase(string name);
+
     int dropDatabase(string name);
+
     int switchDatabase(string name);
+
     int listTablesofDatabase(string name);
+
+    int createTable(string name);
+
+    int dropTable(string name);
+
+    int renameTable(string name);
+
 };
 
 #endif

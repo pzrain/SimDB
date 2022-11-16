@@ -5,8 +5,7 @@
 
 // Section for Record Manager
 
-RecordManager::RecordManager(BufPageManager* bufPageManager_, char* databaseName_) {
-    valid = true;
+RecordManager::RecordManager(BufPageManager* bufPageManager_, const char* databaseName_) {
     bufPageManager = bufPageManager_;
     struct stat info;
     char databaseDirectory[DB_MAX_NAME_LEN + 30];

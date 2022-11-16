@@ -2,7 +2,7 @@
 #define __INDEX_PAGE_H__
 #include "../filesystem/utils/pagedef.h"
 #include "../common.h"
-#include "compare.h"
+#include "Compare.h"
 #include <stdint.h>
 #include <vector>
 
