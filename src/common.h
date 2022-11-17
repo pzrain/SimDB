@@ -9,6 +9,7 @@
 #define DB_MAX_NAME_LEN 32
 
 /* Table Info */
+#define COL_MAX_NAME_LEN 64
 #define TAB_MAX_COL_NUM 10
 #define TAB_MAX_NAME_LEN 64
 #define TAB_MAX_LEN 128

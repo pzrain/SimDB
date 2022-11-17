@@ -1,9 +1,4 @@
-/* TODO: basic
-1. create a database
-2. drop a database
-3. switch to another database
-4. list all the tables of the database
-*/
+
 #ifndef __DATABASEMANAGER_H__
 #define __DATABASEMANAGER_H__
 
@@ -53,6 +48,10 @@ public:
 
     int dropDatabase(string name);
 
+    /**
+     * 切换前先把上一个打开的数据库（如果有的话）
+     * 所有的表保存回去，可能造成性能上的损失
+    */
     int switchDatabase(string name);
 
     int listTablesofDatabase(string name);

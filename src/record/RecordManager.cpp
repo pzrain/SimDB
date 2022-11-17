@@ -43,6 +43,7 @@ int RecordManager::findEmptyIndex() {
 FileHandler* RecordManager::findTable(const char* tableName) {
     for (int i = 0; i < DB_MAX_TABLE_NUM; i++) {
         if (fileHandlers[i] != nullptr && strcmp(tableNames[i], tableName) == 0) {
+            currentIndex = i;
             return fileHandlers[i];
         }
     }
@@ -80,7 +81,7 @@ int RecordManager::removeFile(const char* tableName) {
 
 int RecordManager::openFile(const char* tableName, FileHandler* fileHandler) {
     if (findTable(tableName) != nullptr) {
-        printf("[ERROR] this table has already be opened.\n");
+        printf("[ERROR] this table has already been opened.\n");
         return -1;
     }
     int index = findEmptyIndex();

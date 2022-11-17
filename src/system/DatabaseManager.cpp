@@ -55,6 +55,7 @@ int DatabaseManager::writeMetaData(int fileId, DBMeta* meta) {
     BufType storeData = bufPageManager->getPage(databaseStroeFileId, 0, index);
     memcpy((uint8_t*)storeData, (uint8_t*)meta, sizeof(DBMeta));
     bufPageManager->markDirty(index);
+    bufPageManager->writeBack(index);
     return 0;
 }
 
@@ -76,7 +77,6 @@ int DatabaseManager::createDatabase(string name) {
             DBMeta* initMeta = new DBMeta;
             initMeta->tableNum = 0;
             writeMetaData(databaseStroeFileId, initMeta);
-            bufPageManager->close();
             databaseStroeFileId = -1;
         }
         return 0;
@@ -104,6 +104,9 @@ int DatabaseManager::switchDatabase(string name) {
     if (databaseUsed) {
         writeMetaData(databaseStroeFileId, metaData);
         bufPageManager->close();
+        for(int i = 0; i < metaData->tableNum; i++) {
+            tableManager->saveChangeToFile(metaData->tableNames[i]);
+        }
         databaseUsedName = "";
         databaseStroeFileId = -1;
         databaseUsed = false;

@@ -21,24 +21,35 @@ inline bool TableManager::checkTableExist(string path) {
     return false;
 }
 
-int TableManager::creatTable(string name) {
-    if(!checkTableName(name))
+int TableManager::creatTable(string tableName, char colName[][COL_MAX_NAME_LEN], TB_COL_TYPE* colType, int colNum) {
+    if(!checkTableName(tableName))
         return -1;
-    string path = "database/" + databaseName + '/' + name +".db";
-    if(!checkTableExist(path))
-        if(recordManager->createFile(name.c_str()) == 0)
-            return 0;
-    printf("[Error] fail to creat the table named %s\n", name.c_str());
-    return -1;
+    string path = "database/" + databaseName + '/' + tableName +".db";
+    if(checkTableExist(path)) {
+        printf("[Error] table named %s already exist!\n", tableName.c_str());
+        return -1;
+    }
+    if(recordManager->createFile(tableName.c_str()) != 0){
+        printf("report error when create file in table manager\n");
+        return -1;
+    }
+    if(recordManager->openFile(tableName.c_str(), fileHandler) != 0) {
+        printf("report error when open file in tablemanager\n");
+        return -1;
+    }
+    TableEntry* tableEntrys = new TableEntry[colNum];
+    for(int i = 0; i < colNum; i++) {
+        tableEntrys[i] = 
+    }
+    
 }
 
 int TableManager::openTable(string name) {
     if(!checkTableName(name))
         return -1;
     string path = "database/" + databaseName + '/' + name +".db";
-    FileHandler* f;
     if(checkTableExist(path))
-        if(recordManager->openFile(name.c_str(), f) == 0)
+        if(recordManager->openFile(name.c_str(), fileHandler) == 0)
             return 0;
     printf("[Error] table %s has already been opened. \n", name.c_str());
     return -1;
@@ -65,16 +76,16 @@ int TableManager::renameTable(string oldName, string newName) {
         return -1;
     }
 
-    FileHandler* f = recordManager->findTable(oldName.c_str());
-    if(f == nullptr) {
+    fileHandler = recordManager->findTable(oldName.c_str());
+    if(fileHandler == nullptr) {
         printf("[Error] can not find the table named %s !\n", oldName.c_str());
         return -1;
     }
-    if(recordManager->closeFile(f) != 0) {
+    if(recordManager->closeFile(fileHandler) != 0) {
         printf("[Error] can not close the file before rename it !\n");
         return-1;
     }
-    f = nullptr;
+    fileHandler = nullptr;
 
     string newPath = "database/" + databaseName + '/' + newName +".db";
     int ret = rename(oldPath.c_str(), newPath.c_str());
@@ -83,9 +94,14 @@ int TableManager::renameTable(string oldName, string newName) {
         return -1;
     }
     
-    if(recordManager->openFile(newName.c_str(), f) != 0) {
+    if(recordManager->openFile(newName.c_str(), fileHandler) != 0) {
         printf("[Error] can not open the file after rename it !\n");
         return -1;
     }
     return 0;
+}
+
+int TableManager::saveChangeToFile(const char* tableName) {
+    fileHandler = recordManager->findTable(tableName);
+    recordManager->closeFile(fileHandler);
 }
