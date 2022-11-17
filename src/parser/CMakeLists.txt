@@ -66,8 +66,7 @@ set(SOURCE
 set(HEADERS
     ${HEADERS}
     ${parser_header}
-	${CMAKE_CURRENT_SOURCE_DIR}/ASTNode.h
-	${CMAKE_CURRENT_SOURCE_DIR}/ASTBase.h
+	${CMAKE_CURRENT_SOURCE_DIR}/MyErrorListener.h
     ${CMAKE_CURRENT_SOURCE_DIR}/MySQLVisitor.h
     PARENT_SCOPE
 )
