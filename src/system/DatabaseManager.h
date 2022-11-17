@@ -61,7 +61,7 @@ public:
 
     int dropTable(string name);
 
-    int renameTable(string name);
+    int renameTable(string oldName, string newName);
 
 };
 

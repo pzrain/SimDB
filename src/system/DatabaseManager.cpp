@@ -174,8 +174,28 @@ int DatabaseManager::dropTable(string name) {
     }
 
     int tableToDrop = searchTableByName(name);
-    if(tableToDrop != -1 && tableManager->dropTable(name) == 0) {
+    if(tableToDrop != -1) {
+        printf("[Error] database is empty !\n");
+        return -1;
+    }
+    if(tableManager->dropTable(name) == 0) {
         strcpy(metaData->tableNames[tableToDrop], metaData->tableNames[metaData->tableNum-1]);
         metaData->tableNum--;
+        return 0;
     }
+}
+
+int DatabaseManager::renameTable(string oldName, string newName) {
+    if(tableManager->renameTable(oldName, newName) != 0) {
+        printf("[Error] report error when rename a table\n");
+        return -1;
+    }
+    for(int i = 0; i < metaData->tableNum; i++) {
+        if(strcmp(metaData->tableNames[i], oldName.c_str()) == 0){
+            strcpy(metaData->tableNames[i], newName.c_str());
+            return 0;
+        }
+    }
+    printf("[Error] report error when edit meta data!\n");
+    return -1;
 }

@@ -55,6 +55,37 @@ int TableManager::dropTable(string name) {
     return -1;
 }
 
-// int TableManager::renameTable(string oldName, string newName) {
+int TableManager::renameTable(string oldName, string newName) {
+    if(!checkTableName(newName))
+        return -1;
 
-// }
+    string oldPath = "database/" + databaseName + '/' + oldName +".db";
+    if(!checkTableExist(oldPath)) {
+        printf("[Error] table named %s does not exist !\n", oldName.c_str());
+        return -1;
+    }
+
+    FileHandler* f = recordManager->findTable(oldName.c_str());
+    if(f == nullptr) {
+        printf("[Error] can not find the table named %s !\n", oldName.c_str());
+        return -1;
+    }
+    if(recordManager->closeFile(f) != 0) {
+        printf("[Error] can not close the file before rename it !\n");
+        return-1;
+    }
+    f = nullptr;
+
+    string newPath = "database/" + databaseName + '/' + newName +".db";
+    int ret = rename(oldPath.c_str(), newPath.c_str());
+    if(ret != 0) {
+        printf("[Error] can not rename the table !\n");
+        return -1;
+    }
+    
+    if(recordManager->openFile(newName.c_str(), f) != 0) {
+        printf("[Error] can not open the file after rename it !\n");
+        return -1;
+    }
+    return 0;
+}
