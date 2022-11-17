@@ -53,19 +53,19 @@
 #     ${parser_antlr4_src_tree_xpath_source}
 #     PARENT_SCOPE
 # )
-FILE(GLOB parser_source "${CMAKE_CURRENT_SOURCE_DIR}/antlr4/*.cpp")
-FILE(GLOB parser_header "${CMAKE_CURRENT_SOURCE_DIR}/antlr4/*.h")
+FILE(GLOB ANTLR_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/antlr4/*.cpp")
+FILE(GLOB ANTLR_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/antlr4/*.h")
 
 set(SOURCE
     ${SOURCE}
+    ${ANTLR_SOURCE}
     ${CMAKE_CURRENT_SOURCE_DIR}/testParser.cpp
-    ${parser_source}
     PARENT_SCOPE
 )
 
 set(HEADERS
     ${HEADERS}
-    ${parser_header}
+    ${ANTLR_HEADER}
 	${CMAKE_CURRENT_SOURCE_DIR}/MyErrorListener.h
     ${CMAKE_CURRENT_SOURCE_DIR}/MySQLVisitor.h
     PARENT_SCOPE

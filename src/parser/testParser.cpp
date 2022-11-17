@@ -16,16 +16,19 @@ std::string parse(std::string SQL) {
     iLexer.removeErrorListeners();
     iLexer.addErrorListener(antlrLexerErrorListener);
     auto iTree = iParser.program();
+    std::string msg;
     if (err > 0) {
         printf("[ERROR] detect %d error in parsing.\n", err);
-        return "Fail to parse!";
+        msg = "Fail to parse!";
+    } else {
+        MySQLVisitor* mySQLVisitor = new MySQLVisitor();
+        mySQLVisitor->visitProgram(iTree);
+        delete mySQLVisitor;
+        msg = "Successfully parse!";
     }
-    MySQLVisitor* mySQLVisitor = new MySQLVisitor();
-    mySQLVisitor->visitProgram(iTree);
     delete antlrParserErrorListener;
     delete antlrLexerErrorListener;
-    delete mySQLVisitor;
-    return "Successfully parse!";
+    return msg;
 }
 
 int main() {
