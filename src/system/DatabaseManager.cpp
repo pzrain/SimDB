@@ -155,13 +155,13 @@ int DatabaseManager::listTablesofDatabase(string name) {
     printf("=============end================\n");
 }
 
-int DatabaseManager::createTable(string name) {
+int DatabaseManager::createTable(string name, char colName[][COL_MAX_NAME_LEN], TB_COL_TYPE* colType, int* colLen, int colNum) {
     if(!databaseUsed) {
         printf("[Error] use a database first!\n");
         return -1;
     }
 
-    if(tableManager->creatTable(name) == 0) {
+    if(tableManager->creatTable(name, colName, colType, colLen, colNum) == 0) {
         strcpy(metaData->tableNames[metaData->tableNum], name.c_str());
         metaData->tableNum++;
         return 0;

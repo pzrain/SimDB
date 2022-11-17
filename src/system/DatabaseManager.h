@@ -56,7 +56,7 @@ public:
 
     int listTablesofDatabase(string name);
 
-    int createTable(string name);
+    int createTable(string name, char colName[][COL_MAX_NAME_LEN], TB_COL_TYPE* colType, int* colLen, int colNum);
 
     int dropTable(string name);
 

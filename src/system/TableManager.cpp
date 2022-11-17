@@ -21,7 +21,7 @@ inline bool TableManager::checkTableExist(string path) {
     return false;
 }
 
-int TableManager::creatTable(string tableName, char colName[][COL_MAX_NAME_LEN], TB_COL_TYPE* colType, int colNum) {
+int TableManager::creatTable(string tableName, char colName[][COL_MAX_NAME_LEN], TB_COL_TYPE* colType, int* colLen, int colNum) {
     if(!checkTableName(tableName))
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
@@ -39,9 +39,11 @@ int TableManager::creatTable(string tableName, char colName[][COL_MAX_NAME_LEN],
     }
     TableEntry* tableEntrys = new TableEntry[colNum];
     for(int i = 0; i < colNum; i++) {
-        tableEntrys[i] = 
+        tableEntrys[i] = TableEntry(colName[i], colType[i]);
+        if(colType[i] == COL_VARCHAR)
+            tableEntrys[i].colLen = colLen[i];
     }
-    
+    fileHandler->operateTable(TB_INIT, nullptr, tableEntrys, colNum);
 }
 
 int TableManager::openTable(string name) {
