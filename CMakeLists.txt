@@ -9,7 +9,7 @@ ENDIF()
 
 set(SOURCE
 	${SOURCE}
-	src/main.cpp
+	# src/main.cpp
 )
 
 set(HEADERS
@@ -20,6 +20,7 @@ set(HEADERS
 add_subdirectory(src/record)
 add_subdirectory(src/filesystem)
 add_subdirectory(src/index)
+add_subdirectory(src/system)
 
 SET(GCC_COVERAGE_COMPILE_FLAGS "-g")
 

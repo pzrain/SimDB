@@ -17,7 +17,7 @@ int TableManager::creatTable(string name) {
     if(!checkTableExist(path))
         if(recordManager->createFile(name.c_str()) == 0)
             return 0;
-    printf("[Error] fail to creat the table named %s\n", name);
+    printf("[Error] fail to creat the table named %s\n", name.c_str());
     return -1;
 }
 
@@ -27,7 +27,7 @@ int TableManager::openTable(string name) {
     if(checkTableExist(path))
         if(recordManager->openFile(name.c_str(), f) == 0)
             return 0;
-    printf("[Error] table %s has already been opened. \n", name);
+    printf("[Error] table %s has already been opened. \n", name.c_str());
     return -1;
 }
 
@@ -36,10 +36,10 @@ int TableManager::dropTable(string name) {
     if(checkTableExist(path))
         if(recordManager->removeFile(name.c_str()) == 0)
             return 0;
-    printf("[Error] fail to drop the table named %s\n", name);
+    printf("[Error] fail to drop the table named %s\n", name.c_str());
     return -1;
 }
 
-int TableManager::renameTable(string oldName, string newName) {
+// int TableManager::renameTable(string oldName, string newName) {
 
-}
+// }

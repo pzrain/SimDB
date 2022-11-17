@@ -11,6 +11,7 @@ DatabaseManager::DatabaseManager() {
     databaseUsedName = "";
     fileManager = new FileManager();
     bufPageManager = new BufPageManager(fileManager);
+    metaData = new DBMeta();
     tableManager = nullptr;
 }
 
@@ -31,8 +32,8 @@ inline bool DatabaseManager::checkExist(string path) {
 
 int DatabaseManager::readMetaData(int fileId, DBMeta* meta) {
     int index;
-    BufType loadData = bufPageManager->allocPage(databaseStroeFileId, 0, index, true);
-    memcpy((uint8_t*)meta, (uint8_t*)loadData, sizeof(DBMeta));
+    BufType loadData = bufPageManager->getPage(databaseStroeFileId, 0, index);
+    memcpy((uint8_t*)meta, (uint8_t*)loadData, sizeof(int));
     return 0;
 }
 
@@ -47,8 +48,7 @@ int DatabaseManager::writeMetaData(int fileId, DBMeta* meta) {
 int DatabaseManager::createDatabase(string name) {
     if(!checkName(name))
         return -1;
-
-    string path = BASE_PATH + name + '/';
+    string path = BASE_PATH + name + "/";
     if(checkExist(path)) {
         printf("[Error] database already exist !\n");
         return -1;
@@ -59,11 +59,17 @@ int DatabaseManager::createDatabase(string name) {
         path = path + ".DBstore";
         if(!checkExist(path)) {
             bufPageManager->fileManager->createFile(path.c_str());
+            bufPageManager->fileManager->openFile(path.c_str(), databaseStroeFileId);
+            DBMeta* initMeta = new DBMeta;
+            initMeta->tableNum = 0;
+            writeMetaData(databaseStroeFileId, initMeta);
+            bufPageManager->close();
+            databaseStroeFileId = -1;
         }
         return 0;
     }
 
-    printf("[Error] fail to create the database %s\n", name);
+    printf("[Error] fail to create the database %s\n", name.c_str());
     return -1;
 }
 
@@ -76,8 +82,8 @@ int DatabaseManager::dropDatabase(string name) {
         printf("[Error] database does not exist !\n");
         return -1;
     }
-
-    system(("rm -rf " + path).c_str());
+    string command = "rm -rf ";
+    system((command + path).c_str());
     return 0;
 }
 
@@ -113,6 +119,6 @@ int DatabaseManager::switchDatabase(string name) {
     for(int i = 0; i < metaData->tableNum; i++) {
         tableManager->openTable(metaData->tableNames[i]);
     }
-    
+
     return 0;
 }
