@@ -22,7 +22,9 @@ public:
     TableManager(string databaseName_, BufPageManager* bufPageManager_);
     ~TableManager();
 
-    bool checkTableExist(string path);
+    inline bool checkTableName(string name);
+
+    inline bool checkTableExist(string path);
 
     int creatTable(string name);
 

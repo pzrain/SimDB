@@ -23,15 +23,22 @@ class DatabaseManager {
 private:
     string BASE_PATH;
     string databaseUsedName;
-    FileManager* fileManager;
-    BufPageManager* bufPageManager;
-    TableManager* tableManager;
+    bool databaseUsed;
+
     int databaseStroeFileId;
     DBMeta* metaData;
 
-    inline bool checkName(string name);
+    FileManager* fileManager;
+    BufPageManager* bufPageManager;
+    TableManager* tableManager;
 
-    inline bool checkExist(string name);
+
+
+    inline bool checkDatabaseName(string name);
+
+    inline bool checkFileExist(string path);
+
+    inline int searchTableByName(string name);
 
     int readMetaData(int fileId, DBMeta* metaData);
 
