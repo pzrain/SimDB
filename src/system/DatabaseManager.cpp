@@ -147,7 +147,7 @@ int DatabaseManager::switchDatabase(string name) {
     return 0;
 }
 
-int DatabaseManager::listTablesofDatabase(string name) {
+int DatabaseManager::listTablesOfDatabase(string name) {
     printf("============%s=============\n", name.c_str());
     for(int i = 0; i < metaData->tableNum; i++) {
         printf("table%d: %-64s\n", i, metaData->tableNames[i]);
@@ -161,13 +161,23 @@ int DatabaseManager::createTable(string name, char colName[][COL_MAX_NAME_LEN], 
         return -1;
     }
 
-    if(tableManager->creatTable(name, colName, colType, colLen, colNum) == 0) {
-        strcpy(metaData->tableNames[metaData->tableNum], name.c_str());
-        metaData->tableNum++;
-        return 0;
+    TableEntry* tableEntrys = new TableEntry[colNum];
+    for(int i = 0; i < colNum; i++) {
+        tableEntrys[i] = TableEntry(colName[i], colType[i]);
+        if(colType[i] == COL_VARCHAR)
+            tableEntrys[i].colLen = colLen[i];
     }
 
-    return -1;
+    if(tableManager->creatTable(name, tableEntrys, colNum) != 0) {
+        printf("report error when create table in database manager");
+        return -1;
+    }
+    
+    strcpy(metaData->tableNames[metaData->tableNum], name.c_str());
+    metaData->tableNum++;
+    delete[] tableEntrys;
+    return 0;
+
 }
 
 int DatabaseManager::dropTable(string name) {

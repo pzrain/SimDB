@@ -21,7 +21,7 @@ inline bool TableManager::checkTableExist(string path) {
     return false;
 }
 
-int TableManager::creatTable(string tableName, char colName[][COL_MAX_NAME_LEN], TB_COL_TYPE* colType, int* colLen, int colNum) {
+int TableManager::creatTable(string tableName, TableEntry* tableEntrys, int colNum) {
     if(!checkTableName(tableName))
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
@@ -37,35 +37,79 @@ int TableManager::creatTable(string tableName, char colName[][COL_MAX_NAME_LEN],
         printf("report error when open file in tablemanager\n");
         return -1;
     }
-    TableEntry* tableEntrys = new TableEntry[colNum];
-    for(int i = 0; i < colNum; i++) {
-        tableEntrys[i] = TableEntry(colName[i], colType[i]);
-        if(colType[i] == COL_VARCHAR)
-            tableEntrys[i].colLen = colLen[i];
-    }
+
     fileHandler->operateTable(TB_INIT, nullptr, tableEntrys, colNum);
+
 }
 
 int TableManager::openTable(string name) {
     if(!checkTableName(name))
         return -1;
     string path = "database/" + databaseName + '/' + name +".db";
-    if(checkTableExist(path))
-        if(recordManager->openFile(name.c_str(), fileHandler) == 0)
-            return 0;
-    printf("[Error] table %s has already been opened. \n", name.c_str());
-    return -1;
+    if(!checkTableExist(path)) {
+        printf("[Error] table dose not exist!\n");
+        return -1;
+    }
+
+    if(recordManager->openFile(name.c_str(), fileHandler) != 0) {
+        printf("[Error] table %s has already been opened. \n", name.c_str());
+        return -1;
+    }
+
+    return 0;
 }
 
 int TableManager::dropTable(string name) {
     if(!checkTableName(name))
         return -1;
     string path = "database/" + databaseName + '/' + name +".db";
-    if(checkTableExist(path))
-        if(recordManager->removeFile(name.c_str()) == 0)
-            return 0;
-    printf("[Error] fail to drop the table named %s\n", name.c_str());
-    return -1;
+    if(!checkTableExist(path)) {
+        printf("[Error] table dose not exist!\n");
+        return -1;
+    }
+        
+    if(recordManager->removeFile(name.c_str()) != 0) {
+        printf("[Error] fail to drop the table named %s\n", name.c_str());
+        return -1;
+    }
+
+    return 0;
+
+}
+
+int TableManager::listTableInfo(string name) {
+    if(!checkTableName(name))
+        return -1;
+    string path = "database/" + databaseName + '/' + name +".db";
+    if(!checkTableExist(path))
+        return -1;
+    fileHandler = recordManager->findTable(name.c_str());
+    if(fileHandler == nullptr)
+        return -1;
+    TableHeader* tableHeader = fileHandler->getTableHeader();
+    printf("======================begin======================\n");
+    for(int i = 0; i < tableHeader->colNum; i++) {
+        printf("%64s|", tableHeader->entrys[i].colName);
+    }
+    printf("\n===============================================\n");
+    for(int i = 0; i < tableHeader->colNum; i++) {
+        switch (tableHeader->entrys[i].colType)
+        {
+        case 0:
+            printf("NULL|");
+            break;
+        case 1:
+            printf("INT|");
+        case 2:
+            printf("VARCHAR(%d)|", tableHeader->entrys[i].colLen);
+        case 3:
+            printf("FLOAT|");
+        default:
+            break;
+        }
+    }
+    printf("\n=====================end======================\n");
+    return 0;
 }
 
 int TableManager::renameTable(string oldName, string newName) {

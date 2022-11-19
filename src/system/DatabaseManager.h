@@ -54,7 +54,7 @@ public:
     */
     int switchDatabase(string name);
 
-    int listTablesofDatabase(string name);
+    int listTablesOfDatabase(string name);
 
     int createTable(string name, char colName[][COL_MAX_NAME_LEN], TB_COL_TYPE* colType, int* colLen, int colNum);
 
