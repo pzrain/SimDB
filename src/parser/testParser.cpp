@@ -32,7 +32,8 @@ std::string parse(std::string SQL) {
 }
 
 int main() {
-    std::string parseString = "CREATE DATABASE mysql;";
-    printf("%s\n", parse(parseString).c_str());
+    // std::string parseString = "CREATE DATABASE mysql;";
+    std::string parseString_1 = "SELECT * FROM table_1, table_2 WHERE table_1.id = 9 AND table_1.age = table_2.age;";
+    printf("%s\n", parse(parseString_1).c_str());
     return 0;
 }
