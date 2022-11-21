@@ -30,7 +30,7 @@ sudo make install
 
 #### 0.3 Check
 
-切换到`parser-dev`，在项目根目录下运行`./run.sh`，编译通过。
+切换到`parser-dev`，在项目根目录下运行`./run.sh`，编译通过，检查项目根目录下的`msg.debug`，可以看到一些输出。
 
 ### MyErrorListener
 
@@ -63,7 +63,7 @@ public:
 
 `src/parser/MySQLVisitor.h`
 
-继承了`SQLBaseVisitor`，在其中可重写不同的`visit`方法，现有的`MySQLVisitor`给出了几个实例，与编原实验非常相似。
+继承了`SQLBaseVisitor`，在其中可重写不同的`visit`方法，现有的`MySQLVisitor`给出了几个示例，与编原实验非常相似。
 
 实现的时候需要参考`src/parser/antlr4/SQL.g4`这一文法文件，并调用系统管理中的各种接口。
 
