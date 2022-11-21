@@ -3,3 +3,4 @@
 build
 database
 SimDB
+*.debug

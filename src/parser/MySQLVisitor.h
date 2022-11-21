@@ -5,21 +5,39 @@
 #include "SQLOptimizer.h"
 #include <cstdio>
 
-class MySQLVisitor : public SQLBaseVisitor {
+class DatabaseManager {
 public:
+    bool hasIndex(const char* tableName, const char* indexName);
+};
+
+class MySQLVisitor : public SQLBaseVisitor {
+private:
+    DatabaseManager* databaseManager; // Open one dbManager at most!
+public:
+    MySQLVisitor() {
+        databaseManager = nullptr;
+    }
+
+    ~MySQLVisitor() {
+        if (databaseManager) {
+            delete databaseManager;
+            databaseManager = nullptr;
+        }
+    }
+
     std::any visitProgram(SQLParser::ProgramContext *ctx) override {
-        printf("Visit Program.\n");
+        fprintf(stderr, "Visit Program.\n");
         return visitChildren(ctx);
     }
 
     std::any visitStatement(SQLParser::StatementContext *ctx) override {
-        printf("Visit Statement.\n");
+        fprintf(stderr, "Visit Statement.\n");
         return visitChildren(ctx);
     }
 
     std::any visitCreate_db(SQLParser::Create_dbContext *ctx) override {
-        printf("Visit Create DB.\n");
-        printf("Database name = %s.\n", ctx->Identifier()->getSymbol()->getText().c_str());
+        fprintf(stderr, "Visit Create DB.\n");
+        fprintf(stderr, "Database name = %s.\n", ctx->Identifier()->getSymbol()->getText().c_str());
         return visitChildren(ctx);
     }
 
