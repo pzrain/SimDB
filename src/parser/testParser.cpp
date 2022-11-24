@@ -21,7 +21,8 @@ std::string parse(std::string SQL) {
         printf("[ERROR] detect %d error in parsing.\n", err);
         msg = "Fail to parse!";
     } else {
-        MySQLVisitor* mySQLVisitor = new MySQLVisitor(nullptr); // temporary nullptr
+        DatabaseManager* databaseManager = new DatabaseManager(); // may be updated when dbms is done
+        MySQLVisitor* mySQLVisitor = new MySQLVisitor(databaseManager);
         mySQLVisitor->visitProgram(iTree);
         delete mySQLVisitor;
         msg = "Successfully parse!";
@@ -33,7 +34,7 @@ std::string parse(std::string SQL) {
 
 int main() {
     // std::string parseString = "CREATE DATABASE mysql;";
-    std::string parseString_1 = "SELECT * FROM table_1, table_2 WHERE table_1.id = 9 AND table_1.age = table_2.age;";
-    printf("%s\n", parse(parseString_1).c_str());
+    std::string parseString_1 = "SELECT * FROM table_1, table_2, table_3, table_4, table_5 WHERE table_3.id = table_2.id AND table_2.id = table_1.id AND table_1.id = table_3.id AND table_1.extra = table_1.extra AND table_2.id = table_4.id AND table_1.age = table_2.age AND table_3.age = 9 AND table_1.name IS NOT NULL AND table_5.id = table_3.id AND table_2.id = table_1.id;";
+    printf("parseString_1: %s\n", parse(parseString_1).c_str());
     return 0;
 }
