@@ -32,6 +32,8 @@ sudo make install
 
 切换到`parser-dev`，在项目根目录下运行`./run.sh`，编译通过，检查项目根目录下的`msg.debug`，可以看到一些输出。
 
+### 1.部分接口说明
+
 ### MyErrorListener
 
 `src/parser/MySQLVisitor.h`
@@ -68,3 +70,11 @@ public:
 实现的时候需要参考`src/parser/antlr4/SQL.g4`这一文法文件，并调用系统管理中的各种接口。
 
 现有的实现方法，是直接遍历抽象语法树，一边解析一边实现。更优化的实现，参考实验文档，是对抽象语法树再进行一系列的操作，得到更优的逻辑计划树乃至物理执行计划，可以在数据库各模块全部完成后再进行考虑。
+
+### 2.对抽象语法树的优化
+
+目前实现了对于多表联合查询的优化。基本原理是基于索引加速。
+
+具体来说，对于形如`WHERE table_3.id = table_2.id AND table_2.id = table_1.id`，如果`table_2.id`与`table_3.id`有建立的索引，那么将查询表达式变形为`WHERE table_1.id = table_2.id AND table_2.id = table_3.id`，查询时先查询`table_1.id`，然后利用索引分别查询`table_2.id`以及`table_3.id`，就可以起到加速效果。另外，对于重复的查询，例如`WHERE table_1.id = table_2.id AND table_2.id = table_3.id AND table_3.id = table_1.id`，第三个表达式是蕴含在前两个中的，其就会被优化掉。
+
+目前实现的形式是**暂时的**，待DBMS模块与多表查询相关的部分完成后，可能需要修改设计。
