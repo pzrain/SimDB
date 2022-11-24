@@ -5,25 +5,16 @@
 #include "SQLOptimizer.h"
 #include <cstdio>
 
-class DatabaseManager {
-public:
-    bool hasIndex(const char* tableName, const char* indexName);
-};
 
 class MySQLVisitor : public SQLBaseVisitor {
 private:
-    DatabaseManager* databaseManager; // Open one dbManager at most!
+    DatabaseManager* databaseManager;
 public:
-    MySQLVisitor() {
-        databaseManager = nullptr;
+    MySQLVisitor(DatabaseManager* databaseManager_) {
+        databaseManager = databaseManager_;
     }
 
-    ~MySQLVisitor() {
-        if (databaseManager) {
-            delete databaseManager;
-            databaseManager = nullptr;
-        }
-    }
+    ~MySQLVisitor() {}
 
     std::any visitProgram(SQLParser::ProgramContext *ctx) override {
         fprintf(stderr, "Visit Program.\n");
@@ -42,7 +33,7 @@ public:
     }
 
     std::any visitWhere_and_clause(SQLParser::Where_and_clauseContext *ctx) override {
-        optimizeWhereClause(ctx);
+        optimizeWhereClause(ctx, databaseManager);
         return visitChildren(ctx);
     }
 };

@@ -21,7 +21,7 @@ std::string parse(std::string SQL) {
         printf("[ERROR] detect %d error in parsing.\n", err);
         msg = "Fail to parse!";
     } else {
-        MySQLVisitor* mySQLVisitor = new MySQLVisitor();
+        MySQLVisitor* mySQLVisitor = new MySQLVisitor(nullptr); // temporary nullptr
         mySQLVisitor->visitProgram(iTree);
         delete mySQLVisitor;
         msg = "Successfully parse!";
