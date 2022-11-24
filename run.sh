@@ -12,4 +12,4 @@ cd ..
 echo "Done!"
 
 mkdir -p database
-./bin/SimDB 2>msg.err
+./bin/SimDB 2>msg.debug
