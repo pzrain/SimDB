@@ -9,6 +9,20 @@ re-compile & run
 ./bin/SimDB -c
 ```
 
+### SQL Command
+
+* **quit SimDB**
+
+  ```sql
+  quit
+  ```
+
+  or
+
+  ```
+  exit
+  ```
+
 ### Reference
 
 https://web.stanford.edu/class/cs346/2015/redbase.html
