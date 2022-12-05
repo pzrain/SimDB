@@ -14,6 +14,7 @@ private:
     int tot;
     char tableNames[10][TAB_MAX_NAME_LEN];
     char indexNames[10][TAB_MAX_NAME_LEN];
+    std::string databaseUsedName;
 
     void addIndex(const char* tableName, const char* indexName) {
         strcpy(tableNames[tot], tableName);
@@ -27,10 +28,22 @@ public:
         addIndex("table_3", "id");
         addIndex("table_4", "id");
         addIndex("table_5", "id");
+        databaseUsedName = "";
     }
  
     bool hasIndex(const char* tableName, const char* indexName);
-    // some function from dbms to check if specific column has index
+    // function from dbms to check if specific column has index
+
+    int switchDatabase(std::string name) {
+        if (name != "") {
+            databaseUsedName = name;
+        }
+        return 1;
+    }
+
+    std::string getDatabaseName() { // function from dbms to get the currently used database name
+        return databaseUsedName == "" ? "mysql" : databaseUsedName;
+    }
 };
 
 bool DatabaseManager::hasIndex(const char* tableName, const char* indexName) {

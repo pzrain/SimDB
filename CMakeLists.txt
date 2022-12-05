@@ -28,7 +28,7 @@ SET(HEADERS
 
 SET(SOURCE
 	${SOURCE}
-	# src/main.cpp
+	src/main.cpp
 )
 
 add_subdirectory(src/record)

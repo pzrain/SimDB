@@ -36,6 +36,12 @@ public:
         optimizeWhereClause(ctx, databaseManager);
         return visitChildren(ctx);
     }
+
+    std::any visitUse_db(SQLParser::Use_dbContext *ctx) override {
+        databaseManager->switchDatabase(ctx->Identifier()->getText());
+        printf("Database changed\n");
+        return visitChildren(ctx);
+    }
 };
 
 #endif
