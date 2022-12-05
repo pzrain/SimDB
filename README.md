@@ -6,7 +6,7 @@
 re-compile & run
 
 ```bash
-./bin/SimDB -c
+./run.sh -c
 ```
 
 ### SQL Command
