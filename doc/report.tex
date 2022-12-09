@@ -1,0 +1,77 @@
+\documentclass[11pt]{article}
+\usepackage[UTF8]{ctex}
+\usepackage[T1]{fontenc}
+\usepackage[colorlinks, linkcolor=black]{hyperref}
+\usepackage{indentfirst}
+\usepackage{babel}
+\usepackage{color}
+\usepackage[a4paper,left=3cm,right=3cm,top=2.5cm,bottom=2.5cm]{geometry}
+\usepackage[toc,page]{appendix}
+\usepackage{minted}
+\usepackage[htt]{hyphenat}
+
+\title{\textbf{数据库系统概论项目报告}}
+\author{
+    潘子睿\\
+    \texttt{2020010960}
+    \and
+    余任杰\\
+    \texttt{2020010966}
+}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\setlength{\parindent}{0pt}
+\clearpage
+
+\section{项目架构}
+\texttt{SimDB}是一个简单的关系型数据库系统，其能够支持一些基本的\texttt{SQL}语句，完成对数据库的插入、删除、更新、查找等操作。
+项目的最底层是一个页式文件管理系统，在其上构建了记录管理和索引管理两个模块，分别用来维护数据库中的一条条记录以及在某些记录上建立的索引。
+系统管理模块通过调用记录管理和索引管理两个模块的接口，实现了具体操作数据库的各项功能。
+最后，通过\texttt{Antlr4}解析\texttt{SQL}指令，并将其交给系统管理模块执行。\\\\
+本项目源代码目前位于\texttt{https://github.com/pzrain/SimDB}，并将在本课程结课后开源。
+\subsection{支持功能}
+\subsubsection{数据结构}
+数据库当前支持的数据结构包括：
+\begin{itemize}
+    \item 整型（\texttt{INT}）
+    \item 浮点型（\texttt{FLOAT}）
+    \item 字符串型（\texttt{VARCHAR}）
+\end{itemize}
+其中\texttt{VARCHAR}仅支持定长字符串。
+\subsubsection{SQL语句}
+\subsubsection{其他}
+\subsection{代码测试}
+
+\section{编译与运行}
+本项目基于\texttt{CMake}进行自动构建。需要\texttt{Antlr4}依赖，以及编译器支持\texttt{C++17}特性。
+使用时，将\texttt{CMakeLists.txt}中的\texttt{ANTLR4\_RUNTIME\_DIRECTORY}的值设置为\texttt{Antlr4}运行时库\texttt{antlr4-runtime.h}所在的目录，并将\texttt{ANTLR4\_RUNTIME\_SHARED\_LIBRARY}的值设置为Antlr4运行时动态链接库\texttt{libantlr4-runtime.so}。\\
+成功配置好\texttt{Antlr4}后，在项目根目录下执行以下命令：
+\begin{minted}{bash}
+./run.sh -c
+\end{minted}
+即可自动进行编译并运行，生成的可执行文件\texttt{SimDB}会被放置在\texttt{./bin}目录下。
+
+\section{系统功能}
+\subsection{页式文件系统}
+本部分代码位于\texttt{./src/filesystem}，需要注意的是，本部分直接使用了课程实验文档附录提供的参考实现代码。\\\\
+数据库是被设计用来存储大量数据的系统，数据库中一个文件的大小甚至可能超过计算机的内存。
+因此，需要一个页式文件管理系统来管理数据库的各个文件，以及一个缓存机制，将操作的多个页面缓存在内存中，只在需要时进行替换和写回，以提高读写的效率。
+参考实现中使用的替换算法为最近最少使用算法（\texttt{LRU}）。
+\subsection{记录管理}
+\subsection{索引管理}
+\subsection{系统管理}
+\subsection{SQL解析}
+
+\section{参考资料}
+以下列出了本项目完成过程中所参考的部分资料，包括课程的实验文档、往届的实现，以及相关网站等。
+\begin{itemize}
+    \item \href{https://github.com/miskcoo/TrivialDB}{\textcolor{black}{往届实现的数据库项目}}
+    \item \href{https://web.stanford.edu/class/cs346/2015/redbase.html}{\textcolor{black}{CS346 Redbase project}}
+    \item \href{https://en.wikipedia.org/wiki/B%2B_tree}{\textcolor{black}{$B^+$树的定义与实现}}
+    \item \href{https://www.antlr.org/download.html}{\textcolor{black}{使用antlr4解析SQL}}
+    \item \href{https://thu-db.github.io/dbs-tutorial/}{\textcolor{black}{课程实验文档}}
+\end{itemize}
+
+\end{document}

@@ -6,5 +6,7 @@ SimDB
 *.debug
 *.aux
 *.log
+*.out
 *.synctex.gz
 *.toc
+_minted-report
