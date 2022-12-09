@@ -4,3 +4,7 @@ build
 database
 SimDB
 *.debug
+*.aux
+*.log
+*.synctex.gz
+*.toc

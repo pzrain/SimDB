@@ -3,7 +3,7 @@
 ./run.sh
 ```
 
-re-compile & run
+compile & run
 
 ```bash
 ./run.sh -c
@@ -23,8 +23,12 @@ re-compile & run
   exit
   ```
 
+### Documentation
+See `report.pdf` under `./doc`.
+
 ### Reference
 
 https://web.stanford.edu/class/cs346/2015/redbase.html
 
 https://thu-db.github.io/dbs-tutorial/
+
