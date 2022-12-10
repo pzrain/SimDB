@@ -1,5 +1,4 @@
 /* TODO: basic
-1. create a table
 2. list table infomation
 */
 #ifndef __TABLEMANAGER_H__

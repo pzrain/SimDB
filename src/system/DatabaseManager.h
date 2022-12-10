@@ -43,23 +43,49 @@ public:
     DatabaseManager();
     ~DatabaseManager();
 
-
+    /**
+     * CREATE DATABASE <databse name>;
+    */
     int createDatabase(string name);
 
+    /**
+     * DROP DATABASE <database name>;
+    */
     int dropDatabase(string name);
 
     /**
+     * USE DATABASE <database name>;
+     * @brief 
      * 切换前先把上一个打开的数据库（如果有的话）
      * 所有的表保存回去，可能造成性能上的损失
     */
     int switchDatabase(string name);
 
+    /**
+     * SHOW DATABASE <database name>;
+    */
     int listTablesOfDatabase(string name);
 
+    /**
+     * CREATE TABLE <table name>(
+     *     <colname> coltype,
+     *     ...
+     * );
+    */
     int createTable(string name, char colName[][COL_MAX_NAME_LEN], TB_COL_TYPE* colType, int* colLen, int colNum);
 
+    /**
+     * SHOW TABLE <table name>
+    */
+    int listTableInfo(string name);
+    /**
+     * DROP TABLE <table name>;
+    */
     int dropTable(string name);
 
+    /**
+     * ALTER TABLE <old table name> RENAME TO <new table name>;
+    */
     int renameTable(string oldName, string newName);
 
 };

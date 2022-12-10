@@ -180,6 +180,15 @@ int DatabaseManager::createTable(string name, char colName[][COL_MAX_NAME_LEN], 
 
 }
 
+int DatabaseManager::listTableInfo(string name) {
+    if(!databaseUsed) {
+        printf("[Error] use a database first!\n");
+        return -1;
+    }
+
+    return tableManager->listTableInfo(name);
+}
+
 int DatabaseManager::dropTable(string name) {
     if(!databaseUsed) {
         printf("[Error] use a database first!\n");
