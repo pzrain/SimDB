@@ -18,9 +18,9 @@ private:
 
     int getNextFreePage(); // alloc one empty page
 
-    inline void transform(int& val, int pageId, int slotId);
+    void _transform(int& val, int pageId, int slotId);
 
-    inline void transformR(int val, int& pageId, int& slotId);
+    void _transformR(int val, int& pageId, int& slotId);
 
     int searchUpperBound(void* data);
 
@@ -50,6 +50,10 @@ public:
     void insert(void* data, const int val);
 
     void remove(void* data);
+
+    void transform(int& val, int pageId, int slotId);
+
+    void transformR(int val, int& pageId, int& slotId);
 };
 
 #endif
