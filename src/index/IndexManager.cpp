@@ -3,7 +3,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-IndexManager::IndexManager(BufPageManager* bufPageManager_, char* databaseName_) {
+IndexManager::IndexManager(BufPageManager* bufPageManager_, const char* databaseName_) {
     valid = true;
     bufPageManager = bufPageManager_;
     struct stat info;

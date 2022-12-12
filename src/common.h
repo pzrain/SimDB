@@ -14,6 +14,8 @@
 #define TAB_MAX_NAME_LEN 64
 #define TAB_MAX_LEN 128
 
+#define MAX_FOREIGN_KEY_NUM 20
+
 typedef enum {
     COL_NULL = 0,
     COL_INT = 1,

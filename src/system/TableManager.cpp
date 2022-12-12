@@ -4,6 +4,13 @@
 TableManager::TableManager(string databaseName_,  BufPageManager* bufPageManager_) {
     databaseName = databaseName_;
     recordManager = new RecordManager(bufPageManager_, databaseName.c_str());
+    indexManager = new IndexManager(bufPageManager_, databaseName.c_str());
+}
+
+TableManager::~TableManager() {
+    delete recordManager;
+    delete indexManager;
+    delete fileHandler;
 }
 
 inline bool TableManager::checkTableName(string name) {
@@ -150,4 +157,137 @@ int TableManager::renameTable(string oldName, string newName) {
 int TableManager::saveChangeToFile(const char* tableName) {
     fileHandler = recordManager->findTable(tableName);
     recordManager->closeFile(fileHandler);
+    // TODO
 }
+
+int TableManager::createIndex(string tableName, string indexName, string colName, uint16_t indexLen_) {
+    if(!checkTableName(tableName))
+        return -1;
+    string path = "database/" + databaseName + '/' + tableName +".db";
+    if(!checkTableExist(path)) {
+        printf("[Error] table dose not exist!\n");
+        return -1;
+    }
+
+    fileHandler = recordManager->findTable(tableName.c_str());
+    if(fileHandler == nullptr)
+        return -1;
+    TableHeader* tableHeader = fileHandler->getTableHeader();
+    uint8_t colType;
+    uint16_t indexLen = indexLen_;
+    for(int i = 0; i < tableHeader->colNum; i++) {
+        if(strcmp(colName.c_str(), tableHeader->entrys[i].colName) == 0) {
+            colType = tableHeader->entrys[i].colType;
+            if(indexLen == 0)
+                indexLen = tableHeader->entrys[i].colLen;
+        }
+    }
+    // TODO not found column?
+
+    return indexManager->createIndex(tableName.c_str(), indexName.c_str(), indexLen, colType);
+}
+
+int TableManager::dropIndex(string tableName, string indexName) {
+    if(!checkTableName(tableName))
+        return -1;
+    string path = "database/" + databaseName + '/' + tableName +".db";
+    if(!checkTableExist(path)) {
+        printf("[Error] table dose not exist!\n");
+        return -1;
+    }
+
+    return indexManager->removeIndex(tableName.c_str(), indexName.c_str());
+}
+
+int TableManager::createPrimaryKey(string tableName, string colName) {
+    if(!checkTableName(tableName))
+        return -1;
+    string path = "database/" + databaseName + '/' + tableName +".db";
+    if(!checkTableExist(path)) {
+        printf("[Error] table dose not exist!\n");
+        return -1;
+    }
+    fileHandler = recordManager->findTable(tableName.c_str());
+    if(fileHandler == nullptr)
+        return -1;
+    TableHeader* tableHeader = fileHandler->getTableHeader();
+    for(int i = 0; i < tableHeader->colNum; i++) {
+        if(strcmp(colName.c_str(), tableHeader->entrys[i].colName) == 0) {
+            tableHeader->entrys[i].primaryKeyConstraint = true;
+            return i;
+        }
+    }
+    return -1;
+}
+
+int TableManager::dropPrimaryKey(string tableName, string colName) {
+    if(!checkTableName(tableName))
+        return -1;
+    string path = "database/" + databaseName + '/' + tableName +".db";
+    if(!checkTableExist(path)) {
+        printf("[Error] table dose not exist!\n");
+        return -1;
+    }
+    fileHandler = recordManager->findTable(tableName.c_str());
+    if(fileHandler == nullptr)
+        return -1;
+    TableHeader* tableHeader = fileHandler->getTableHeader();
+    for(int i = 0; i < tableHeader->colNum; i++) {
+        if(strcmp(colName.c_str(), tableHeader->entrys[i].colName) == 0) {
+            tableHeader->entrys[i].primaryKeyConstraint = false;
+            return i;
+        }
+    }
+    return -1;
+}
+
+int TableManager::createForeignKey(string tableName, string foreignKeyName, string colName, string refTableName, string refTableCol) {
+    if(!checkTableName(tableName))
+        return -1;
+    string path = "database/" + databaseName + '/' + tableName +".db";
+    if(!checkTableExist(path)) {
+        printf("[Error] table dose not exist!\n");
+        return -1;
+    }
+    if(!checkTableName(refTableName))
+        return -1;
+    string path = "database/" + databaseName + '/' + refTableName +".db";
+    if(!checkTableExist(path)) {
+        printf("[Error] table dose not exist!\n");
+        return -1;
+    }
+    fileHandler = recordManager->findTable(tableName.c_str());
+    if(fileHandler == nullptr)
+        return -1;
+    TableHeader* tableHeader = fileHandler->getTableHeader();
+    for(int i = 0; i < tableHeader->colNum; i++) {
+        if(strcmp(colName.c_str(), tableHeader->entrys[i].colName) == 0) {
+            tableHeader->entrys[i].foreignKeyConstraint = true;
+            strcpy(tableHeader->entrys[i].foreignKeyTableName, refTableName.c_str());
+            strcpy(tableHeader->entrys[i].foreignKeyColName, refTableCol.c_str());
+            return i;
+        }
+    }
+    return -1;
+}
+
+int TableManager::dropForeignKey(string tableName, uint8_t colIndex) {
+    if(!checkTableName(tableName))
+        return -1;
+    string path = "database/" + databaseName + '/' + tableName +".db";
+    if(!checkTableExist(path)) {
+        printf("[Error] table dose not exist!\n");
+        return -1;
+    }
+    fileHandler = recordManager->findTable(tableName.c_str());
+    if(fileHandler == nullptr)
+        return -1;
+    TableHeader* tableHeader = fileHandler->getTableHeader();
+    if(tableHeader->entrys[colIndex].foreignKeyConstraint == false) {
+        printf("[Error] this table dose not have this foreign key\n");
+        return -1;
+    }
+    tableHeader->entrys[colIndex].foreignKeyConstraint = false;
+    return 0;
+}
+

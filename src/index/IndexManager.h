@@ -18,7 +18,7 @@ private:
     int findEmptyIndex(int &emptyI, int &emptyJ);
     
 public:
-    IndexManager(BufPageManager* bufPageManager_, char* databaseName_);
+    IndexManager(BufPageManager* bufPageManager_, const char* databaseName_);
 
     ~IndexManager();
 
