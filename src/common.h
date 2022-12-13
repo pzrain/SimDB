@@ -14,7 +14,13 @@
 #define TAB_MAX_NAME_LEN 64
 #define TAB_MAX_LEN 128
 
+/* System */
 #define MAX_FOREIGN_KEY_NUM 20
+/* End System */
+
+/* Parser */
+#define MAX_INPUT_SIZE 150
+/* End Parser */
 
 typedef enum {
     COL_NULL = 0,
