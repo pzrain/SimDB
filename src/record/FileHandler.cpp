@@ -286,7 +286,7 @@ bool FileHandler::updateRecord(RecordId &recordId, Record &record) {
     return true;
 }
 
-void FileHandler::getAllRecords(std::vector<Record*>& records) {
+void FileHandler::getAllRecords(std::vector<Record*>& records, std::vector<RecordId*>& recordIds) {
     int cnt = 0;
     for (int pageId = 1; pageId < tableHeader->totalPageNumber; pageId++) {
         int index;
@@ -300,12 +300,13 @@ void FileHandler::getAllRecords(std::vector<Record*>& records) {
                 continue;
             }
             records.push_back(new Record(tableHeader->recordLen - sizeof(int16_t)));
+            recordIds.push_back(new RecordId(pageId, slotId));
             memcpy(records[cnt++]->data, recordData + sizeof(int16_t), tableHeader->recordLen - sizeof(int16_t));
         }
     }
 }
 
-bool FileHandler::getAllRecordsAccordingToFields(std::vector<Record*>& records, const uint16_t enable) {
+bool FileHandler::getAllRecordsAccordingToFields(std::vector<Record*>& records, std::vector<RecordId*>& recordIds, const uint16_t enable) {
     std::vector<int> entryLen, entryIndex;
     int len = sizeof(int16_t) + sizeof(uint16_t), totalLen = sizeof(uint16_t);
     int8_t head = tableHeader->entryHead;
@@ -350,6 +351,7 @@ bool FileHandler::getAllRecordsAccordingToFields(std::vector<Record*>& records, 
                 bitmap |= (((originBitmap & (1 << entryIndex[i])) >> entryIndex[i]) << i);
             }
             records.push_back(new Record(totalLen));
+            recordIds.push_back(new RecordId(pageId, slotId));
             memcpy(records[cnt]->data, &bitmap, sizeof(uint16_t)); // write bitmap first
             size_t offsetRecord = sizeof(uint16_t), offsetRecordData = 0;
             siz = entryLen.size();

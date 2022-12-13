@@ -239,18 +239,24 @@ int TableManager::createPrimaryKey(string tableName, string colName) {
         return -1;
     TableHeader* tableHeader = fileHandler->getTableHeader();
     int index = checkColExist(tableHeader, colName.c_str());
+    uint16_t indexLen;
+    uint8_t colType;
     if (index >= 0) {
         tableHeader->entrys[index].primaryKeyConstraint = true;
+        indexLen = tableHeader->entrys[index].colLen;
+        colType = tableHeader->entrys[index].colType;
     } else {
         printf("[ERROR] specified column dose not exit.\n");
         return -1;
     }
-    // for(int i = 0; i < tableHeader->colNum; i++) {
-    //     if(strcmp(colName.c_str(), tableHeader->entrys[i].colName) == 0) {
-    //         tableHeader->entrys[i].primaryKeyConstraint = true;
-    //         return i;
-    //     }
-    // }
+    if (indexManager->hasIndex(tableName.c_str(), colName.c_str())) {
+        printf("[Info] the index has already been created.\n");
+        return index;
+    }
+    indexManager->createIndex(tableName.c_str(), colName.c_str(), indexLen, colType);
+    std::vector<Record*> records;
+    std::vector<RecordId*> recordIds;
+    fileHandler->getAllRecordsAccordingToFields(records, recordIds, (1 << index));
     return index;
 }
 

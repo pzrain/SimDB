@@ -260,13 +260,15 @@ int DatabaseManager::createPrimaryKey(string tableName, vector<string> colNames,
         }
     }
     if(tableNum == -1){
-        printf("meta data error when add primary key\n");
+        // printf("meta data error when add primary key\n");
+        printf("[Error] specified table does not exist.\n");
         return -1;
     }
     for(int i = 0; i < colNum; i++) {
         int colIndex = tableManager->createPrimaryKey(tableName, colNames[i]);
         if(colIndex == -1) {
-            printf("add primary key error\n");
+            // printf("add primary key error\n");
+            printf("[Error] specified column does not exist.\n");
             return -1;
         }
         metaData->isPrimaryKey[tableNum][colIndex] = true;
@@ -283,13 +285,15 @@ int DatabaseManager::dropPrimaryKey(string tableName, vector<string> colNames, i
         }
     }
     if(tableNum == -1){
-        printf("meta data error when drop primary key\n");
+        // printf("meta data error when add primary key\n");
+        printf("[Error] specified table does not exist.\n");
         return -1;
     }
     for(int i = 0; i < colNum; i++) {
         int colIndex = tableManager->createPrimaryKey(tableName, colNames[i]);
         if(colIndex == -1) {
-            printf("drop primary key error\n");
+            // printf("add primary key error\n");
+            printf("[Error] specified column does not exist.\n");
             return -1;
         }
         metaData->isPrimaryKey[tableNum][colIndex] = false;
@@ -306,7 +310,8 @@ int DatabaseManager::createForeignKey(string tableName, string foreignKeyName, s
             refTableNum = i;
     }
     if(tableNum == -1 || refTableNum == -1){
-        printf("meta data error when add foreign key\n");
+        // printf("meta data error when add foreign key\n");
+        printf("[Error] specified table does not exist.\n");
         return -1;
     }
     for(int i = 0; i < metaData->foreignKeyNum; i++) {
@@ -318,7 +323,8 @@ int DatabaseManager::createForeignKey(string tableName, string foreignKeyName, s
 
     int colIndex = tableManager->createForeignKey(tableName, foreignKeyName, colName, refTableName, refTableCol);
     if(colIndex == -1) {
-        printf("create foreign key error\n");
+        // printf("create foreign key error\n");
+        printf("[Error] specified column does not exist.\n");
         return -1;
     }
 
@@ -338,7 +344,8 @@ int DatabaseManager::dropForeignKey(string tableName, string foreignKeyName) {
         }
     }
     if(tableNum == -1){
-        printf("meta data error when drop foreign key\n");
+        // printf("meta data error when drop foreign key\n");
+        printf("[Error] specified table does not exist.\n");
         return -1;
     }
     int foreignKeyIndex = -1;
@@ -349,7 +356,8 @@ int DatabaseManager::dropForeignKey(string tableName, string foreignKeyName) {
         }
     }
     if(foreignKeyIndex == -1) {
-        printf("meta data error when drop foreign key\n");
+        // printf("meta data error when drop foreign key\n");
+        printf("[Error] specified column does not exist.\n");
     }
 
     int ret = tableManager->dropForeignKey(tableName, metaData->foreignKeyColumn[foreignKeyIndex]);
