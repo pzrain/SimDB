@@ -2158,11 +2158,15 @@ void SQLParser::Where_clauseContext::copyFrom(Where_clauseContext *ctx) {
   ParserRuleContext::copyFrom(ctx);
 }
 
-//----------------- Where_in_listContext ------------------------------------------------------------------
-
-SQLParser::ColumnContext* SQLParser::Where_in_listContext::column() {
+SQLParser::ColumnContext* SQLParser::Where_clauseContext::column() {
   return getRuleContext<SQLParser::ColumnContext>(0);
 }
+
+//----------------- Where_in_listContext ------------------------------------------------------------------
+
+// SQLParser::ColumnContext* SQLParser::Where_in_listContext::column() {
+//   return getRuleContext<SQLParser::ColumnContext>(0);
+// }
 
 SQLParser::Value_listContext* SQLParser::Where_in_listContext::value_list() {
   return getRuleContext<SQLParser::Value_listContext>(0);
@@ -2179,9 +2183,9 @@ std::any SQLParser::Where_in_listContext::accept(tree::ParseTreeVisitor *visitor
 }
 //----------------- Where_operator_selectContext ------------------------------------------------------------------
 
-SQLParser::ColumnContext* SQLParser::Where_operator_selectContext::column() {
-  return getRuleContext<SQLParser::ColumnContext>(0);
-}
+// SQLParser::ColumnContext* SQLParser::Where_operator_selectContext::column() {
+//   return getRuleContext<SQLParser::ColumnContext>(0);
+// }
 
 SQLParser::Operator_Context* SQLParser::Where_operator_selectContext::operator_() {
   return getRuleContext<SQLParser::Operator_Context>(0);
@@ -2202,9 +2206,9 @@ std::any SQLParser::Where_operator_selectContext::accept(tree::ParseTreeVisitor 
 }
 //----------------- Where_nullContext ------------------------------------------------------------------
 
-SQLParser::ColumnContext* SQLParser::Where_nullContext::column() {
-  return getRuleContext<SQLParser::ColumnContext>(0);
-}
+// SQLParser::ColumnContext* SQLParser::Where_nullContext::column() {
+//   return getRuleContext<SQLParser::ColumnContext>(0);
+// }
 
 tree::TerminalNode* SQLParser::Where_nullContext::Null() {
   return getToken(SQLParser::Null, 0);
@@ -2221,9 +2225,9 @@ std::any SQLParser::Where_nullContext::accept(tree::ParseTreeVisitor *visitor) {
 }
 //----------------- Where_operator_expressionContext ------------------------------------------------------------------
 
-SQLParser::ColumnContext* SQLParser::Where_operator_expressionContext::column() {
-  return getRuleContext<SQLParser::ColumnContext>(0);
-}
+// SQLParser::ColumnContext* SQLParser::Where_operator_expressionContext::column() {
+//   return getRuleContext<SQLParser::ColumnContext>(0);
+// }
 
 SQLParser::Operator_Context* SQLParser::Where_operator_expressionContext::operator_() {
   return getRuleContext<SQLParser::Operator_Context>(0);
@@ -2244,9 +2248,9 @@ std::any SQLParser::Where_operator_expressionContext::accept(tree::ParseTreeVisi
 }
 //----------------- Where_in_selectContext ------------------------------------------------------------------
 
-SQLParser::ColumnContext* SQLParser::Where_in_selectContext::column() {
-  return getRuleContext<SQLParser::ColumnContext>(0);
-}
+// SQLParser::ColumnContext* SQLParser::Where_in_selectContext::column() {
+//   return getRuleContext<SQLParser::ColumnContext>(0);
+// }
 
 SQLParser::Select_tableContext* SQLParser::Where_in_selectContext::select_table() {
   return getRuleContext<SQLParser::Select_tableContext>(0);
@@ -2263,9 +2267,9 @@ std::any SQLParser::Where_in_selectContext::accept(tree::ParseTreeVisitor *visit
 }
 //----------------- Where_like_stringContext ------------------------------------------------------------------
 
-SQLParser::ColumnContext* SQLParser::Where_like_stringContext::column() {
-  return getRuleContext<SQLParser::ColumnContext>(0);
-}
+// SQLParser::ColumnContext* SQLParser::Where_like_stringContext::column() {
+//   return getRuleContext<SQLParser::ColumnContext>(0);
+// }
 
 tree::TerminalNode* SQLParser::Where_like_stringContext::String() {
   return getToken(SQLParser::String, 0);

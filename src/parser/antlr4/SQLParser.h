@@ -4,8 +4,7 @@
 #pragma once
 
 
-#include "antlr4-runtime.h"
-
+#include "antlr4-runtime/antlr4-runtime.h"
 
 
 
@@ -538,6 +537,7 @@ public:
     Where_clauseContext(antlr4::ParserRuleContext *parent, size_t invokingState);
    
     Where_clauseContext() = default;
+    ColumnContext *column();
     void copyFrom(Where_clauseContext *context);
     using antlr4::ParserRuleContext::copyFrom;
 
@@ -550,7 +550,6 @@ public:
   public:
     Where_in_listContext(Where_clauseContext *ctx);
 
-    ColumnContext *column();
     Value_listContext *value_list();
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
@@ -560,7 +559,6 @@ public:
   public:
     Where_operator_selectContext(Where_clauseContext *ctx);
 
-    ColumnContext *column();
     Operator_Context *operator_();
     Select_tableContext *select_table();
 
@@ -571,7 +569,6 @@ public:
   public:
     Where_nullContext(Where_clauseContext *ctx);
 
-    ColumnContext *column();
     antlr4::tree::TerminalNode *Null();
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
@@ -581,7 +578,6 @@ public:
   public:
     Where_operator_expressionContext(Where_clauseContext *ctx);
 
-    ColumnContext *column();
     Operator_Context *operator_();
     ExpressionContext *expression();
 
@@ -592,7 +588,6 @@ public:
   public:
     Where_in_selectContext(Where_clauseContext *ctx);
 
-    ColumnContext *column();
     Select_tableContext *select_table();
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
@@ -602,7 +597,6 @@ public:
   public:
     Where_like_stringContext(Where_clauseContext *ctx);
 
-    ColumnContext *column();
     antlr4::tree::TerminalNode *String();
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;

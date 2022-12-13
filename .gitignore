@@ -1,4 +1,12 @@
 .vscode
+.antlr4
 build
 database
 SimDB
+*.debug
+*.aux
+*.log
+*.out
+*.synctex.gz
+*.toc
+_minted-report

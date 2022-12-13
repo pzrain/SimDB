@@ -1,0 +1,258 @@
+\documentclass[11pt]{article}
+\usepackage[UTF8]{ctex}
+\usepackage[T1]{fontenc}
+\usepackage{amsthm, amsmath, amssymb, amsfonts}
+\usepackage[colorlinks, linkcolor=black]{hyperref}
+\usepackage{url}
+\usepackage{indentfirst}
+\usepackage{babel}
+\usepackage{color}
+\usepackage[a4paper,left=3cm,right=3cm,top=2.5cm,bottom=2.5cm]{geometry}
+\usepackage[toc,page]{appendix}
+\usepackage{minted}
+\usepackage[htt]{hyphenat}
+\usepackage{tikz}
+\usepackage{bytefield}
+
+\title{\textbf{数据库系统概论项目报告}}
+\author{
+    潘子睿\\
+    \texttt{2020010960}
+    \and
+    余任杰\\
+    \texttt{2020010966}
+}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\setlength{\parindent}{0pt}
+\clearpage
+
+\section{项目架构}
+\texttt{SimDB}是一个简单的关系型数据库系统，其能够支持一些基本的\texttt{SQL}语句，完成对数据库的插入、删除、更新、查找等操作。
+项目的最底层是一个\textbf{页式文件管理系统}，在其上构建了\textbf{记录管理}和\textbf{索引管理}两个模块，分别用来维护数据库中的一条条记录以及在某些记录上建立的索引。
+\textbf{系统管理}模块通过调用记录管理和索引管理两个模块的接口，实现了具体操作数据库的各项功能。
+最后，在\textbf{解析处理}模块中通过\texttt{Antlr4}解析\texttt{SQL}指令，并将其交给系统管理模块执行。\\\\
+本项目源代码目前位于\texttt{https://github.com/pzrain/SimDB}，并可能会在本课程结课后开源。
+\subsection{支持功能}
+\subsubsection{数据结构}
+数据库当前支持的数据结构包括：
+\begin{itemize}
+    \item 整型（\texttt{INT}）
+    \item 浮点型（\texttt{FLOAT}）
+    \item 字符串型（\texttt{VARCHAR}）
+\end{itemize}
+其中\texttt{VARCHAR}仅支持定长字符串。
+\subsubsection{SQL语句}
+\texttt{\textcolor{red}{TODO}}：具体描述支持的功能，并给出一些\texttt{SQL}语句作为示例。
+\subsubsection{其他}
+\subsection{代码测试}
+\texttt{\textcolor{red}{TODO}}：描述对于项目的测试方法
+
+\section{编译运行}
+本项目基于\texttt{CMake}进行自动构建。需要\texttt{Antlr4}依赖，以及编译器支持\texttt{C++17}特性。
+使用时，将\texttt{CMakeLists.txt}中的\texttt{ANTLR4\_RUNTIME\_DIRECTORY}的值设置为\texttt{Antlr4}运行时库\texttt{antlr4-runtime.h}所在的目录，并将\texttt{ANTLR4\_RUNTIME\_SHARED\_LIBRARY}的值设置为Antlr4运行时动态链接库\texttt{libantlr4-runtime.so}所在位置。\\
+成功配置好\texttt{Antlr4}后，在项目根目录下执行以下命令：
+\begin{minted}{bash}
+./run.sh -c
+\end{minted}
+即可自动进行编译并运行，生成的可执行文件\texttt{SimDB}位于在\path{./bin}目录下。\\
+
+\texttt{SimDB}的交互方式选用类似于\texttt{MySQL}的命令行交互方式，一个示例如下：
+\begin{minted}{sql}
+Welcome to SimDB, a simple SQL engine.
+Commands end with ;
+mysql> USE Tsinghua;
+Database changed.
+Tsinghua> SELECT * FROM student;
+Tsinghua> SELECT;
+[Parser Error] line 1,6 mismatched input ';' expecting {'*', 'COUNT', 
+'AVG', 'MAX', 'MIN', 'SUM', Identifier}.
+[ERROR] detect 1 error in parsing.
+Tsinghua> quit;
+Bye!
+\end{minted}
+
+\section{系统设计}
+\subsection{页式文件系统}
+本部分代码位于\path{./src/filesystem}，需要注意的是，本部分直接使用了课程实验文档附录中提供的参考实现代码（对其中部分接口做了略微调整）。\\\\
+数据库是被设计用来存储大量数据的系统，数据库中一个文件的大小甚至可能超过计算机的内存。
+因此，需要一个\textbf{页式文件管理系统}来管理数据库的各个文件，以及一个\textbf{缓存}机制，将操作的多个页面缓存在内存中，只在需要时进行替换和写回，以提高读写的效率。
+参考实现中使用的替换算法为\textbf{最近最少使用算法}（\texttt{LRU}）。
+
+\subsection{记录管理}
+本部分代码位于\path{./src/record}。记录管理模块是整个数据库系统中相对比较底层的模块之一。其负责管理存入数据库的一条条记录，
+具体而言，记录管理模块需要支持的功能包括：将某一记录存放在某一文件的特定位置处，并维护好该记录的位置信息、是否为空的标记等；
+根据指定的位置，从存放数据的文件中取出指定的记录；将某一指定的记录从文件中删除；
+修改文件中某一指定位置的记录，实际上就是先读取记录，修改后再写回到原来的位置。\\
+
+同时，本模块还负责维护一张表的结构，具体而言，需要支持的功能包括：增加一张表；删除一张表；给原有的表增加/删除一个表项；修改原有的表中的一个表项等。
+为了实现以上的所有功能，记录管理模块会调用页式文件系统中定义的各个接口，从而完成实际的文件\texttt{I/O}操作。\\
+
+在本模块的具体实现中，一个数据库以文件夹的形式存储，该数据库下的一张表以单个文件的形式存放在对应文件夹下。 
+在处理某一文件中的多个内存页时，本模块将其分为两类，分别为表头页和记录页。
+前者用来存放一张表以及其对应文件的\textbf{元数据}，包括表的列数，每列的具体要求，以及该文件的总页数，第一个有空闲位置的页等信息。
+后者则用来存放对应表下的具体记录。
+
+\subsubsection{记录结构}
+一条记录包含多个表项的具体内容。记录实际上存在两种结构，分别为\textbf{序列化}和\textbf{反序列化}后的结果，实际存储在文件中的记录是序列化后的结果。
+\paragraph{序列化} 序列化后的结果为字节的序列，也即将记录中的各个表项拼接在一起，组成一个\texttt{char}数组。
+该字符数组的前两位字节被用来判断记录中各个表项是否为空值（\texttt{Null}）。
+\paragraph{反序列化} 反序列化即为将字节的序列整理成为更易操作的格式，实际过程中对记录的修改都是基于反序列化的形式。
+反序列化会将字节数组的各个表项提取出来，构造成一个链表。
+\paragraph{记录位置}\label{recordPosition} 每条记录的位置被维护成一个\textbf{二元组\texttt{(pageId, slotId)}}，表示该记录被存放在第\texttt{pageId}页上的第\texttt{slotId}槽中。
+
+\subsubsection{表头页结构}
+每个文件对应的第一个内存页被处理成\textbf{表头页}。表头页中存储的各个字段如下\\
+% uint8_t valid;
+% uint8_t colNum;
+% int8_t entryHead;
+% int16_t firstNotFullPage;
+% uint16_t recordLen, totalPageNumber; // recordLen: length of one record
+% uint32_t recordSize; // number of records/slots on one page
+% uint32_t recordNum; // total number of records;
+% TableEntry entrys[TAB_MAX_COL_NUM];
+% char tableName[TAB_MAX_NAME_LEN];
+\begin{center}
+    \begin{tabular}{|c|c|c|}
+        \hline
+            \textbf{名称}                  & \textbf{占用字节数} & \textbf{描述}\\
+        \hline 
+            valid                          & 1                  & 该页是否已经初始化\\
+        \hline 
+            colNum                         & 1                  & 表中的项数\\
+        \hline 
+            entryHead                      & 1                  & 第一项在entrys中对应的下标\\
+        \hline
+            firstNotFullPage               & 2                  & 第一个非满页的页码\\
+        \hline
+            recordLen                      & 2                  & 表中定长记录的长度\\
+        \hline
+            totalPageNumber                & 2                  & 当前总页数\\
+        \hline
+            recordSize                     & 4                  & 一页上所能存放的记录数\\
+        \hline
+            recordNum                      & 4                  & 总记录数\\
+        \hline
+            entrys[TAB\_MAX\_COL\_NUM]     & -                  & 各表项的具体描述\\
+        \hline
+            tableName[TAB\_MAX\_NAME\_LEN] & -                  & 各表项的名称\\
+        \hline
+    \end{tabular}  
+\end{center}
+其中，每个表项使用一个类\texttt{TableEntry}来描述，表中的\texttt{entrys}即为\texttt{TableEntry}的数组。
+\texttt{TableEntry}类的具体实现，参见附录中的各模块接口详细说明。
+    
+\subsubsection{记录页结构}
+文件对应的各个内存页中，除了第一个为表头页外，其余均为\textbf{记录页}。记录页的结构组织如下：\\
+\begin{bytefield}[bitwidth=.125\linewidth, bitheight=7mm]{8}
+    \bitbox[]{4}[]{\noindent31\hfill16\quad} & \bitbox[]{4}[]{\quad15\hfill0}\\
+    \bitboxes{4}[bgcolor=yellow!30]{{nextFreePage} {firstEmptySlot}} \\
+    \bitboxes{4}[bgcolor=blue!30]{{totalSlot} {maximumSlot}} \\
+    \bitbox{1}[bgcolor=gray!30]{slotHead}\bitbox{7}[bgcolor=gray!30]{record}\\
+    \bitbox{8}[bgcolor=gray!30]{...}\\
+    \bitbox{1}[bgcolor=gray!30]{slotHead}\bitbox{7}[bgcolor=gray!30]{record}
+\end{bytefield}\\
+记录页中的\texttt{nextFreePage}，以及表头页中的\texttt{firstNotFullPage}，将所有已分配的空闲页串成了一张链表。这样，在插入一条记录时，可以迅速找到有空闲位置的页；删除记录时，如果该页上的记录已经被删完了，就将其添加到空闲页链表的尾部。
+\texttt{totalSlot}记录的为当前页面内记录的总数，如果其达到了\texttt{maximumSlot}，说明页面已被填满，需要将其从空闲页链表中去除。
+对于非空闲页，该域中的内容可以是任意值。\\
+
+如上图所示，记录页中的前8个字节用于记录和空闲页管理以及页内槽数相关的信息，剩下的空间中会\textbf{紧密}排列着各条记录。
+由于记录是定长的，因此一旦记录的长度确定，就可以计算出页面上最多能存放的记录总数，以及每条记录存放位置的偏移。
+与空闲页的管理类似，空闲槽也被组织成链表，对任一个空闲槽，其对应的下一个空闲槽的编号被记录在\texttt{slotHead}中。链表尾部空闲槽该域的值为\texttt{-1}。
+而对于非空闲（已经写入了记录的）的槽，其\texttt{slotHead}域会被记录为\texttt{SLOT\_DIRTY}以进行区分。
+\subsection{索引管理}
+本部分代码位于\path{./src/index}。索引管理模块与记录管理模块类似，只是其处理的不是插入数据库的具体记录，而是针对这些记录而建立的索引。
+具体而言，索引管理模块需要支持的功能包括：为某一项记录建立索引；删除指定的索引；向已经建立的索引中再插入一项；搜索已经建立的索引等。建立的索引以\texttt{B+}树的形式被存储在内存中，因此，索引管理模块也需要调用页式文件管理系统中提供的接口。\\
+
+\ref{recordPosition}中提到，每条记录由一个\textbf{记录位置}唯一标识，从而可以用它作为对于记录的索引。实际操作过程中，对于数据库中某一张表下的某一列建立索引，也即为其建立一棵\texttt{B+}树，将该列的值作为\texttt{key}，同时将代表记录位置的二元组\texttt{hash}成单个元素作为\texttt{val}，一起存入\texttt{B+}树中。
+在查找时，指定\texttt{key}，可以在$\mathcal{O}(\log(n))$时间内找到对应的\texttt{val}，进而也就得到了记录的位置。
+因此，索引管理模块被用来实现对查找的加速，以及建立主键索引等功能。\\
+\subsubsection{\texttt{B+}树实现}
+\texttt{B+}树是二叉平衡树的一种，在节点访问时间远远超过节点内部访问时间的时候，具有非常大的优势。\texttt{B+}树的节点分为两类，分别为\textbf{内部节点}和\textbf{叶子节点}。
+真实的索引数据被保存在叶子节点，而内部节点只保存一些结构信息。本项目中，\texttt{B+}树采用的结构为内部节点的关键字个数与孩子个数相等，以及关键字按照单调递增的顺序排列，每个关键字都是对应子树中的最大值。
+\texttt{B+}树的每个内部节点维护了指向其两个兄弟、父亲和孩子节点的指针，以便于搜索。
+对于\texttt{B+}树的插入、删除和查找，以及处理上溢和下溢的方法，这里不再赘述，详细的可以参见参考文献。
+\subsubsection{索引页结构}
+\paragraph{索引头页} 索引头页为索引文件中的第一页，记录一些必要的控制信息，包括根页的页码、第一个非满页、总页数等。
+\paragraph{索引页}索引页的结构如下：\\
+% uint8_t isInitialized;
+% uint8_t colType;
+% uint8_t pageType;
+% int16_t nextPage; // related to B+ tree
+% int16_t lastPage;
+% int16_t firstIndex;
+% int16_t lastIndex;
+% int16_t firstEmptyIndex;
+% int16_t nextFreePage;
+% uint16_t totalIndex;
+% uint16_t indexLen;
+% int fatherIndex; // fatherIndex will be built from B+ tree
+\begin{bytefield}[bitwidth=.25\linewidth, bitheight=7mm]{4}
+    \begin{rightwordgroup}{Header}
+    \bitbox[]{2}[]{\noindent31\hfill16\quad} & \bitbox[]{2}[]{\quad15\hfill0}\\
+    % \bitheader{31, 16, 15, 0}\\
+    \bitboxes{1}[bgcolor=green!30]{{initialized} {colType} {pageType} {padding}}\\
+    \bitboxes{2}[bgcolor=yellow!30]{{nextPage} {lastPage}} \\
+    \bitboxes{2}[bgcolor=blue!30]{{firstIndex} {lastIndex}} \\
+    \bitboxes{2}[bgcolor=yellow!30]{{firstEmptyIndex} {nextFreePage}} \\
+    \end{rightwordgroup}
+    \bitboxes{2}[bgcolor=green!30]{{totalIndex} {indexLen}} \\
+    \bitboxes{1}[bgcolor=gray!30]{{nextIndex} {lastIndex} {childIndex} {key}}\\
+    \bitbox{4}[bgcolor=gray!30]{key}\\
+    \bitbox{4}[bgcolor=gray!30]{val}\\          
+    \bitbox{4}[bgcolor=gray!30]{...}
+\end{bytefield}\\
+每个索引页的前20个字节用来存储页面的元数据，剩下的位置被用来摆放索引。
+每条索引除了包含必要的\texttt{key}以及\texttt{val}以外，还需要额外记录下一条、上一条以及孩子索引的位置。这些是由\texttt{B+}树在插入、删除索引时维护的。
+同样的，页面上的空闲槽位被串连成一张链表，对于空闲的槽位，其\texttt{nextIndex}位置存放的就是下一条空闲槽位的位置。
+\subsection{系统管理}
+\texttt{\textcolor{red}{TODO}}
+\subsection{解析处理}
+本部分代码位于\path{./src/parser}。解析处理模块是数据库系统中最顶层的模块，其直接接受用户的\texttt{SQL}语句输入，根据需要进行一定程度上的查询优化，并将解析的结果转交给系统管理模块。
+系统管理模块实际操作数据库，再将执行的结果返回给解析处理模块。
+
+\subsubsection{\texttt{SQL}语句解析}
+本项目采用开源的\texttt{Antlr4}这一语言识别工具来构建\texttt{SQL}语法分析器。具体支持的文法在\path{./src/parser/antlr4}下的文件\texttt{SQL.g4}中定义。
+\texttt{Antlr4}会对收到的\texttt{SQL}语句进行解析，并生成\textbf{抽象语法分析树}。使用\texttt{Antlr4}的\textbf{访问者模式}，我们就可以方便地遍历语法分析树，并在遍历的同时
+调用系统管理模块中的接口，执行相应的操作。\\
+
+最终的实现中，使用自定义的\texttt{MyANTLRErrorListener}继承了\texttt{AnTLRErrorListener}，并在此基础上重写了处理\texttt{syntaxError}的函数。
+这样，程序在解析的过程中如果遇到语法错误，就会报告并退出此次解析，不会再进入后续对抽象语法树的遍历以及实际操作数据库的过程。
+
+\subsubsection{查询优化}
+由于数据库在针对\textbf{多表联合查询}时的性能较差，因此优化主要是针对这一部分。具体而言，如果多表连接查询时的\texttt{WHERE}子句形如$E_1 \text{ AND } E_2 \text{ AND } \cdots \text{ AND } E_n$，
+其中$E_i$为形如$T_i.C_k=T_j.C_l$的任意表达式，$T_i$、$T_j$为某两张表，$C_k$、$C_l$为某两列，那么如果在$C_k$或$C_l$上建有索引，就可以对该查询进行加速。
+具体而言，例如$T_1.C_1=T_2.C_2$，而表$T_1$的列$C_1$上建有索引，那么将该查询调整为$T_2.C_2=T_1.C_1$，先遍历查询表$T_2$，然后再利用索引查询表$T_1$，就能起到加速效果。\\
+
+在实际处理查询优化时，会对每一个多表查询的\texttt{WHERE}子句建立一个图，每个$T.C$用一个节点来代表，在两个点$T_1.C_1$和$T_2.C_2$间连边当且仅当表达式$T_1.C_1=T_2.C_2$或$T_2.C_2=T_1.C_1$存在。
+如果在加入某一条边时，发现两个顶点已经位于原图的某个连通分量中，那么就说明这条边所对应的表达式是冗余的，直接将其去掉即可。\\
+
+对于未建立索引的节点，可以找到图中的一条\textbf{最长路径}，使得这一路径除了起点外，其余节点均已经建立索引。否则，说明与其相邻的所有节点均未建立索引。
+查询时按照路径上从起点到终点的顺序，即可实现索引加速。
+最终可将原图上的所有边完全划分为多条不相交路径，每条路径只可能为以下三种形式之一：
+\begin{enumerate}
+    \item[a.] 除了起点外，其余所有节点均建立了索引。
+    \item[b.] 所有节点均建立了索引。
+    \item[c.] 只包含一条边，涉及的两个节点均未建立索引。
+\end{enumerate}
+除了迫不得已而产生的\texttt{c}类型的路径，其余均可利用索引进行加速。完成优化后，语法分析树受到了相应调整，后面的遍历解析就在此基础上继续进行。
+
+\section{项目分工}
+\begin{itemize}
+    \item 记录管理、索引管理：潘子睿
+    \item 系统管理、解析处理：余任杰
+\end{itemize}
+
+\section{参考文献}
+以下列出了本项目完成过程中所参考的部分资料，包括课程的实验文档、往届的实现，以及相关网站等。
+\begin{enumerate}
+    \item[\romannumeral1.] \href{https://github.com/miskcoo/TrivialDB}{\textcolor{black}{往届实现的数据库项目}}
+    \item[\romannumeral2.] \href{https://web.stanford.edu/class/cs346/2015/redbase.html}{\textcolor{black}{\texttt{CS346 Redbase project}}}
+    \item[\romannumeral3.] \href{https://en.wikipedia.org/wiki/B%2B_tree}{\textcolor{black}{\texttt{B+}树的定义与实现}}
+    \item[\romannumeral4.] \href{https://www.antlr.org/download.html}{\textcolor{black}{使用\texttt{Antlr4}完成\texttt{SQL}的语法解析}}
+    \item[\romannumeral5.] \href{https://thu-db.github.io/dbs-tutorial/}{\textcolor{black}{课程实验文档}}
+\end{enumerate}
+
+\end{document}
