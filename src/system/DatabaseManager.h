@@ -109,6 +109,8 @@ public:
 
     int dropIndex(string tableName, string indexName);
 
+    int hasIndex(string tableName, string indexName);
+
     /**
      * @brief add primary key constraint in the table entry and modify meta data
      * ALTER TABLE <table name> ADD PRIMARY KEY (<column name1>, <column name2>, ...);

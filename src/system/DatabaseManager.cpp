@@ -247,6 +247,10 @@ int DatabaseManager::dropIndex(string tableName, string indexName) {
     return tableManager->dropIndex(tableName, indexName);
 }
 
+int DatabaseManager::hasIndex(string tableName, string indexName) {
+    return tableManager->hasIndex(tableName, indexName);
+}
+
 int DatabaseManager::createPrimaryKey(string tableName, vector<string> colNames, int colNum) {
     int tableNum = -1;
     for(int i = 0; i < metaData->tableNum; i++) {

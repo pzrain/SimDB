@@ -13,6 +13,15 @@ TableManager::~TableManager() {
     delete fileHandler;
 }
 
+int TableManager::checkColExist(TableHeader* tableHeader, const char* colName) {
+    for (int i = 0; i < tableHeader->colNum; i++) {
+        if (!strcmp(colName, tableHeader->entrys[i].colName)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 inline bool TableManager::checkTableName(string name) {
     size_t length = name.length();
     if(length == 0 || length > TAB_MAX_NAME_LEN) {
@@ -37,11 +46,11 @@ int TableManager::creatTable(string tableName, TableEntry* tableEntrys, int colN
         return -1;
     }
     if(recordManager->createFile(tableName.c_str()) != 0){
-        printf("report error when create file in table manager\n");
+        fprintf(stderr, "report error when create file in table manager\n");
         return -1;
     }
     if(recordManager->openFile(tableName.c_str(), fileHandler) != 0) {
-        printf("report error when open file in tablemanager\n");
+        fprintf(stderr, "report error when open file in tablemanager\n");
         return -1;
     }
 
@@ -175,14 +184,23 @@ int TableManager::createIndex(string tableName, string indexName, string colName
     TableHeader* tableHeader = fileHandler->getTableHeader();
     uint8_t colType;
     uint16_t indexLen = indexLen_;
-    for(int i = 0; i < tableHeader->colNum; i++) {
-        if(strcmp(colName.c_str(), tableHeader->entrys[i].colName) == 0) {
-            colType = tableHeader->entrys[i].colType;
-            if(indexLen == 0)
-                indexLen = tableHeader->entrys[i].colLen;
+    int index = checkColExist(tableHeader, colName.c_str());
+    if (index >= 0) {
+        colType = tableHeader->entrys[index].colType;
+        if (indexLen == 0) {
+            indexLen = tableHeader->entrys[index].colLen;
         }
+    } else { // column not found
+        printf("[Error] specified column does not exist.\n");
+        return -1;
     }
-    // TODO not found column?
+    // for(int i = 0; i < tableHeader->colNum; i++) {
+    //     if(strcmp(colName.c_str(), tableHeader->entrys[i].colName) == 0) {
+    //         colType = tableHeader->entrys[i].colType;
+    //         if(indexLen == 0)
+    //             indexLen = tableHeader->entrys[i].colLen;
+    //     }
+    // }
 
     return indexManager->createIndex(tableName.c_str(), indexName.c_str(), indexLen, colType);
 }
@@ -195,8 +213,17 @@ int TableManager::dropIndex(string tableName, string indexName) {
         printf("[Error] table dose not exist!\n");
         return -1;
     }
+    // check column exists? maybe do not have to
+    if (!indexManager->hasIndex(tableName.c_str(), indexName.c_str())) {
+        printf("[Info] No index on %s.%s", tableName.c_str(), indexName.c_str());
+        return 0;
+    }
 
     return indexManager->removeIndex(tableName.c_str(), indexName.c_str());
+}
+
+bool TableManager::hasIndex(string tableName, string indexName) {
+    return indexManager->hasIndex(tableName.c_str(), indexName.c_str());
 }
 
 int TableManager::createPrimaryKey(string tableName, string colName) {
@@ -211,13 +238,20 @@ int TableManager::createPrimaryKey(string tableName, string colName) {
     if(fileHandler == nullptr)
         return -1;
     TableHeader* tableHeader = fileHandler->getTableHeader();
-    for(int i = 0; i < tableHeader->colNum; i++) {
-        if(strcmp(colName.c_str(), tableHeader->entrys[i].colName) == 0) {
-            tableHeader->entrys[i].primaryKeyConstraint = true;
-            return i;
-        }
+    int index = checkColExist(tableHeader, colName.c_str());
+    if (index >= 0) {
+        tableHeader->entrys[index].primaryKeyConstraint = true;
+    } else {
+        printf("[ERROR] specified column dose not exit.\n");
+        return -1;
     }
-    return -1;
+    // for(int i = 0; i < tableHeader->colNum; i++) {
+    //     if(strcmp(colName.c_str(), tableHeader->entrys[i].colName) == 0) {
+    //         tableHeader->entrys[i].primaryKeyConstraint = true;
+    //         return i;
+    //     }
+    // }
+    return index;
 }
 
 int TableManager::dropPrimaryKey(string tableName, string colName) {
@@ -232,13 +266,20 @@ int TableManager::dropPrimaryKey(string tableName, string colName) {
     if(fileHandler == nullptr)
         return -1;
     TableHeader* tableHeader = fileHandler->getTableHeader();
-    for(int i = 0; i < tableHeader->colNum; i++) {
-        if(strcmp(colName.c_str(), tableHeader->entrys[i].colName) == 0) {
-            tableHeader->entrys[i].primaryKeyConstraint = false;
-            return i;
-        }
+    int index = checkColExist(tableHeader, colName.c_str());
+    if (index >= 0) {
+        tableHeader->entrys[index].primaryKeyConstraint = false;
+    } else {
+        printf("[Error] specified column dose not exist.\n");
+        return -1;
     }
-    return -1;
+    // for(int i = 0; i < tableHeader->colNum; i++) {
+    //     if(strcmp(colName.c_str(), tableHeader->entrys[i].colName) == 0) {
+    //         tableHeader->entrys[i].primaryKeyConstraint = false;
+    //         return i;
+    //     }
+    // }
+    return index;
 }
 
 int TableManager::createForeignKey(string tableName, string foreignKeyName, string colName, string refTableName, string refTableCol) {
@@ -260,15 +301,24 @@ int TableManager::createForeignKey(string tableName, string foreignKeyName, stri
     if(fileHandler == nullptr)
         return -1;
     TableHeader* tableHeader = fileHandler->getTableHeader();
-    for(int i = 0; i < tableHeader->colNum; i++) {
-        if(strcmp(colName.c_str(), tableHeader->entrys[i].colName) == 0) {
-            tableHeader->entrys[i].foreignKeyConstraint = true;
-            strcpy(tableHeader->entrys[i].foreignKeyTableName, refTableName.c_str());
-            strcpy(tableHeader->entrys[i].foreignKeyColName, refTableCol.c_str());
-            return i;
-        }
+    int index = checkColExist(tableHeader, colName.c_str());
+    if (index >= 0) {
+        tableHeader->entrys[index].foreignKeyConstraint = true;
+        strcpy(tableHeader->entrys[index].foreignKeyTableName, refTableName.c_str());
+        strcpy(tableHeader->entrys[index].foreignKeyColName, refTableCol.c_str());
+    } else {
+        printf("[Error] specified column does not exist.\n");
+        return -1;
     }
-    return -1;
+    // for(int i = 0; i < tableHeader->colNum; i++) {
+    //     if(strcmp(colName.c_str(), tableHeader->entrys[i].colName) == 0) {
+    //         tableHeader->entrys[i].foreignKeyConstraint = true;
+    //         strcpy(tableHeader->entrys[i].foreignKeyTableName, refTableName.c_str());
+    //         strcpy(tableHeader->entrys[i].foreignKeyColName, refTableCol.c_str());
+    //         return i;
+    //     }
+    // }
+    return index;
 }
 
 int TableManager::dropForeignKey(string tableName, uint8_t colIndex) {

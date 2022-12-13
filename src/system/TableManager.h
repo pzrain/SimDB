@@ -29,6 +29,9 @@ private:
     IndexManager* indexManager;
     FileHandler* fileHandler;
     int tableNum;
+
+    int checkColExist(TableHeader* tableHeader, const char* colName);
+
 public:
     TableManager(string databaseName_, BufPageManager* bufPageManager_);
     ~TableManager();
@@ -60,6 +63,8 @@ public:
     int createIndex(string tableName, string indexName, string colName, uint16_t indexLen_);
 
     int dropIndex(string tableName, string indexName);
+
+    bool hasIndex(string tableName, string indexName);
 
     /**
      * @brief add only one primary key once and also drop one once, the loop is in DatabaseManager to add more then one.
