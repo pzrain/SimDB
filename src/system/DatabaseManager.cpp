@@ -260,15 +260,13 @@ int DatabaseManager::createPrimaryKey(string tableName, vector<string> colNames,
         }
     }
     if(tableNum == -1){
-        // printf("meta data error when add primary key\n");
-        printf("[Error] specified table does not exist.\n");
+        fprintf(stderr, "meta data error when add primary key\n");
         return -1;
     }
     for(int i = 0; i < colNum; i++) {
         int colIndex = tableManager->createPrimaryKey(tableName, colNames[i]);
         if(colIndex == -1) {
-            // printf("add primary key error\n");
-            printf("[Error] specified column does not exist.\n");
+            printf("[Error] error in adding primary key error\n");
             return -1;
         }
         metaData->isPrimaryKey[tableNum][colIndex] = true;
@@ -285,15 +283,13 @@ int DatabaseManager::dropPrimaryKey(string tableName, vector<string> colNames, i
         }
     }
     if(tableNum == -1){
-        // printf("meta data error when add primary key\n");
-        printf("[Error] specified table does not exist.\n");
+        fprintf(stderr, "meta data error when drop primary key\n");
         return -1;
     }
     for(int i = 0; i < colNum; i++) {
         int colIndex = tableManager->createPrimaryKey(tableName, colNames[i]);
         if(colIndex == -1) {
-            // printf("add primary key error\n");
-            printf("[Error] specified column does not exist.\n");
+            printf("[Error] error in dropping primary key error.\n");
             return -1;
         }
         metaData->isPrimaryKey[tableNum][colIndex] = false;
@@ -310,26 +306,27 @@ int DatabaseManager::createForeignKey(string tableName, string foreignKeyName, s
             refTableNum = i;
     }
     if(tableNum == -1 || refTableNum == -1){
-        // printf("meta data error when add foreign key\n");
-        printf("[Error] specified table does not exist.\n");
+        fprintf(stderr, "meta data error when add foreign key\n");
         return -1;
     }
+    /*
+        Note: can different tables have the same foreign key name ?
+    */
     for(int i = 0; i < metaData->foreignKeyNum; i++) {
         if(strcmp(foreignKeyName.c_str(), metaData->foreignKeyNames[i]) == 0) {
-            printf("[Error] foreign key already exited\n");
+            printf("[Error] foreign key already exists\n");
             return -1;
         }
     }
 
     int colIndex = tableManager->createForeignKey(tableName, foreignKeyName, colName, refTableName, refTableCol);
     if(colIndex == -1) {
-        // printf("create foreign key error\n");
-        printf("[Error] specified column does not exist.\n");
+        printf("[Error] error in creating foreign key.\n");
         return -1;
     }
 
     strcpy(metaData->foreignKeyNames[metaData->foreignKeyNum], foreignKeyName.c_str());
-    metaData->foreignKeyColumn[metaData->foreignKeyNum] = colIndex;
+    metaData->foreignKeyColumn[metaData->foreignKeyNum] = colIndex; // colIndex will stay unchanged, so this is valid
     metaData->foreignKeyNum++;
     
     return 0;

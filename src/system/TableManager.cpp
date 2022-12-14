@@ -1,4 +1,5 @@
 #include "TableManager.h"
+#include "assert.h"
 #include <unistd.h>
 
 TableManager::TableManager(string databaseName_,  BufPageManager* bufPageManager_) {
@@ -14,12 +15,7 @@ TableManager::~TableManager() {
 }
 
 int TableManager::checkColExist(TableHeader* tableHeader, const char* colName) {
-    for (int i = 0; i < tableHeader->colNum; i++) {
-        if (!strcmp(colName, tableHeader->entrys[i].colName)) {
-            return i;
-        }
-    }
-    return -1;
+    return tableHeader->getCol(colName);
 }
 
 inline bool TableManager::checkTableName(string name) {
@@ -194,13 +190,11 @@ int TableManager::createIndex(string tableName, string indexName, string colName
         printf("[Error] specified column does not exist.\n");
         return -1;
     }
-    // for(int i = 0; i < tableHeader->colNum; i++) {
-    //     if(strcmp(colName.c_str(), tableHeader->entrys[i].colName) == 0) {
-    //         colType = tableHeader->entrys[i].colType;
-    //         if(indexLen == 0)
-    //             indexLen = tableHeader->entrys[i].colLen;
-    //     }
-    // }
+
+    if (indexManager->hasIndex(tableName.c_str(), colName.c_str())) {
+        printf("[Info] the index has already been created.\n");
+        return index;
+    }
 
     int res = indexManager->createIndex(tableName.c_str(), indexName.c_str(), indexLen, colType);
 
@@ -234,7 +228,7 @@ int TableManager::dropIndex(string tableName, string indexName) {
     }
     // check column exists? maybe do not have to
     if (!indexManager->hasIndex(tableName.c_str(), indexName.c_str())) {
-        printf("[Info] No index on %s.%s", tableName.c_str(), indexName.c_str());
+        printf("[Info] No index on %s.%s\n", tableName.c_str(), indexName.c_str());
         return 0;
     }
 
@@ -345,7 +339,15 @@ int TableManager::createForeignKey(string tableName, string foreignKeyName, stri
         return -1;
     TableHeader* tableHeader = fileHandler->getTableHeader();
     int index = checkColExist(tableHeader, colName.c_str());
-    if (index >= 0) {
+    FileHandler* refFileHandler = recordManager->findTable(refTableName.c_str());
+    TableHeader* refTableHeader = refFileHandler->getTableHeader();
+    assert(refFileHandler != nullptr);
+    int refIndex = checkColExist(refFileHandler->getTableHeader(), refTableCol.c_str());
+    if (index >= 0 && refIndex >= 0) {
+        if (refTableHeader->entrys[refIndex].primaryKeyConstraint == false) {
+            printf("[Error] can not build foreign key on ref table's non-primary-key field.\n");
+            return -1;
+        }
         tableHeader->entrys[index].foreignKeyConstraint = true;
         strcpy(tableHeader->entrys[index].foreignKeyTableName, refTableName.c_str());
         strcpy(tableHeader->entrys[index].foreignKeyColName, refTableCol.c_str());
