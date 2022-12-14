@@ -3,7 +3,15 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <cstring>
 #include "DatabaseManager.h"
+
+DBMeta::DBMeta() {
+    tableNum = 0;
+    foreignKeyNum = 0;
+    memset(isPrimaryKey, false, sizeof(isPrimaryKey));
+    memset(isUniqueKey, false, sizeof(isUniqueKey));
+}
 
 DatabaseManager::DatabaseManager() {
     BASE_PATH = "database/";
@@ -239,16 +247,16 @@ int DatabaseManager::renameTable(string oldName, string newName) {
     return -1;
 }
 
-int DatabaseManager::createIndex(string tableName, string indexName, string colName, uint16_t indexLen = 0) {
-    return tableManager->createIndex(tableName, indexName, colName, indexLen);
+int DatabaseManager::createIndex(string tableName, string colName) {
+    return tableManager->createIndex(tableName, colName);
 }
 
-int DatabaseManager::dropIndex(string tableName, string indexName) {
-    return tableManager->dropIndex(tableName, indexName);
+int DatabaseManager::dropIndex(string tableName, string colName) {
+    return tableManager->dropIndex(tableName, colName);
 }
 
-int DatabaseManager::hasIndex(string tableName, string indexName) {
-    return tableManager->hasIndex(tableName, indexName);
+int DatabaseManager::hasIndex(string tableName, string colName) {
+    return tableManager->hasIndex(tableName, colName);
 }
 
 int DatabaseManager::createPrimaryKey(string tableName, vector<string> colNames, int colNum) {
@@ -266,7 +274,7 @@ int DatabaseManager::createPrimaryKey(string tableName, vector<string> colNames,
     for(int i = 0; i < colNum; i++) {
         int colIndex = tableManager->createPrimaryKey(tableName, colNames[i]);
         if(colIndex == -1) {
-            printf("[Error] error in adding primary key error\n");
+            printf("[Error] error in adding %d primary key error\n", i);
             return -1;
         }
         metaData->isPrimaryKey[tableNum][colIndex] = true;
@@ -289,7 +297,7 @@ int DatabaseManager::dropPrimaryKey(string tableName, vector<string> colNames, i
     for(int i = 0; i < colNum; i++) {
         int colIndex = tableManager->createPrimaryKey(tableName, colNames[i]);
         if(colIndex == -1) {
-            printf("[Error] error in dropping primary key error.\n");
+            printf("[Error] error in dropping %d primary key error.\n", i);
             return -1;
         }
         metaData->isPrimaryKey[tableNum][colIndex] = false;
@@ -363,5 +371,51 @@ int DatabaseManager::dropForeignKey(string tableName, string foreignKeyName) {
     strcpy(metaData->foreignKeyNames[foreignKeyIndex], metaData->foreignKeyNames[metaData->foreignKeyNum-1]);
     metaData->foreignKeyColumn[foreignKeyIndex] = metaData->foreignKeyColumn[metaData->foreignKeyNum-1];
     metaData->foreignKeyNum--;
+    return 0;
+}
+
+int DatabaseManager::createUniqueKey(string tableName, vector<string> colNames, int colNum) {
+    int tableNum = -1;
+    for(int i = 0; i < metaData->tableNum; i++) {
+        if(strcmp(tableName.c_str(), metaData->tableNames[i]) == 0) {
+            tableNum = i;
+            break;
+        }
+    }
+    if(tableNum == -1){
+        fprintf(stderr, "meta data error when add unique key\n");
+        return -1;
+    }
+    for(int i = 0; i < colNum; i++) {
+        int colIndex = tableManager->createUniqueKey(tableName, colNames[i]);
+        if(colIndex == -1) {
+            printf("[Error] error in adding %d unique key error\n", i);
+            return -1;
+        }
+        metaData->isUniqueKey[tableNum][colIndex] = true;
+    }
+    return 0;
+}
+
+int DatabaseManager::dropUniqueKey(string tableName, vector<string> colNames, int colNum) {
+    int tableNum = -1;
+    for(int i = 0; i < metaData->tableNum; i++) {
+        if(strcmp(tableName.c_str(), metaData->tableNames[i]) == 0) {
+            tableNum = i;
+            break;
+        }
+    }
+    if(tableNum == -1){
+        fprintf(stderr, "meta data error when drop unique key\n");
+        return -1;
+    }
+    for(int i = 0; i < colNum; i++) {
+        int colIndex = tableManager->createUniqueKey(tableName, colNames[i]);
+        if(colIndex == -1) {
+            printf("[Error] error in dropping %d unique key error.\n", i);
+            return -1;
+        }
+        metaData->isUniqueKey[tableNum][colIndex] = false;
+    }
     return 0;
 }

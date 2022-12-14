@@ -60,11 +60,11 @@ public:
 
     int saveChangeToFile(const char* tableName);
 
-    int createIndex(string tableName, string indexName, string colName, uint16_t indexLen_);
+    int createIndex(string tableName, string colName);
 
-    int dropIndex(string tableName, string indexName);
+    int dropIndex(string tableName, string colName);
 
-    bool hasIndex(string tableName, string indexName);
+    bool hasIndex(string tableName, string colName);
 
     /**
      * @brief add only one primary key once and also drop one once, the loop is in DatabaseManager to add more then one.
@@ -86,6 +86,17 @@ public:
      * @return 0 if success, -1 if fail
     */
     int dropForeignKey(string tableName, uint8_t colIndex);
+
+    /**
+     * @brief refer to createPrimaryKey
+     * 
+     * @param tableName 
+     * @param colName 
+     * @return int 
+     */
+    int createUniqueKey(string tableName, string colName);
+
+    int dropUniqueKey(string tableName, string colName);
 };
 
 #endif

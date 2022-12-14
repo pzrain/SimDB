@@ -165,7 +165,7 @@ int TableManager::saveChangeToFile(const char* tableName) {
     // TODO
 }
 
-int TableManager::createIndex(string tableName, string indexName, string colName, uint16_t indexLen_) {
+int TableManager::createIndex(string tableName, string colName) {
     if(!checkTableName(tableName))
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
@@ -179,13 +179,11 @@ int TableManager::createIndex(string tableName, string indexName, string colName
         return -1;
     TableHeader* tableHeader = fileHandler->getTableHeader();
     uint8_t colType;
-    uint16_t indexLen = indexLen_;
+    uint16_t indexLen;
     int index = checkColExist(tableHeader, colName.c_str());
     if (index >= 0) {
         colType = tableHeader->entrys[index].colType;
-        if (indexLen == 0) {
-            indexLen = tableHeader->entrys[index].colLen;
-        }
+        indexLen = tableHeader->entrys[index].colLen;
     } else { // column not found
         printf("[Error] specified column does not exist.\n");
         return -1;
@@ -196,7 +194,7 @@ int TableManager::createIndex(string tableName, string indexName, string colName
         return index;
     }
 
-    int res = indexManager->createIndex(tableName.c_str(), indexName.c_str(), indexLen, colType);
+    int res = indexManager->createIndex(tableName.c_str(), colName.c_str(), indexLen, colType);
 
     // add pre-existing records to the newly-added index
     if (res >= 0) {
@@ -218,7 +216,7 @@ int TableManager::createIndex(string tableName, string indexName, string colName
     return res;    
 }
 
-int TableManager::dropIndex(string tableName, string indexName) {
+int TableManager::dropIndex(string tableName, string colName) {
     if(!checkTableName(tableName))
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
@@ -227,16 +225,16 @@ int TableManager::dropIndex(string tableName, string indexName) {
         return -1;
     }
     // check column exists? maybe do not have to
-    if (!indexManager->hasIndex(tableName.c_str(), indexName.c_str())) {
-        printf("[Info] No index on %s.%s\n", tableName.c_str(), indexName.c_str());
+    if (!indexManager->hasIndex(tableName.c_str(), colName.c_str())) {
+        printf("[Info] No index on %s.%s\n", tableName.c_str(), colName.c_str());
         return 0;
     }
 
-    return indexManager->removeIndex(tableName.c_str(), indexName.c_str());
+    return indexManager->removeIndex(tableName.c_str(), colName.c_str());
 }
 
-bool TableManager::hasIndex(string tableName, string indexName) {
-    return indexManager->hasIndex(tableName.c_str(), indexName.c_str());
+bool TableManager::hasIndex(string tableName, string colName) {
+    return indexManager->hasIndex(tableName.c_str(), colName.c_str());
 }
 
 int TableManager::createPrimaryKey(string tableName, string colName) {
@@ -252,6 +250,9 @@ int TableManager::createPrimaryKey(string tableName, string colName) {
         return -1;
     TableHeader* tableHeader = fileHandler->getTableHeader();
     int index = checkColExist(tableHeader, colName.c_str());
+
+    // make sure there is only one primary key constraint
+
     uint16_t indexLen;
     uint8_t colType;
     if (index >= 0) {
@@ -304,15 +305,9 @@ int TableManager::dropPrimaryKey(string tableName, string colName) {
     if (index >= 0) {
         tableHeader->entrys[index].primaryKeyConstraint = false;
     } else {
-        printf("[Error] specified column dose not exist.\n");
+        printf("[Error] specified column does not exist.\n");
         return -1;
     }
-    // for(int i = 0; i < tableHeader->colNum; i++) {
-    //     if(strcmp(colName.c_str(), tableHeader->entrys[i].colName) == 0) {
-    //         tableHeader->entrys[i].primaryKeyConstraint = false;
-    //         return i;
-    //     }
-    // }
 
     indexManager->removeIndex(tableName.c_str(), colName.c_str());
 
@@ -386,3 +381,51 @@ int TableManager::dropForeignKey(string tableName, uint8_t colIndex) {
     return 0;
 }
 
+int TableManager::createUniqueKey(string tableName, string colName) {
+    int res = createIndex(tableName, colName);
+    // the index is established. Next should build unique constraint
+    if (res >= 0) {
+        fileHandler = recordManager->findTable(tableName.c_str());
+        assert(fileHandler != nullptr);
+        TableHeader* tableHeader = fileHandler->getTableHeader();
+        int index = checkColExist(tableHeader, colName.c_str());
+        assert(index >= 0);
+        if (tableHeader->entrys[index].uniqueConstraint == true) {
+            printf("[Info] the unique constraint of %s has already been created.\n", colName.c_str());
+            return index;
+        } else if (tableHeader->entrys[index].primaryKeyConstraint == true) {
+            printf("[Error] can not create unique constraint on primary key.\n");
+            return -1;
+        }
+        tableHeader->entrys[index].uniqueConstraint = true;
+    }
+    return res;
+}
+
+int TableManager::dropUniqueKey(string tableName, string colName) {
+    if(!checkTableName(tableName))
+        return -1;
+    string path = "database/" + databaseName + '/' + tableName +".db";
+    if(!checkTableExist(path)) {
+        printf("[Error] table dose not exist!\n");
+        return -1;
+    }
+    fileHandler = recordManager->findTable(tableName.c_str());
+    if(fileHandler == nullptr)
+        return -1;
+    TableHeader* tableHeader = fileHandler->getTableHeader();
+    int index = checkColExist(tableHeader, colName.c_str());
+    if (index >= 0) {
+        if (tableHeader->entrys[index].uniqueConstraint == false) {
+            printf("[Info] specified column dose not have unique constraint.\n");
+            return index;
+        }
+        tableHeader->entrys[index].uniqueConstraint = false;
+    } else {
+        printf("[Error] specified column does not exist.\n");
+        return -1;
+    }
+
+    assert(indexManager->hasIndex(tableName.c_str(), colName.c_str()));
+    return indexManager->removeIndex(tableName.c_str(), colName.c_str());
+}

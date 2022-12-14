@@ -17,10 +17,13 @@ struct DBMeta {
     char tableNames[DB_MAX_TABLE_NUM][TAB_MAX_NAME_LEN];
     
     bool isPrimaryKey[DB_MAX_TABLE_NUM][TAB_MAX_COL_NUM]; // wheater a column is a primary key
+    bool isUniqueKey[DB_MAX_TABLE_NUM][TAB_MAX_COL_NUM];
     
     char foreignKeyNames[MAX_FOREIGN_KEY_NUM][64];
     uint8_t foreignKeyColumn[MAX_FOREIGN_KEY_NUM]; // use foreign key index to quickly find column 
     // more ...
+
+    DBMeta();
 };
 class DatabaseManager {
 private:
@@ -105,11 +108,11 @@ public:
     /**
      * not sure
     */
-    int createIndex(string tableName, string indexName, string colName, uint16_t indexLen_);
+    int createIndex(string tableName, string colName);
 
-    int dropIndex(string tableName, string indexName);
+    int dropIndex(string tableName, string colName);
 
-    int hasIndex(string tableName, string indexName);
+    int hasIndex(string tableName, string colName);
 
     /**
      * @brief add primary key constraint in the table entry and modify meta data
@@ -120,6 +123,18 @@ public:
     int createPrimaryKey(string tableName, vector<string> colNames, int colNum);
 
     int dropPrimaryKey(string tableName, vector<string> colNames, int colNum);
+
+    /**
+     * @brief Create a Unique Key object. Refer to createPrimaryKey for more information
+     * 
+     * @param tableName 
+     * @param colNames 
+     * @param colNum 
+     * @return int 
+     */
+    int createUniqueKey(string tableName, vector<string> colNames, int colNum);
+
+    int dropUniqueKey(string tableName, vector<string> colNames, int colNum);
     
     /**
      * @brief add foreign key constraint in the table entry and modify meta data
