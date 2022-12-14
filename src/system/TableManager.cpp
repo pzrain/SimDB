@@ -251,12 +251,17 @@ int TableManager::createPrimaryKey(string tableName, string colName) {
     TableHeader* tableHeader = fileHandler->getTableHeader();
     int index = checkColExist(tableHeader, colName.c_str());
 
-    // make sure there is only one primary key constraint
+    // make sure there is only one primary key
+    if (tableHeader->hasPrimaryKey()) {
+        printf("[Error] can not add primary key to this table.\n");
+        return -1;
+    }
 
     uint16_t indexLen;
     uint8_t colType;
     if (index >= 0) {
         tableHeader->entrys[index].primaryKeyConstraint = true;
+        tableHeader->entrys[index].uniqueConstraint = false; // make sure primaryKeyConstraint and uniqueConstrain don't co-exist
         indexLen = tableHeader->entrys[index].colLen;
         colType = tableHeader->entrys[index].colType;
     } else {
@@ -269,23 +274,23 @@ int TableManager::createPrimaryKey(string tableName, string colName) {
     }
     indexManager->createIndex(tableName.c_str(), colName.c_str(), indexLen, colType);
     // add pre-existing records to the newly-added index
-    // however primary key can only be enabled from the start
-    // so there should be no record to add
+    // however when primary key is enabled as the table is created
+    // there should be no record to add
 
-    // std::vector<Record*> records;
-    // std::vector<RecordId*> recordIds;
-    // fileHandler->getAllRecordsAccordingToFields(records, recordIds, (1 << index));
-    // std::vector<void*> insertDatas;
-    // std::vector<int> insertVals;
-    // std::vector<int> pageIds, slotIds;
-    // for (int i = 0; i < records.size(); i++) {
-    //     insertDatas.push_back((void*)(records[i]->data));
-    //     pageIds.push_back(recordIds[i]->getPageId());
-    //     slotIds.push_back(recordIds[i]->getSlotId());
-    // }
-    // insertVals.resize(records.size());
-    // indexManager->transform(tableName.c_str(), colName.c_str(), insertVals, pageIds, slotIds);
-    // indexManager->insert(tableName.c_str(), colName.c_str(), insertDatas, insertVals);
+    std::vector<Record*> records;
+    std::vector<RecordId*> recordIds;
+    fileHandler->getAllRecordsAccordingToFields(records, recordIds, (1 << index));
+    std::vector<void*> insertDatas;
+    std::vector<int> insertVals;
+    std::vector<int> pageIds, slotIds;
+    for (int i = 0; i < records.size(); i++) {
+        insertDatas.push_back((void*)(records[i]->data));
+        pageIds.push_back(recordIds[i]->getPageId());
+        slotIds.push_back(recordIds[i]->getSlotId());
+    }
+    insertVals.resize(records.size());
+    indexManager->transform(tableName.c_str(), colName.c_str(), insertVals, pageIds, slotIds);
+    indexManager->insert(tableName.c_str(), colName.c_str(), insertDatas, insertVals);
     return index;
 }
 
@@ -303,6 +308,10 @@ int TableManager::dropPrimaryKey(string tableName, string colName) {
     TableHeader* tableHeader = fileHandler->getTableHeader();
     int index = checkColExist(tableHeader, colName.c_str());
     if (index >= 0) {
+        if (tableHeader->entrys[index].primaryKeyConstraint == false) {
+            printf("[Info] there is no primary key constraint on column %s\n", colName.c_str());
+            return index;
+        }
         tableHeader->entrys[index].primaryKeyConstraint = false;
     } else {
         printf("[Error] specified column does not exist.\n");
@@ -343,6 +352,10 @@ int TableManager::createForeignKey(string tableName, string foreignKeyName, stri
             printf("[Error] can not build foreign key on ref table's non-primary-key field.\n");
             return -1;
         }
+        if (tableHeader->entrys[index].foreignKeyConstraint == true) {
+            printf("[Error] the column %s already has a foreign key.\n", colName.c_str());
+            return -1;
+        }
         tableHeader->entrys[index].foreignKeyConstraint = true;
         strcpy(tableHeader->entrys[index].foreignKeyTableName, refTableName.c_str());
         strcpy(tableHeader->entrys[index].foreignKeyColName, refTableCol.c_str());
@@ -350,14 +363,6 @@ int TableManager::createForeignKey(string tableName, string foreignKeyName, stri
         printf("[Error] specified column does not exist.\n");
         return -1;
     }
-    // for(int i = 0; i < tableHeader->colNum; i++) {
-    //     if(strcmp(colName.c_str(), tableHeader->entrys[i].colName) == 0) {
-    //         tableHeader->entrys[i].foreignKeyConstraint = true;
-    //         strcpy(tableHeader->entrys[i].foreignKeyTableName, refTableName.c_str());
-    //         strcpy(tableHeader->entrys[i].foreignKeyColName, refTableCol.c_str());
-    //         return i;
-    //     }
-    // }
     return index;
 }
 
