@@ -76,6 +76,7 @@ public:
     /**
      * @brief list all the tables' name of the currently opened database.
      * SHOW DATABASE <database name>;
+     * SHOW TABLES
     */
     int listTablesOfDatabase(string name);
 
@@ -90,7 +91,7 @@ public:
 
     /**
      * @brief only print all columns' name and data type. 
-     * SHOW TABLE <table name>
+     * SHOW TABLE <table name> (maybe DESC <table name> ?)
     */
     int listTableInfo(string name);
 
@@ -157,12 +158,13 @@ public:
      */
     int selectRecords(DBSelect* dbSelect);
     // SELECT column FROM table WHERE expr;
+    // parameters are encapsulated mainly due to nesty selections
 
-    int updateRecords();
+    int updateRecords(string tableName, DBUpdate* dbUpdate);
 
-    int insertRecords();
+    int insertRecords(string tableName, DBInsert* dbInsert);
 
-    int dropRecords();
+    int dropRecords(string tableName, DBDelete* dbDelete);
 
 };
 

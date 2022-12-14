@@ -46,10 +46,35 @@ struct DBSelect {
 
     std::vector<DBSelItem>    selectItems;
     std::vector<std::string>  selectTables;
-    std::vector<DBExpression> expressions;
+    std::vector<DBExpression> expressions;     // where clause
     std::vector<DBSelect*>    nextSelects;     // store nest selection
                                                // the number of items in nextSelects should match
                                                // the number of items in expressions which has op=IN_TYPE and rType=DB_NST
+    bool groupByEn = false;
+    DBExpItem groupByCol;
+
+    bool limitEn = false;
+    int limitNum;
+
+    bool offset = false;
+    int offsetNum;
+};
+
+struct DBUpdate {
+    std::vector<DBExpression> expItem;      // set clause, like "name=value"
+    std::vector<DBExpression> expressions;  // where clause
+};
+
+struct DBInsert {
+    std::vector<std::vector<void*>> valueLists;
+    std::vector<std::vector<DB_LIST_TYPE>> valueListsType;
+    // list of value list
+    // similar to valueListType in DBExpression
+    // example 2 below shows some details
+};
+
+struct DBDelete {
+    std::vector<DBExpression> expression;  // where clause
 };
 
 /**
@@ -64,6 +89,7 @@ struct DBSelect {
  *  dbSelect.selectTables.push_back("student");
  * 
  * 
+ * (usage of value list)
  * 2. SELECT teacher.id FROM school, teacher WHERE school.name="tsinghua" AND school.id IN (2, 3, 4)
  *  DBSelItem dbSelItem;
  *  dbSelItem.item.expTable = "teacher";
@@ -102,6 +128,7 @@ struct DBSelect {
  *  delete dbSelect;
  * 
  * 
+ * (usage of nesty selection)
  * 3. SELECT * FROM teacher WHERE id IN (SELECT id FROM student);
  *  // we will pass for the construct of selectItems and selectTables;
  *  DBExpression exp;
