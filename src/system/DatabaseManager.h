@@ -4,6 +4,7 @@
 
 #include <string>
 #include "TableManager.h"
+#include "DBComponent.h"
 #include "../filesystem/fileio/FileManager.h"
 #include "../filesystem/bufmanager/BufPageManager.h"
 
@@ -148,9 +149,20 @@ public:
     */
     int dropForeignKey(string tableName, string foreignKeyName);
 
-    int insertRecord();
+    /**
+     * @brief select statement, including fuzzy, nesty, group by…… selection
+     * 
+     * @param dbSelect 
+     * @return number of queries affected, -1 if encounters error
+     */
+    int selectRecords(DBSelect* dbSelect);
+    // SELECT column FROM table WHERE expr;
 
-    int dropRecord();
+    int updateRecords();
+
+    int insertRecords();
+
+    int dropRecords();
 
 };
 
