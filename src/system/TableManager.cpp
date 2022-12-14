@@ -237,6 +237,12 @@ bool TableManager::hasIndex(string tableName, string colName) {
     return indexManager->hasIndex(tableName.c_str(), colName.c_str());
 }
 
+int TableManager::showIndex() {
+    int cnt = indexManager->showIndex();
+    printf("%d indexes in total.\n", cnt);
+    return 0;
+}
+
 int TableManager::createPrimaryKey(string tableName, string colName) {
     if(!checkTableName(tableName))
         return -1;

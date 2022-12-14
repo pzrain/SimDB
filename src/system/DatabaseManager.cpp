@@ -1,5 +1,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <filesystem>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -163,6 +164,18 @@ int DatabaseManager::switchDatabase(string name) {
     return 0;
 }
 
+int DatabaseManager::showDatabases() {
+    printf("Databases:\n");
+    int cnt = 0;
+    for (const auto & entry : std::filesystem::directory_iterator(BASE_PATH)) {
+        std::string str(entry.path().c_str());
+        printf("%s\n", str.substr(BASE_PATH.length(), str.length() - BASE_PATH.length()).c_str());
+        cnt += 1;
+    }
+    printf("%d databases in total.\n", cnt);
+    return 0;
+}
+
 int DatabaseManager::listTablesOfDatabase(string name) {
     printf("============%s=============\n", name.c_str());
     for(int i = 0; i < metaData->tableNum; i++) {
@@ -257,6 +270,10 @@ int DatabaseManager::dropIndex(string tableName, string colName) {
 
 int DatabaseManager::hasIndex(string tableName, string colName) {
     return tableManager->hasIndex(tableName, colName);
+}
+
+int DatabaseManager::showIndex() {
+    return tableManager->showIndex();
 }
 
 int DatabaseManager::createPrimaryKey(string tableName, vector<string> colNames, int colNum) {

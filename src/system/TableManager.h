@@ -66,6 +66,8 @@ public:
 
     bool hasIndex(string tableName, string colName);
 
+    int showIndex();
+
     /**
      * @brief add only one primary key once and also drop one once, the loop is in DatabaseManager to add more then one.
      * @return column index if successfully find the correct column else -1

@@ -74,6 +74,14 @@ public:
     int switchDatabase(string name);
 
     /**
+     * @brief show all the databases created
+     * SHOW DATABASES
+     * 
+     * @return 0 if succeed, -1 if encounter error
+     */
+    int showDatabases();
+
+    /**
      * @brief list all the tables' name of the currently opened database.
      * SHOW DATABASE <database name>;
      * SHOW TABLES
@@ -115,6 +123,8 @@ public:
     int dropIndex(string tableName, string colName);
 
     int hasIndex(string tableName, string colName);
+
+    int showIndex();
 
     /**
      * @brief add primary key constraint in the table entry and modify meta data
