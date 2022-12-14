@@ -2,7 +2,7 @@
 #define __DBCOMPONENT_H__
 #include <string>
 #include <vector>
-#include "common.h"
+#include "../common.h"
 
 // expTable.expCol  or  expCol (set expTable to "")
 struct DBExpItem{

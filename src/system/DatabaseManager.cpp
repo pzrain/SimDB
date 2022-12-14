@@ -176,12 +176,17 @@ int DatabaseManager::showDatabases() {
     return 0;
 }
 
+string DatabaseManager::getDatabaseName() {
+    return databaseUsedName == "" ? "mysql" : databaseUsedName;
+}
+
 int DatabaseManager::listTablesOfDatabase(string name) {
     printf("============%s=============\n", name.c_str());
     for(int i = 0; i < metaData->tableNum; i++) {
         printf("table%d: %-64s\n", i, metaData->tableNames[i]);
     }
     printf("=============end================\n");
+    return 0;
 }
 
 int DatabaseManager::createTable(string name, char colName[][COL_MAX_NAME_LEN], TB_COL_TYPE* colType, int* colLen, int colNum) {
@@ -243,6 +248,7 @@ int DatabaseManager::dropTable(string name) {
         metaData->tableNum--;
         return 0;
     }
+    return 0;
 }
 
 int DatabaseManager::renameTable(string oldName, string newName) {

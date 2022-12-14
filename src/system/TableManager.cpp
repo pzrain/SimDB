@@ -51,7 +51,7 @@ int TableManager::creatTable(string tableName, TableEntry* tableEntrys, int colN
     }
 
     fileHandler->operateTable(TB_INIT, nullptr, tableEntrys, colNum);
-
+    return 0;
 }
 
 int TableManager::openTable(string name) {
@@ -163,6 +163,7 @@ int TableManager::saveChangeToFile(const char* tableName) {
     fileHandler = recordManager->findTable(tableName);
     recordManager->closeFile(fileHandler);
     // TODO
+    return 0;
 }
 
 int TableManager::createIndex(string tableName, string colName) {
@@ -339,8 +340,8 @@ int TableManager::createForeignKey(string tableName, string foreignKeyName, stri
     }
     if(!checkTableName(refTableName))
         return -1;
-    string path = "database/" + databaseName + '/' + refTableName +".db";
-    if(!checkTableExist(path)) {
+    string tablePath = "database/" + databaseName + '/' + refTableName +".db";
+    if(!checkTableExist(tablePath)) {
         printf("[Error] table dose not exist!\n");
         return -1;
     }

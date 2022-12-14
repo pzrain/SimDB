@@ -81,6 +81,8 @@ public:
      */
     int showDatabases();
 
+    string getDatabaseName();
+
     /**
      * @brief list all the tables' name of the currently opened database.
      * SHOW DATABASE <database name>;
