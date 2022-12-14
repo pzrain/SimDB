@@ -53,6 +53,14 @@ public:
     int remove(const char* tableName, const char* indexName, void* data);
     // remove those index whose key is equal to data
 
+    void transform(const char* tableName, const char* indexName, int& val, int pageId, int slotId);
+
+    void transform(const char* tableName, const char* indexName, std::vector<int>& vals, std::vector<int> pageIds, std::vector<int> slotIds);
+
+    void transformR(const char* tableName, const char* indexName, int val, int& pageId, int& slotId);
+
+    void transformR(const char* tableName, const char* indexName, std::vector<int> vals, std::vector<int>& pageIds, std::vector<int>& slotIds);
+
     bool isValid();
 };
 

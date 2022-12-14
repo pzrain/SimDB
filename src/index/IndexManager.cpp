@@ -191,3 +191,27 @@ int IndexManager::remove(const char* tableName, const char* indexName, void* dat
     cur->remove(data);
     return 0;
 }
+
+void IndexManager::transform(const char* tableName, const char* indexName, int& val, int pageId, int slotId) {
+    BPlusTree* cur = findIndex(tableName, indexName);
+    cur->transform(val, pageId, slotId);
+}
+
+void IndexManager::transform(const char* tableName, const char* indexName, std::vector<int>& vals, std::vector<int> pageIds, std::vector<int> slotIds) {
+    BPlusTree* cur = findIndex(tableName, indexName);
+    for (int i = 0; i < vals.size(); i++) {
+        cur->transform(vals[i], pageIds[i], slotIds[i]);
+    }
+}
+
+void IndexManager::transformR(const char* tableName, const char* indexName, int val, int& pageId, int& slotId) {
+    BPlusTree* cur = findIndex(tableName, indexName);
+    cur->transformR(val, pageId, slotId);
+}
+
+void IndexManager::transformR(const char* tableName, const char* indexName, std::vector<int> vals, std::vector<int>& pageIds, std::vector<int>& slotIds) {
+    BPlusTree* cur = findIndex(tableName, indexName);
+    for (int i = 0; i < vals.size(); i++) {
+        cur->transformR(vals[i], pageIds[i], slotIds[i]);
+    }
+}
