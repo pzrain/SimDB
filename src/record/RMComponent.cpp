@@ -220,7 +220,7 @@ void TableHeader::printInfo() {
     printf("==========   End  Table Info  ==========\n");
 }
 
-int TableHeader::getCol(char* colName, TableEntry& tableEntry) {
+int TableHeader::getCol(const char* colName, TableEntry& tableEntry) {
     int8_t head = entryHead;
     TableEntry entry;
     while (head >= 0) {
@@ -228,6 +228,19 @@ int TableHeader::getCol(char* colName, TableEntry& tableEntry) {
         if (strcmp(entry.colName, colName) == 0) {
             tableEntry = entrys[head];
             return 0;
+        }
+        head = entry.next;
+    }
+    return -1;
+}
+
+int TableHeader::getCol(const char* colName) {
+    int8_t head = entryHead;
+    TableEntry entry;
+    while (head >= 0) {
+        entry = entrys[head];
+        if (strcmp(entry.colName, colName) == 0) {
+            return head;
         }
         head = entry.next;
     }

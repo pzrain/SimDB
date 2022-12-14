@@ -193,7 +193,10 @@ public:
     // num is the length of the TableEntry array
     // Attention: init will not check same column name, thus should only be called to initial a tableHeader
 
-    int getCol(char* colName, TableEntry& tableEntry);
+    int getCol(const char* colName, TableEntry& tableEntry);
+
+    // only get column id
+    int getCol(const char* colName);
 
     int alterCol(TableEntry* tableEntry);
     // update a column
