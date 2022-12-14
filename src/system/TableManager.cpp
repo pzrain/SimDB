@@ -202,7 +202,26 @@ int TableManager::createIndex(string tableName, string indexName, string colName
     //     }
     // }
 
-    return indexManager->createIndex(tableName.c_str(), indexName.c_str(), indexLen, colType);
+    int res = indexManager->createIndex(tableName.c_str(), indexName.c_str(), indexLen, colType);
+
+    // add pre-existing records to the newly-added index
+    if (res >= 0) {
+        std::vector<Record*> records;
+        std::vector<RecordId*> recordIds;
+        fileHandler->getAllRecordsAccordingToFields(records, recordIds, (1 << index));
+        std::vector<void*> insertDatas;
+        std::vector<int> insertVals;
+        std::vector<int> pageIds, slotIds;
+        for (int i = 0; i < records.size(); i++) {
+            insertDatas.push_back((void*)(records[i]->data));
+            pageIds.push_back(recordIds[i]->getPageId());
+            slotIds.push_back(recordIds[i]->getSlotId());
+        }
+        insertVals.resize(records.size());
+        indexManager->transform(tableName.c_str(), colName.c_str(), insertVals, pageIds, slotIds);
+        res = indexManager->insert(tableName.c_str(), colName.c_str(), insertDatas, insertVals);
+    }
+    return res;    
 }
 
 int TableManager::dropIndex(string tableName, string indexName) {
@@ -254,9 +273,24 @@ int TableManager::createPrimaryKey(string tableName, string colName) {
         return index;
     }
     indexManager->createIndex(tableName.c_str(), colName.c_str(), indexLen, colType);
-    std::vector<Record*> records;
-    std::vector<RecordId*> recordIds;
-    fileHandler->getAllRecordsAccordingToFields(records, recordIds, (1 << index));
+    // add pre-existing records to the newly-added index
+    // however primary key can only be enabled from the start
+    // so there should be no record to add
+
+    // std::vector<Record*> records;
+    // std::vector<RecordId*> recordIds;
+    // fileHandler->getAllRecordsAccordingToFields(records, recordIds, (1 << index));
+    // std::vector<void*> insertDatas;
+    // std::vector<int> insertVals;
+    // std::vector<int> pageIds, slotIds;
+    // for (int i = 0; i < records.size(); i++) {
+    //     insertDatas.push_back((void*)(records[i]->data));
+    //     pageIds.push_back(recordIds[i]->getPageId());
+    //     slotIds.push_back(recordIds[i]->getSlotId());
+    // }
+    // insertVals.resize(records.size());
+    // indexManager->transform(tableName.c_str(), colName.c_str(), insertVals, pageIds, slotIds);
+    // indexManager->insert(tableName.c_str(), colName.c_str(), insertDatas, insertVals);
     return index;
 }
 
@@ -285,6 +319,9 @@ int TableManager::dropPrimaryKey(string tableName, string colName) {
     //         return i;
     //     }
     // }
+
+    indexManager->removeIndex(tableName.c_str(), colName.c_str());
+
     return index;
 }
 
