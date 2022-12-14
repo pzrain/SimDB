@@ -81,6 +81,18 @@ BPlusTree* IndexManager::findIndex(const char* tableName, const char* indexName)
     return nullptr;
 }
 
+int IndexManager::showIndex() {
+    int cnt = 0;
+    for (int i = 0; i < DB_MAX_TABLE_NUM; i++) {
+        for (int j = 0; j < TAB_MAX_COL_NUM; j++) {
+            if (bPlusTree[i][j]) {
+                printf("%s.%s\n", tableNames[i], indexNames[i][j]);
+            }
+        }
+    }
+    return cnt;
+}
+
 bool IndexManager::hasIndex(const char* tableName, const char* indexName) {
     char fileName[DB_MAX_NAME_LEN + TAB_MAX_NAME_LEN + TAB_MAX_NAME_LEN + 30];
     sprintf(fileName, "database/%s/%s_%s.index", databaseName, tableName, indexName);

@@ -62,6 +62,8 @@ public:
     void transformR(const char* tableName, const char* indexName, std::vector<int> vals, std::vector<int>& pageIds, std::vector<int>& slotIds);
 
     bool isValid();
+
+    int showIndex();
 };
 
 #endif
