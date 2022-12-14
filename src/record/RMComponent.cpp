@@ -247,6 +247,19 @@ int TableHeader::getCol(const char* colName) {
     return -1;
 }
 
+bool TableHeader::hasPrimaryKey() {
+    int8_t head = entryHead;
+    TableEntry entry;
+    while (head >= 0) {
+        entry = entrys[head];
+        if (entry.primaryKeyConstraint) {
+            return true;
+        }
+        head = entry.next;
+    }
+    return false;
+}
+
 int TableHeader::alterCol(TableEntry* tableEntry) {
     int8_t head = entryHead;
     TableEntry entry;

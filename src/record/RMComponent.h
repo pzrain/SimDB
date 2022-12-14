@@ -219,6 +219,8 @@ public:
     bool fillDefault(RecordData& recordData);
 
     bool fillDefault(Record& record);
+
+    bool hasPrimaryKey();
 };
 
 typedef enum{
