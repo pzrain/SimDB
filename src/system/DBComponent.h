@@ -63,6 +63,7 @@ struct DBSelect {
 struct DBUpdate {
     std::vector<DBExpression> expItem;      // set clause, like "name=value"
     std::vector<DBExpression> expressions;  // where clause
+    std::vector<DBSelect*>    nestySelects;  // possible nesty selection in where clause
 };
 
 struct DBInsert {
@@ -75,6 +76,7 @@ struct DBInsert {
 
 struct DBDelete {
     std::vector<DBExpression> expression;  // where clause
+    std::vector<DBSelect*>    nestySelects; // possible nesty selection in where clause
 };
 
 /**
