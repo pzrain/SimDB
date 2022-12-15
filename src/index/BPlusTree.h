@@ -43,7 +43,7 @@ public:
     // attention that res will be cleared first
     // return value of those slots whose data_ is equla to data
 
-    void searchBetween(void* ldata, void* rdata, std::vector<int> &res);
+    void searchBetween(void* ldata, void* rdata, std::vector<int> &res, bool lIn, bool rIn);
     // bound [ldata, rdata]
     // set ldata or rdata to nullptr if want a one-way search
 

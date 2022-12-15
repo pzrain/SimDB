@@ -43,7 +43,7 @@ public:
     // search those index whose key is equal to data
     // than store their val in vector res
 
-    int searchBetween(const char* tableName, const char* indexName, void* lData, void* rData, std::vector<int> &res);
+    int searchBetween(const char* tableName, const char* indexName, void* lData, void* rData, std::vector<int> &res, bool lIn = true, bool rIn = true);
     // search those index whose dat falls in [lData, rData]
     // set lData or rData to nullptr to get searching range [lData, infinity] or [-infinity, rData]
     // example:

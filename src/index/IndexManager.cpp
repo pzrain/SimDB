@@ -184,13 +184,13 @@ int IndexManager::search(const char* tableName, const char* indexName, void* dat
     return 0;
 }
 
-int IndexManager::searchBetween(const char* tableName, const char* indexName, void* lData, void* rData, std::vector<int> &res) {
+int IndexManager::searchBetween(const char* tableName, const char* indexName, void* lData, void* rData, std::vector<int> &res, bool lIn, bool rIn) {
     BPlusTree* cur = findIndex(tableName, indexName);
     if (cur == nullptr) {
         printf("[ERROR] index %s has not been created.\n", indexName);
         return -1;
     }
-    cur->searchBetween(lData, rData, res);
+    cur->searchBetween(lData, rData, res, lIn, rIn);
     return 0;
 }
 

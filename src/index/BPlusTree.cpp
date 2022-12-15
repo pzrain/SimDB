@@ -339,7 +339,7 @@ void IndexVectorReverse(std::vector<int> &res) {
     }
 }
 
-void BPlusTree::searchBetween(void* ldata, void* rdata, std::vector<int> &res) {
+void BPlusTree::searchBetween(void* ldata, void* rdata, std::vector<int> &res, bool lIn, bool rIn) {
     res.clear();
     if (ldata == nullptr && rdata == nullptr) {
         return;
@@ -359,8 +359,17 @@ void BPlusTree::searchBetween(void* ldata, void* rdata, std::vector<int> &res) {
                 rec.push_back(cur);
                 pageIndex.push_back(index);
             }
-            if (rdata && cur->getCompare()->gt(cur->getData(slotId), rdata)) {
-                break;
+            if (!lIn && cur->getCompare()->equ(cur->getData(slotId), ldata)) {
+                continue;
+            }
+            if (rIn) { // if >, break
+                if (rdata && cur->getCompare()->gt(cur->getData(slotId), rdata)) {
+                    break;
+                }
+            } else {  // if >=, break
+                if (rdata && cur->getCompare()->gte(cur->getData(slotId), rdata)) {
+                    break;
+                }
             }
             res.push_back(*cur->getVal(slotId));
             int nextSlot = *(cur->getNextIndex(slotId));
@@ -413,8 +422,14 @@ void BPlusTree::searchBetween(void* ldata, void* rdata, std::vector<int> &res) {
                 rec.push_back(cur);
                 pageIndex.push_back(index);
             }
-            if (cur->getCompare()->gt(cur->getData(slotId), rdata)) {
-                break;
+            if (rIn) {
+                if (cur->getCompare()->gt(cur->getData(slotId), rdata)) {
+                    break;
+                }
+            } else {
+                if (cur->getCompare()->gte(cur->getData(slotId), rdata)) {
+                    break;
+                }
             }
             res.push_back(*cur->getVal(slotId));
             int nextSlot = *(cur->getNextIndex(slotId));
