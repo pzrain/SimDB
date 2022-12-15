@@ -1,6 +1,8 @@
 #include "TableManager.h"
 #include "assert.h"
 #include <map>
+#include <regex>
+#include <algorithm>
 #include <unistd.h>
 
 TableManager::TableManager(string databaseName_,  BufPageManager* bufPageManager_) {
@@ -840,6 +842,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     return -1;
                 }
                 bool flag = false;
+                std::string regStr = "";
                 switch (expressions[i].op) {
                     case EQU_TYPE:
                         if (compare->equ(searchData, expressions[i].rVal)) {
@@ -872,7 +875,18 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                         }
                         break;
                     case LIKE_TYPE:
-                        // TODO
+                        if (expressions[i].rType != DB_CHAR) {
+                            printf("[Error] right expression in LIKE must be VARCHAR.\n");
+                            return -1;
+                        }
+                        regStr = ((char*)expressions[i].rVal);
+                        string::size_type pos(0); 
+                        while ((pos = regStr.find("%")) != std::string::npos) {
+                            regStr.replace(pos, 1, ".*");
+                        }
+                        if (std::regex_match((char*)searchData, std::regex(regStr))) {
+                            flag = true;
+                        }
                         break;
                     default:
                         assert(false);
