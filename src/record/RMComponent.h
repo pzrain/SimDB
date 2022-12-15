@@ -61,6 +61,8 @@ public:
 
     size_t getLen();
 
+    RecordDataNode* getData(uint i);
+
     ~RecordData();
 };
 

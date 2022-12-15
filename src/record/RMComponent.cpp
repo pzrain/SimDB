@@ -612,3 +612,15 @@ size_t RecordData::getLen() {
     }
     return recordLen = len;
 }
+
+RecordDataNode* RecordData::getData(uint i) {
+    RecordDataNode* cur = head;
+    while (cur) {
+        if (i == 0) {
+            return cur;
+        }
+        cur = cur->next;
+        i--;
+    }
+    return nullptr;
+}
