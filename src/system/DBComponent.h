@@ -7,6 +7,13 @@
 // expTable.expCol  or  expCol (set expTable to "")
 struct DBExpItem{
     std::string expTable, expCol;
+
+    DBExpItem() {}
+
+    DBExpItem(std::string expTable_, std::string expCol_) {
+        expTable = expTable_;
+        expCol = expCol_;
+    }
 };
 
 struct DBSelItem {
@@ -24,17 +31,12 @@ struct DBSelItem {
  * @param next for nest selection. op is IN_TYPE
  */
 struct DBExpression{
-    DBExpItem lItem, rItem;
     void *lVal, *rVal;
     DB_EXP_TYPE lType, rType;
     DB_EXP_OP_TYPE op;
     std::vector<DB_LIST_TYPE> valueListType;
 
     DBExpression() {
-        lItem.expCol = "";
-        lItem.expTable = "";
-        rItem.expCol = "";
-        rItem.expTable = "";
         lVal = nullptr;
         rVal = nullptr;
         lType = DB_NULL;
@@ -47,23 +49,20 @@ struct DBSelect {
     std::vector<DBSelItem>    selectItems;
     std::vector<std::string>  selectTables;
     std::vector<DBExpression> expressions;     // where clause
-    std::vector<DBSelect*>    nextSelects;     // store nest selection
-                                               // the number of items in nextSelects should match
-                                               // the number of items in expressions which has op=IN_TYPE and rType=DB_NST
-    bool groupByEn = false;
+
+    bool groupByEn = false;                    // group by
     DBExpItem groupByCol;
 
-    bool limitEn = false;
+    bool limitEn = false;                      // limit
     int limitNum;
 
-    bool offset = false;
+    bool offsetEn = false;                     // offset
     int offsetNum;
 };
 
 struct DBUpdate {
     std::vector<DBExpression> expItem;      // set clause, like "name=value"
     std::vector<DBExpression> expressions;  // where clause
-    std::vector<DBSelect*>    nestySelects;  // possible nesty selection in where clause
 };
 
 struct DBInsert {
@@ -76,7 +75,6 @@ struct DBInsert {
 
 struct DBDelete {
     std::vector<DBExpression> expression;  // where clause
-    std::vector<DBSelect*>    nestySelects; // possible nesty selection in where clause
 };
 
 /**
@@ -100,14 +98,16 @@ struct DBDelete {
  *  dbSelItem.selectType = ORD_TYPE;
  * 
  *  DBExpression exp1, exp2;
- *  exp1.lItem = {"school", "name"};
+ *  DBExpItem item1("school", "name");
+ *  exp1.lVal = &item1;
  *  std::string schoolName = "tsinghua";
  *  exp1.rVal = &schoolName;
  *  exp1.lType = DB_ITEM;
  *  exp1.rType = DB_CHAR;
  *  exp1.op = EQU_TYPE;
  * 
- *  exp2.lItem = {"school", "id"};
+ *  DBExpItem item2("school", "id");
+ *  exp2.lVal = &item2;
  *  exp2.lType = DB_ITEM;
  *  std::vector<int*> val;          // attention: this should be vector<void*>
  *  val.resize(3);
@@ -134,16 +134,17 @@ struct DBDelete {
  * 3. SELECT * FROM teacher WHERE id IN (SELECT id FROM student);
  *  // we will pass for the construct of selectItems and selectTables;
  *  DBExpression exp;
- *  exp.lItem = {"", "id"};
+ *  DBExpItem item = {"", "id"};
+ *  exp.lVal = &item;
+ *  DBSelect* nextSelect = new DBSelect();
+ *  // construct nextSelect for "SELECT id FROM student"
+ *  exp.rVal = nextSelect;
  *  exp.lType = DB_ITEM;
  *  exp.rType = DB_NST;
  *  exp.op = IN_TYPE;
  *  
  *  DBSelect* dbSelect = new DBSelect();
  *  dbSelect->expressions.push_back(exp);
- *  DBSelect* nextSelect = new DBSelect();
- *  // construct nextSelect for "SELECT id FROM student"
- *  dbSelect->nextSelects.push_back(nextSelect);
  *  delete dbSelect;
  */
 
