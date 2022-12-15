@@ -16,6 +16,7 @@
 
 #include <string>
 #include <vector>
+#include "DBComponent.h"
 #include "../record/RecordManager.h"
 #include "../index/IndexManager.h"
 #include "../filesystem/bufmanager/BufPageManager.h"
@@ -29,8 +30,15 @@ private:
     IndexManager* indexManager;
     FileHandler* fileHandler;
     int tableNum;
+    const static int MAX_SELECT_TABLE = 2;
 
     int checkColExist(TableHeader* tableHeader, const char* colName);
+
+    int _checkFormat(FileHandler* fileHandlers[], TableHeader* tableHeaders[], vector<string> &selectTables, vector<DBExpItem*> &expressions);
+
+    int _selectRecords(DBSelect* dbSelect, vector<RecordData>& resRecords, vector<RecordId*>& resRecordIds);
+
+    int _iterateWhere(vector<string> selectTables, vector<DBExpression> expressions, vector<RecordData>& records, vector<RecordId*>& recordIds);
 
 public:
     TableManager(string databaseName_, BufPageManager* bufPageManager_);
@@ -99,6 +107,14 @@ public:
     int createUniqueKey(string tableName, string colName);
 
     int dropUniqueKey(string tableName, string colName);
+
+    int selectRecords(DBSelect* dbSelect);
+
+    int updateRecords(string tableName, DBUpdate* dbUpdate);
+
+    int insertRecords(string tableName, DBInsert* dbInsert);
+
+    int dropRecords(string tableName, DBDelete* dbDelete);
 };
 
 #endif

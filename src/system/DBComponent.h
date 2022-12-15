@@ -8,7 +8,10 @@
 struct DBExpItem{
     std::string expTable, expCol;
 
-    DBExpItem() {}
+    DBExpItem() {
+        expTable = "";
+        expCol   = "";
+    }
 
     DBExpItem(std::string expTable_, std::string expCol_) {
         expTable = expTable_;
@@ -28,7 +31,6 @@ struct DBSelItem {
  * @param lVal  constant expression
  * @param lType type of left expression
  * @param valueListType types of every item in the valuelist (for "WHERE column IN value_list" only)
- * @param next for nest selection. op is IN_TYPE
  */
 struct DBExpression{
     void *lVal, *rVal;
@@ -117,6 +119,7 @@ struct DBDelete {
  *  for (int i = 0; i < 3; i++) {
  *      exp2.valueListType.push_back(DB_LIST_INT);
  *  }
+ *  exp2.rVal = &val;
  *  exp2.rType = DB_LIST;
  *  expr2.op   = IN_TYPE;
  *  

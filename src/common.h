@@ -42,8 +42,8 @@ typedef enum {
 typedef enum {
     DB_NULL = 0,
     DB_INT = 1,
-    DB_CHAR = 2,
-    DB_FLOAT = 3,
+    DB_FLOAT = 2,
+    DB_CHAR = 3,
     DB_LIST = 4,         // value_list
     DB_ITEM = 5,         // tableName.colName or colName
     DB_NST  = 6          // nest selection

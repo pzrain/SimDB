@@ -49,7 +49,7 @@ inline bool DatabaseManager::checkFileExist(string path) {
 
 inline int DatabaseManager::searchTableByName(string name) {
     if(!databaseUsed) {
-        printf("use a database first\n");
+        fprintf(stderr, "use a database first\n");
         return false;
     }
     for(int i = 0; i < metaData->tableNum; i++) {
@@ -177,7 +177,7 @@ int DatabaseManager::showDatabases() {
 }
 
 string DatabaseManager::getDatabaseName() {
-    return databaseUsedName == "" ? "mysql" : databaseUsedName;
+    return databaseUsedName == "" ? "simDB" : databaseUsedName;
 }
 
 int DatabaseManager::listTablesOfDatabase(string name) {
@@ -442,4 +442,20 @@ int DatabaseManager::dropUniqueKey(string tableName, vector<string> colNames, in
         metaData->isUniqueKey[tableNum][colIndex] = false;
     }
     return 0;
+}
+
+int DatabaseManager::selectRecords(DBSelect* dbSelect) {
+    return tableManager->selectRecords(dbSelect);
+}
+
+int DatabaseManager::updateRecords(string tableName, DBUpdate* dbUpdate) {
+    return tableManager->updateRecords(tableName, dbUpdate);
+}
+
+int DatabaseManager::insertRecords(string tableName, DBInsert* dbInsert) {
+    return tableManager->insertRecords(tableName, dbInsert);
+}
+
+int DatabaseManager::dropRecords(string tableName, DBDelete* dbDelete) {
+    return tableManager->dropRecords(tableName, dbDelete);
 }
