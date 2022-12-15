@@ -129,6 +129,8 @@ public:
     ~TableEntryDesc();
 
     size_t getLen();
+
+    TableEntryDescNode* getCol(uint i);
 };
 
 class Record{

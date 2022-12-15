@@ -483,6 +483,18 @@ size_t TableEntryDesc::getLen() {
     return len = len_;
 }
 
+TableEntryDescNode* TableEntryDesc::getCol(uint i) {
+    TableEntryDescNode* cur = head;
+    while (cur) {
+        if (i == 0) {
+            return cur;
+        }
+        cur = cur->next;
+        i--;
+    }
+    return nullptr;
+}
+
 bool Record::deserialize(RecordData& rData, TableEntryDesc& tableEntryDesc) {
     if (len != tableEntryDesc.getLen()) {
         printf("[ERROR] unmatched length between record and recordData.\n");
