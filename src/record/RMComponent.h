@@ -202,6 +202,9 @@ public:
     // only get column id
     int getCol(const char* colName);
 
+    int getCol(int colId, char* colName);
+    // get colName according to id, return -1 if fails
+
     int alterCol(TableEntry* tableEntry);
     // update a column
     // according to the doc, this method may not be called
