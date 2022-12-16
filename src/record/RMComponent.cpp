@@ -575,6 +575,58 @@ RecordData::~RecordData() {
     }
 }
 
+RecordData::RecordData(const RecordData &other) {
+    RecordDataNode* temp = other.head;
+    if (temp) {
+        head = new RecordDataNode();
+    } else {
+        return;
+    }
+    RecordDataNode* cur = head;
+    while (1) {
+        cur->len = temp->len;
+        cur->nodeType = temp->nodeType;
+        switch (cur->nodeType) {
+            case COL_INT:
+                cur->content.intContent = new int;
+                *(cur->content.intContent) = *(temp->content.intContent);
+                break;
+            case COL_FLOAT:
+                cur->content.floatContent = new float;
+                *(cur->content.floatContent) = *(temp->content.floatContent);
+                break;
+            case COL_VARCHAR:
+                cur->content.charContent = new char[cur->len];
+                strcpy(cur->content.charContent, temp->content.charContent);
+                break; 
+        }
+        if (temp->next) {
+            cur->next = new RecordDataNode();
+        } else {
+            break;
+        }
+        temp = temp->next;
+        cur = cur->next;
+    }
+}
+
+RecordData::RecordData(int len) {
+    if (len < 0) {
+        fprintf(stderr, "cannot construct RecordData with negative length.\n");
+        assert(false);
+    }
+    RecordDataNode* cur = head;
+    while (len) {
+        cur = new RecordDataNode();
+        cur->len = 0;
+        if (!head) {
+            head = cur;
+        }
+        cur = cur->next;
+        len--;
+    }
+}
+
 bool RecordData::serialize(Record& record) {
     if (getLen() != record.len) {
         printf("[ERROR] unmatched length between recordData and record.\n");

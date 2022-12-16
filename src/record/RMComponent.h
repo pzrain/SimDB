@@ -56,6 +56,10 @@ public:
     RecordData() { head = nullptr; }
 
     RecordData(RecordDataNode* head_): head(head_) {}
+
+    RecordData(const RecordData &other);
+
+    RecordData(int len);
     
     bool serialize(Record& record);
 
