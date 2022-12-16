@@ -781,7 +781,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                 }
             } else if (expressions[i].rType == DB_NST) {
                 if (expressions[i].op != IN_TYPE) {
-                    printf("[Error] op %d is not supported for nesty selection.\n");
+                    printf("[Error] op %d is not supported for nesty selection.\n", expressions[i].op);
                     return -1;
                 }
                 vector<RecordData> tempRecordData;
@@ -824,7 +824,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                 preFlag = false;
                 std::vector<void*>* valueList = (std::vector<void*>*)expressions[i].rVal;
                 for (int k = 0; k < expressions[i].valueListType.size(); k++) {
-                    if (expressions[i].valueListType[k] == curRecordDataNode->nodeType) {
+                    if (expressions[i].valueListType[k] == (DB_LIST_TYPE)curRecordDataNode->nodeType) {
                         if (compare->equ((*valueList)[k], searchData)) {
                             res[cur].push_back(curRecordId);
                             if (tableNum > 0) {
@@ -847,7 +847,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     }
                 }
             } else { // DB_INT, DB_CHAR, DB_FLOAT
-                if (curRecordDataNode->nodeType != expressions[i].rType) {
+                if (curRecordDataNode->nodeType != (TB_COL_TYPE)expressions[i].rType) {
                     printf("[Error] incompatible type for %s.%s and %d.\n", lItem->expTable.c_str(), lItem->expCol.c_str(), expressions[i].rType);
                     return -1;
                 }
@@ -892,7 +892,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                             flag = true;
                         }
                         break;
-                    case LIKE_TYPE:
+                    case LIKE_TYPE: {
                         if (expressions[i].rType != DB_CHAR) {
                             printf("[Error] right expression in LIKE must be VARCHAR.\n");
                             return -1;
@@ -906,6 +906,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                             flag = true;
                         }
                         break;
+                    }
                     default:
                         assert(false);
                         break;

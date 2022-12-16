@@ -65,7 +65,7 @@ public:
 
     size_t getLen();
 
-    RecordDataNode* getData(uint i);
+    RecordDataNode* getData(unsigned int i);
 
     ~RecordData();
 };
@@ -134,7 +134,7 @@ public:
 
     size_t getLen();
 
-    TableEntryDescNode* getCol(uint i);
+    TableEntryDescNode* getCol(unsigned int i);
 };
 
 class Record{

@@ -498,7 +498,7 @@ size_t TableEntryDesc::getLen() {
     return len = len_;
 }
 
-TableEntryDescNode* TableEntryDesc::getCol(uint i) {
+TableEntryDescNode* TableEntryDesc::getCol(unsigned int i) {
     TableEntryDescNode* cur = head;
     while (cur) {
         if (i == 0) {
@@ -692,7 +692,7 @@ size_t RecordData::getLen() {
     return recordLen = len;
 }
 
-RecordDataNode* RecordData::getData(uint i) {
+RecordDataNode* RecordData::getData(unsigned int i) {
     RecordDataNode* cur = head;
     while (cur) {
         if (i == 0) {
