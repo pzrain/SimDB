@@ -488,7 +488,7 @@ int TableManager::_checkFormat(FileHandler* fileHandlers[], TableHeader* tableHe
 }
 
 inline bool compareEqual(RecordDataNode* cur, RecordDataNode* pre) {
-    if (cur->nodeType != pre->nodeType || cur->len != pre->len) {
+    if (!cur || !pre || cur->nodeType != pre->nodeType || cur->len != pre->len) {
         return false;
     }
     switch (cur->nodeType)
@@ -519,9 +519,9 @@ void* transformType(RecordDataNode* recordDataNode) {
             res = recordDataNode->content.floatContent;
             break;
         case COL_VARCHAR:
-            res = recordDataNode->content.floatContent;
             break;
         default:
+            recordDataNode->len = 0;
             break;
     }
     return res;
@@ -529,7 +529,7 @@ void* transformType(RecordDataNode* recordDataNode) {
 
 int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression> expressions, vector<RecordId*>& resRecordIds) {
     int cur = 0;
-    std::vector<RecordId*> res[2], tempRes;
+    std::vector<RecordId*> res[2];
     FileHandler* fileHandlers[MAX_SELECT_TABLE];
     TableHeader* tableHeaders[MAX_SELECT_TABLE];
     std::vector<Record*> records[MAX_SELECT_TABLE];
@@ -560,7 +560,6 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
         std::vector<RecordId*> preRes;
         cur ^= 1;
         res[cur].clear();
-        tempRes.clear();
         assert(expressions[i].lType == DB_ITEM); // in SQL.g4, the left must be an item;
         DBExpItem* lItem = (DBExpItem*)expressions[i].lVal;
         int fileId = (lItem->expTable == selectTables[0]) ? 0 : 1;
@@ -791,7 +790,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     continue;
                 }
                 // recursive search
-                _selectRecords((DBSelect*)expressions[i].rVal, tempRecordData, tempRes, tempColNames);
+                _selectRecords((DBSelect*)expressions[i].rVal, tempRecordData, tempColNames);
                 preFlag = false;
                 for (int k = 0; k < tempRecordData.size(); k++) {
                     void* rData = transformType(tempRecordData[k].head);
@@ -909,13 +908,125 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     preFlag = flag;
                 }
             }
+            preRecordDataNode = curRecordDataNode;
         }
-        preRecordDataNode = curRecordDataNode;
     }
     resRecordIds = res[cur];
 }
 
-int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& records, vector<RecordId*>& recordIds, vector<string>& colNames) {
+inline void operateData(RecordData& lRecordData, RecordData& rRecordData, DB_SELECT_TYPE op, int colId) {
+    RecordDataNode* lHead = lRecordData.head;
+    RecordDataNode* rHead = rRecordData.head;
+    while (colId && lHead && rHead) {
+        lHead = lHead->next;
+        rHead = rHead->next;
+    }
+    if (colId || (!lHead || !rHead)) {
+        fprintf(stderr, "error in operateData\n");
+        assert(false);
+    }
+    bool initialized = true;
+    lHead->nodeType = (op == COUNT_TYPE) ? COL_INT : (op == AVERAGE_TYPE ? COL_FLOAT : rHead->nodeType);
+    lHead->len      = (op == COUNT_TYPE) ? 4 /* int */ : (op == AVERAGE_TYPE ? lHead->len : rHead->len);
+    void* lData = transformType(lHead);
+    void* rData = transformType(rHead);
+    if (lData == nullptr) {
+        initialized = false;
+        if (op == AVERAGE_TYPE) {
+            lHead->len = 0;
+        }
+    }
+    Compare* compare = nullptr;
+    switch (lHead->nodeType) {
+        case COL_INT:
+            compare = new IntCompare();
+            if (!initialized) lData = new int;
+            break;
+        case COL_FLOAT:
+            compare = new FloatCompare();
+            if (!initialized) lData = new float;
+            break;
+        case COL_VARCHAR:
+            compare = new CharCompare();
+            if (!initialized) lData = new char[lHead->len];
+            break;
+        default:
+            break;
+    }
+    int calculataType = (rHead->nodeType == COL_INT) ? 1 : 0;
+    switch (op) {
+        case ORD_TYPE: // copy
+            memcpy(lData, rData, rHead->len);
+            break;
+        case MAX_TYPE:
+            if (!initialized || compare->gt(rData, lData)) {
+                memcpy(lData, rData, rHead->len);
+            }
+            break;
+        case MIN_TYPE:
+            if (!initialized || compare->lt(rData, lData)) {
+                memcpy(lData, rData, rHead->len);
+            }
+            break;
+        case SUM_TYPE:
+            if (!initialized) {
+                memcpy(lData, rData, rHead->len);
+            } else {
+                if (calculataType) {
+                    *(int*)lData += *(int*)rData;
+                } else {
+                    *(float*)lData += *(float*)rData;
+                }
+            }
+            break;
+        case COUNT_TYPE:
+            if (!initialized) {
+                *(int*)lData = 0;
+            }
+            *(int*)lData += 1;
+            break;
+        case AVERAGE_TYPE:
+            if (!initialized) {
+                lHead->len = 0;
+                *(float*)lData = 0;
+                memcpy(lData, rData, rHead->len);
+            }
+            if (calculataType) {
+                *(float*)lData = (*(float*)lData * lHead->len + *(int*)rData) / (lHead->len + 1);
+            } else {
+                *(float*)lData = (*(float*)lData * lHead->len + *(float*)rData) / (lHead->len + 1);
+            }
+            lHead->len = lHead->len;
+            break;
+    }
+}
+
+int getMapIndex(RecordDataNode* cur, void* ma, int &cnt) {
+    switch (cur->nodeType) {
+        case COL_INT:
+            if (((map<int, int>*)ma)->count(*cur->content.intContent) == 0) {
+                (*(map<int, int>*)ma)[*cur->content.intContent] = ++cnt;
+                return cnt;
+            }
+            return (*(map<int, int>*)ma)[*cur->content.intContent];
+        case COL_FLOAT:
+            if (((map<float, int>*)ma)->count(*cur->content.floatContent) == 0) {
+                (*(map<float, int>*)ma)[*cur->content.floatContent] = ++cnt;
+                return cnt;
+            }
+            return (*(map<float, int>*)ma)[*cur->content.floatContent];
+        case COL_VARCHAR:
+            if (((map<string, int>*)ma)->count((string)(cur->content.charContent)) == 0) {
+                (*(map<string, int>*)ma)[(string)cur->content.charContent] = ++cnt;
+                return cnt;
+            }
+            return (*(map<string, int>*)ma)[(string)cur->content.charContent];
+    }
+    assert(false);
+    return -1;
+}
+
+int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resRecords, vector<string>& entryNames) {
     
     int tableSize = dbSelect->selectTables.size();
     if (tableSize > MAX_SELECT_TABLE) {
@@ -949,7 +1060,8 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& records
         return -1;
     }
 
-    /* check group and aggrevate selection*/
+    /* check group and aggregate selection*/
+    /* group by: https://stackoverflow.com/questions/11991079/select-a-column-in-sql-not-in-group-by */
     if (dbSelect->groupByEn) {
         for (int i = 0; i < dbSelect->selectItems.size(); i++) {
             DBSelItem tempSelItem = dbSelect->selectItems[i];
@@ -958,20 +1070,22 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& records
                     printf("[Error] cannot select %s.%s when group by %s.%s\n", tempSelItem.item.expTable.c_str(), tempSelItem.item.expCol.c_str(), dbSelect->groupByCol.expTable.c_str(), dbSelect->groupByCol.expCol.c_str());
                     return -1;
                 }
-            } else {
-                int j;
-                for (j = 0; j < dbSelect->selectTables.size(); j++) {
-                    if (!strcmp(tempSelItem.item.expTable.c_str(), dbSelect->selectTables[j].c_str())) {
-                        break;
-                    }
-                }
-                int index = checkColExist(tableHeaders[j], tempSelItem.item.expCol.c_str());
-                TableEntryDescNode* tempTableEntryDescNode = tableHeaders[j]->getTableEntryDesc().getCol(index);
-                if (tempTableEntryDescNode->colType == COL_NULL || tempTableEntryDescNode->colType == COL_VARCHAR) {
-                    printf("[Error] cannot conduct aggregate selection on column with NULL type of VARCHAR type.\n");
-                    return -1;
-                }
             }
+        }
+    }
+    for (int i = 0; i < dbSelect->selectItems.size(); i++) {
+        DBSelItem tempSelItem = dbSelect->selectItems[i];
+        int j;
+        for (j = 0; j < dbSelect->selectTables.size(); j++) {
+            if (!strcmp(tempSelItem.item.expTable.c_str(), dbSelect->selectTables[j].c_str())) {
+                break;
+            }
+        }
+        int index = checkColExist(tableHeaders[j], tempSelItem.item.expCol.c_str());
+        TableEntryDescNode* tempTableEntryDescNode = tableHeaders[j]->getTableEntryDesc().getCol(index);
+        if (tempTableEntryDescNode->colType == COL_NULL || tempTableEntryDescNode->colType == COL_VARCHAR) {
+            printf("[Error] cannot conduct aggregate selection on column with NULL type of VARCHAR type.\n");
+            return -1;
         }
     }
 
@@ -981,24 +1095,200 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& records
         return -1;
     }
 
-    _iterateWhere(dbSelect->selectTables, dbSelect->expressions, recordIds);
+    vector<RecordId*> resRecordIds;
+    _iterateWhere(dbSelect->selectTables, dbSelect->expressions, resRecordIds);
 
-    /* group by: https://stackoverflow.com/questions/11991079/select-a-column-in-sql-not-in-group-by */
-
-
-    if (dbSelect->limitEn) {
-        if (dbSelect->offsetEn) {
-            
+    // build entryNames
+    bool hasAggregate = false;
+    vector<int> colIds[MAX_SELECT_TABLE];
+    vector<DB_SELECT_TYPE> ops[MAX_SELECT_TABLE];
+    for (int i = 0; i < dbSelect->selectItems.size(); i++) {
+        if (dbSelect->selectItems[i].selectType != ORD_TYPE) {
+            hasAggregate = true;
         }
+        char colName[TAB_MAX_NAME_LEN];
+        assert(dbSelect->selectItems[i].star && (dbSelect->selectItems[i].selectType != ORD_TYPE && dbSelect->selectItems[i].selectType != COUNT_TYPE));
+        if (dbSelect->selectItems[i].selectType == ORD_TYPE && dbSelect->selectItems[i].star) {
+            assert(i == 0); // can only have one item *
+            for (int j = 0; j < tableNum; j++) {
+                for (int k = 0; k < tableHeaders[j]->colNum; k++) {
+                    tableHeaders[j]->getCol(k, colName);
+                    entryNames.push_back((string)tableHeaders[j]->tableName + "." + (string)colName);
+                    colIds[j].push_back(k);
+                    ops[j].push_back(ORD_TYPE);
+                }
+            }
+            break;
+        }
+        string tempEntryName = dbSelect->selectItems[i].star ? "*" : (dbSelect->selectItems[i].item.expTable + "." + dbSelect->selectItems[i].item.expCol);
+        switch (dbSelect->selectItems[i].selectType) {
+            case (MAX_TYPE):
+                tempEntryName = "SUM(" + tempEntryName + ")";
+                break;
+            case (MIN_TYPE):
+                tempEntryName = "MIN(" + tempEntryName + ")";
+                break;
+            case (SUM_TYPE):
+                tempEntryName = "SUM(" + tempEntryName + ")";
+                break;
+            case (COUNT_TYPE):
+                tempEntryName = "COUNT(" + tempEntryName + ")";
+                break;
+            case (AVERAGE_TYPE):
+                tempEntryName = "AVG(" + tempEntryName + ")";
+                break;
+            default:
+                break;
+        }
+        entryNames.push_back(tempEntryName);
+        int fileId = dbSelect->selectItems[i].star ? -1 : ((dbSelect->selectTables[0] == dbSelect->selectItems[i].item.expTable) ? 0 : 1);
+        int colId  = dbSelect->selectItems[i].star ? -1 : (tableHeaders[fileId]->getCol(dbSelect->selectItems[i].item.expCol.c_str()));
+        colIds[fileId].push_back(colId);
+        ops[fileId].push_back(dbSelect->selectItems[i].selectType);
     }
+
+    int selectNum = resRecordIds.size() / tableNum;
+    int startNum = 0, endNum = selectNum;
+    bool exceedFlag = false;
+    if (dbSelect->limitEn) {
+        if (!dbSelect->offsetEn) {
+            dbSelect->offsetNum = 0;
+        }
+        startNum = dbSelect->offsetNum;
+        endNum = startNum + dbSelect->limitNum;
+        if (endNum > selectNum) {
+            exceedFlag = true;
+            endNum = selectNum;
+        }
+        selectNum = endNum - startNum;
+    } else {
+        dbSelect->offsetNum = 0; // default: offset = 0
+    }
+
+    /**
+     * https://stackoverflow.com/questions/5920070/why-cant-you-mix-aggregate-values-and-non-aggregate-values-in-a-single-select
+     * when use aggregation query on the whole set, it "collapses" the table to a single group, 
+     * making it impossible to access the individual items within a group in a select clause.
+     */
+    resRecords.clear();
+    int resCnt;
+    if (dbSelect->groupByEn) {
+        int groupFileId = dbSelect->groupByCol.expTable == dbSelect->selectTables[0] ? 0 : 1;
+        int groupColId  = tableHeaders[groupFileId]->getCol(dbSelect->groupByCol.expCol.c_str());
+        TableEntryDesc groupTableEntryDesc = tableHeaders[groupFileId]->getTableEntryDesc();
+        TableEntryDescNode* groupTableEntryDescNode = groupTableEntryDesc.getCol(groupColId);
+        int cnt = -1;
+        void* ma = nullptr;
+        switch (groupTableEntryDescNode->colType) { // build map
+            case COL_INT:
+                ma = new map<int, int>;
+                break;
+            case COL_FLOAT:
+                ma = new map<float, int>;
+                break;
+            case COL_VARCHAR:
+                ma = new map<string, int>;
+                break;
+            default:
+                break;
+        }
+        for (int i = 0; i < resRecordIds.size(); i += tableNum) {
+            RecordId* groupRecordId = resRecordIds[i + groupFileId];
+            Record groupRecord(fileHandlers[groupFileId]->getRecordLen());
+            fileHandlers[groupFileId]->getRecord(*groupRecordId, groupRecord);
+            RecordData groupRecordData;
+            groupRecord.deserialize(groupRecordData, groupTableEntryDesc);
+            RecordDataNode* groupRecordDataNode = groupRecordData.getData(groupColId);
+            int mapIndex = getMapIndex(groupRecordDataNode, ma, cnt) - dbSelect->offsetNum;
+            if (dbSelect->limitEn && (mapIndex < 0 || (mapIndex >= dbSelect->limitNum))) {
+                continue;
+            }
+            if (mapIndex >= resRecords.size()) {
+                resRecords.push_back(RecordData(entryNames.size()));
+            }
+            for (int j = i; j < i + tableNum; j++) {
+                int curFileId = j - i;
+                RecordId* recordId = resRecordIds[j];
+                Record tempRecord(fileHandlers[curFileId]->getRecordLen());
+                fileHandlers[curFileId]->getRecord(*recordId, tempRecord);
+                RecordData tempRecordData;
+                TableEntryDesc tableEntryDesc = tableHeaders[curFileId]->getTableEntryDesc();
+                tempRecord.deserialize(tempRecordData, tableEntryDesc);
+                for (int k = 0; k < colIds[curFileId].size(); k++) {
+                    operateData(resRecords[mapIndex], tempRecordData, ops[curFileId][k], colIds[curFileId][k]);
+                }
+            }
+        }
+        resCnt = (cnt - dbSelect->offsetNum) < 0 ? 0 : (cnt - dbSelect->offsetNum);
+    } else {
+        if (hasAggregate) {
+            resRecords.push_back(RecordData(entryNames.size()));
+        }
+        for (int i = startNum * tableNum; i < endNum * tableNum; i += tableNum) {
+            int resRecordsIndex = (hasAggregate) ? 0 : ((i / tableNum) - startNum);
+            // when there is aggregate query, there will be only one result record
+            if (!hasAggregate) {
+                resRecords.push_back(RecordData(entryNames.size()));
+            }
+            for (int j = i; j < i + tableNum; j++) {
+                int curFileId = j - i;
+                RecordId* recordId = resRecordIds[j];
+                Record tempRecord(fileHandlers[curFileId]->getRecordLen());
+                fileHandlers[curFileId]->getRecord(*recordId, tempRecord);
+                RecordData tempRecordData;
+                TableEntryDesc tableEntryDesc = tableHeaders[curFileId]->getTableEntryDesc();
+                tempRecord.deserialize(tempRecordData, tableEntryDesc);
+                for (int k = 0; k < colIds[curFileId].size(); k++) {
+                    operateData(resRecords[resRecordsIndex], tempRecordData, ops[curFileId][k], colIds[curFileId][k]);
+                }
+            }
+        }
+        if (exceedFlag) {
+            printf("[Warning] records starting at %d are fewer than %d.\n", dbSelect->offsetNum, dbSelect->limitNum);
+        }
+        resCnt = endNum - startNum;
+    }
+    return resCnt;
 }
 
 int TableManager::selectRecords(DBSelect* dbSelect) {
-    vector<RecordData> records;
-    vector<RecordId*> recordIds;
+    vector<RecordData> recordDatas;
     vector<string> colNames;
-    int cnt = _selectRecords(dbSelect, records, recordIds, colNames);
+    int cnt = _selectRecords(dbSelect, recordDatas, colNames);
     // print the records
+    for (int i = 0; i < colNames.size(); i++) {
+        printf("%s ", colNames[i].c_str());
+        if (i < colNames.size() - 1) {
+            printf("| ");
+        }
+    }
+    printf("\n----------------\n");
+    for (int i = 0; i < recordDatas.size(); i++) {
+        RecordDataNode* cur = recordDatas[i].head;
+        while (cur) {
+            switch (cur->nodeType) {
+                case COL_INT:
+                    printf("%d ", *(cur->content.intContent));
+                    break;
+                case COL_FLOAT:
+                    printf("%f ", *(cur->content.floatContent));
+                    break;
+                case COL_VARCHAR:
+                    printf("%s ", cur->content.charContent);
+                    break;
+                case COL_NULL:
+                    printf("NULL ");
+                    break;
+                default:
+                    break;
+            }
+            if (cur->next) {
+                printf("| ");
+            }
+            cur = cur->next;
+        }
+        printf("\n");
+    }
 
     return cnt;
 }

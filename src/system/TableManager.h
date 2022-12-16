@@ -36,7 +36,7 @@ private:
 
     int _checkFormat(FileHandler* fileHandlers[], TableHeader* tableHeaders[], vector<string> &selectTables, vector<DBExpItem*> &expressions);
 
-    int _selectRecords(DBSelect* dbSelect, vector<RecordData>& resRecords, vector<RecordId*>& resRecordIds, vector<string>& colNames);
+    int _selectRecords(DBSelect* dbSelect, vector<RecordData>& resRecords, vector<string>& entryNames);
 
     int _iterateWhere(vector<string> selectTables, vector<DBExpression> expressions, vector<RecordId*>& recordIds);
 
