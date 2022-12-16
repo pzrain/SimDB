@@ -1298,7 +1298,6 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert) {
         return 0;
     }
     FileHandler* insertFileHandler = recordManager->findTable(tableName.c_str());
-    TableHeader* tableHeader = insertFileHandler->getTableHeader();
     int valueSize = dbInsert->valueLists[0].size();
     vector<Record*> records;
     records.resize(dbInsert->valueLists.size());
@@ -1338,4 +1337,31 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert) {
         return dbInsert->valueLists.size();
     }
     return -1; // failure. Note: when fail, no record will be inserted
+}
+
+int TableManager::dropRecords(string tableName, DBDelete* dbDelete) {
+    FileHandler* deleteFileHandler = recordManager->findTable(tableName.c_str());
+    TableHeader* tableHeader = deleteFileHandler->getTableHeader();
+    vector<string> selectTables = {tableName};
+    vector<RecordId*> recordIds;
+    vector<Record*> removedRecords;
+
+    _iterateWhere(selectTables, dbDelete->expression, recordIds);
+
+    for (int i = 0; i < recordIds.size(); i++) {
+        removedRecords.push_back(new Record(deleteFileHandler->getRecordLen()));
+        if (!deleteFileHandler->removeRecord(*recordIds[i], *removedRecords[i])) {
+            break;   
+        }
+    }
+    bool errorFlag = false;
+    if (removedRecords.size() < recordIds.size()) { // encouter error when removing records
+        errorFlag = true;
+        deleteFileHandler->insertAllRecords(removedRecords); // memcpy method, so Record newed can be safely deleted
+        // note: although the records are inserted back, its position may not be the same as before
+    }
+    for (int i = 0; i < removedRecords.size(); i++) {
+        delete removedRecords[i];
+    }
+    return errorFlag ? -1 : recordIds.size();
 }

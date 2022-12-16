@@ -212,7 +212,7 @@ bool FileHandler::insertRecord(RecordId &recordId, Record &record) {
     return true;
 }
 
-bool FileHandler::removeRecord(RecordId &recordId) {
+bool FileHandler::removeRecord(RecordId &recordId, Record &record) {
     int16_t pageId = recordId.getPageId();
     int16_t slotId = recordId.getSlotId();
 
@@ -233,6 +233,8 @@ bool FileHandler::removeRecord(RecordId &recordId) {
     size_t offset = sizeof(PageHeader) + slotId * tableHeader->recordLen;
     uint8_t* recordData = (uint8_t*)(((uint8_t*)data) + offset);
     if (((int16_t*)recordData)[0] == SLOT_DIRTY) {
+        offset = sizeof(int16_t);
+        memcpy(record.data, recordData + offset, tableHeader->recordLen - offset);
         ((int16_t*)recordData)[0] = pageHeader->firstEmptySlot;
         pageHeader->firstEmptySlot = slotId;
     } else {

@@ -52,7 +52,7 @@ public:
     // the page id and slot id of the inserted record will be stored in recordId
     // at present, no constraints will be checked. (TODO)
 
-    bool removeRecord(RecordId &recordId);
+    bool removeRecord(RecordId &recordId, Record &record);
 
     bool updateRecord(RecordId &recordId, Record &record);
     // parameter recordId specifies the position of the record that needed to be updated
