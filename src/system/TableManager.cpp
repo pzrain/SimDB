@@ -219,6 +219,10 @@ int TableManager::createIndex(string tableName, string colName) {
         insertVals.resize(records.size());
         indexManager->transform(tableName.c_str(), colName.c_str(), insertVals, pageIds, slotIds);
         res = indexManager->insert(tableName.c_str(), colName.c_str(), insertDatas, insertVals);
+        for (int i = 0; i < records.size(); i++) {
+            delete records[i];
+            delete recordIds[i];
+        }
     }
     return res;    
 }
@@ -304,6 +308,10 @@ int TableManager::createPrimaryKey(string tableName, string colName) {
     insertVals.resize(records.size());
     indexManager->transform(tableName.c_str(), colName.c_str(), insertVals, pageIds, slotIds);
     indexManager->insert(tableName.c_str(), colName.c_str(), insertDatas, insertVals);
+    for (int i = 0; i < records.size(); i++) {
+        delete records[i];
+        delete recordIds[i];
+    }
     return index;
 }
 
@@ -790,7 +798,9 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     continue;
                 }
                 // recursive search
-                _selectRecords((DBSelect*)expressions[i].rVal, tempRecordData, tempColNames);
+                if (_selectRecords((DBSelect*)expressions[i].rVal, tempRecordData, tempColNames) == -1) {
+                    return -1;
+                }
                 preFlag = false;
                 for (int k = 0; k < tempRecordData.size(); k++) {
                     void* rData = transformType(tempRecordData[k].head);
@@ -912,6 +922,13 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
         }
     }
     resRecordIds = res[cur];
+    for (int i = 0; i < MAX_SELECT_TABLE; i++) {
+        for (int j = 0; j < records[i].size(); j++) {
+            delete records[i][j];
+            delete recordIds[i][j];
+        }
+    }
+    return 0;
 }
 
 inline void operateData(RecordData& lRecordData, RecordData& rRecordData, DB_SELECT_TYPE op, int colId) {
@@ -1043,7 +1060,6 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resReco
     /* check format */
     vector<DBExpItem*> waitChecked;
     for (int i = 0; i < dbSelect->selectItems.size(); i++) {
-        int index;
         if (!dbSelect->selectItems[i].star) {
             waitChecked.push_back(&dbSelect->selectItems[i].item);
         }
@@ -1051,6 +1067,9 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resReco
     for (int i = 0; i < dbSelect->expressions.size(); i++) {
         if (dbSelect->expressions[i].lType == DB_ITEM) {
             waitChecked.push_back(((DBExpItem*)dbSelect->expressions[i].lVal));
+        }
+        if (dbSelect->expressions[i].rType == DB_ITEM) {
+            waitChecked.push_back(((DBExpItem*)dbSelect->expressions[i].rVal));
         }
     }
     if (dbSelect->groupByEn) {
@@ -1096,7 +1115,9 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resReco
     }
 
     vector<RecordId*> resRecordIds;
-    _iterateWhere(dbSelect->selectTables, dbSelect->expressions, resRecordIds);
+    if (_iterateWhere(dbSelect->selectTables, dbSelect->expressions, resRecordIds) == -1) {
+        return -1;
+    }
 
     // build entryNames
     bool hasAggregate = false;
@@ -1346,7 +1367,22 @@ int TableManager::dropRecords(string tableName, DBDelete* dbDelete) {
     vector<RecordId*> recordIds;
     vector<Record*> removedRecords;
 
-    _iterateWhere(selectTables, dbDelete->expression, recordIds);
+    vector<DBExpItem*> waitChecked;
+    for (int i = 0; i < dbDelete->expression.size(); i++) {
+        if (dbDelete->expression[i].lType == DB_ITEM) {
+            waitChecked.push_back(((DBExpItem*)dbDelete->expression[i].lVal));
+        }
+        if (dbDelete->expression[i].rType == DB_ITEM) {
+            waitChecked.push_back(((DBExpItem*)dbDelete->expression[i].rVal));
+        }
+    }
+    if (_checkFormat(&deleteFileHandler, &tableHeader, selectTables, waitChecked) == -1) {
+        return -1;
+    }
+
+    if (_iterateWhere(selectTables, dbDelete->expression, recordIds) == -1) {
+        return -1;
+    }
 
     for (int i = 0; i < recordIds.size(); i++) {
         removedRecords.push_back(new Record(deleteFileHandler->getRecordLen()));
@@ -1363,5 +1399,99 @@ int TableManager::dropRecords(string tableName, DBDelete* dbDelete) {
     for (int i = 0; i < removedRecords.size(); i++) {
         delete removedRecords[i];
     }
+    return errorFlag ? -1 : recordIds.size();
+}
+
+int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate) {
+    FileHandler* updateFileHandler = recordManager->findTable(tableName.c_str());
+    TableHeader* tableHeader = updateFileHandler->getTableHeader();
+    TableEntryDesc tableEntryDesc = tableHeader->getTableEntryDesc();
+    vector<string> selectTables = {tableName};
+    vector<RecordId*> recordIds;
+    vector<Record*> rawRecords;
+    vector<int> colIds;
+
+    vector<DBExpItem*> waitChecked;
+    for (int i = 0; i < dbUpdate->expItem.size(); i++) {
+        assert(dbUpdate->expItem[i].lType == DB_ITEM);
+        assert(dbUpdate->expItem[i].rType >= DB_NULL && dbUpdate->expItem[i].rType <= DB_CHAR);
+        int colId = tableHeader->getCol((char*)dbUpdate->expItem[i].lVal);
+        colIds.push_back(colId);
+        TableEntryDescNode* tableEntryDescNode = tableEntryDesc.getCol(colId);
+        if (tableEntryDescNode->colType != dbUpdate->expItem[i].rType) {
+            printf("[Error] incompatible type %d and %d in update set clause.\n", dbUpdate->expItem[i].rType, tableEntryDescNode->colType);
+            return -1;
+        }
+        waitChecked.push_back(((DBExpItem*)dbUpdate->expItem[i].lVal));
+    }
+    for (int i = 0; i < dbUpdate->expressions.size(); i++) {
+        if (dbUpdate->expressions[i].lType == DB_ITEM) {
+            waitChecked.push_back(((DBExpItem*)dbUpdate->expressions[i].lVal));
+        }
+        if (dbUpdate->expressions[i].rType == DB_ITEM) {
+            waitChecked.push_back(((DBExpItem*)dbUpdate->expressions[i].rVal));
+        }
+    }
+    if (_checkFormat(&updateFileHandler, &tableHeader, selectTables, waitChecked) == -1) {
+        return -1;
+    }
+    
+    if (_iterateWhere(selectTables, dbUpdate->expressions, recordIds) == -1) {
+        return -1;
+    }
+
+    for (int i = 0; i < recordIds.size(); i++) {
+        rawRecords.push_back(new Record(updateFileHandler->getRecordLen()));
+        updateFileHandler->getRecord(*recordIds[i], *rawRecords[i]);
+        RecordData updatedRecordData;
+        rawRecords[i]->deserialize(updatedRecordData, tableEntryDesc);
+        for (int j = 0; j < dbUpdate->expItem.size(); j++) {
+            RecordDataNode* recordDataNode = updatedRecordData.getData(colIds[j]);
+            switch (dbUpdate->expItem[j].rType) {
+                case COL_INT:
+                    if (recordDataNode->nodeType == COL_NULL) {
+                        recordDataNode->len = 4;
+                        recordDataNode->content.intContent = new int;
+                    }
+                    *recordDataNode->content.intContent = *(int*)dbUpdate->expItem[j].rVal;
+                    break;
+                case COL_FLOAT:
+                    if (recordDataNode->nodeType == COL_NULL) {
+                        recordDataNode->len = 4;
+                        recordDataNode->content.floatContent = new float;
+                    }
+                    *recordDataNode->content.floatContent = *(float*)dbUpdate->expItem[j].rVal;
+                    break;
+                case COL_VARCHAR:
+                    if (recordDataNode->nodeType == COL_NULL) {
+                        recordDataNode->len = strlen((char*)dbUpdate->expItem[j].rVal);
+                        recordDataNode->content.charContent = new char[recordDataNode->len];
+                    }
+                    strcpy(recordDataNode->content.charContent, (char*)dbUpdate->expItem[j].rVal);
+                    break;
+                default:
+                    break;
+            }
+            recordDataNode->nodeType = (TB_COL_TYPE)dbUpdate->expItem[j].rType;
+        }
+        Record updatedRecord(updateFileHandler->getRecordLen());
+        updatedRecordData.serialize(updatedRecord);
+        if (!updateFileHandler->updateRecord(*recordIds[i], updatedRecord)) {
+            break;
+        }
+    }
+
+    bool errorFlag = false;
+    if (rawRecords.size() < recordIds.size()) { // restore
+        errorFlag = true;
+        for (int i = 0; i < rawRecords.size(); i++) {
+            updateFileHandler->updateRecord(*recordIds[i], *rawRecords[i]);
+        }
+    }
+
+    for (int i = 0; i < rawRecords.size(); i++) {
+        delete rawRecords[i];
+    }
+
     return errorFlag ? -1 : recordIds.size();
 }
