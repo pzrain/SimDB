@@ -1292,3 +1292,50 @@ int TableManager::selectRecords(DBSelect* dbSelect) {
 
     return cnt;
 }
+
+int TableManager::insertRecords(string tableName, DBInsert* dbInsert) {
+    if (dbInsert->valueLists.size() == 0) {
+        return 0;
+    }
+    FileHandler* insertFileHandler = recordManager->findTable(tableName.c_str());
+    TableHeader* tableHeader = insertFileHandler->getTableHeader();
+    int valueSize = dbInsert->valueLists[0].size();
+    vector<Record*> records;
+    records.resize(dbInsert->valueLists.size());
+    for (int i = 0; i < dbInsert->valueLists.size(); i++) {
+        RecordData recordData(valueSize);
+        RecordDataNode* recordDataNode = recordData.head;
+        for (int j = 0; j < valueSize; j++) {
+            switch (dbInsert->valueListsType[i][j]) {
+                case DB_LIST_INT:
+                    recordDataNode->len = 4;
+                    recordDataNode->nodeType = COL_INT;
+                    recordDataNode->content.intContent = new int;
+                    *recordDataNode->content.intContent = *(int*)dbInsert->valueLists[i][j];
+                    break;
+                case DB_LIST_FLOAT:
+                    recordDataNode->len = 4;
+                    recordDataNode->nodeType = COL_FLOAT;
+                    recordDataNode->content.floatContent = new float;
+                    *recordDataNode->content.floatContent = *(float*)dbInsert->valueLists[i][j];
+                    break;
+                case DB_LIST_CHAR:
+                    recordDataNode->len = strlen((char*)dbInsert->valueLists[i][j]);
+                    recordDataNode->nodeType = COL_VARCHAR;
+                    recordDataNode->content.charContent = new char[recordDataNode->len];
+                    strcpy(recordDataNode->content.charContent, (char*)dbInsert->valueLists[i][j]);
+                    break;
+                case DB_LIST_NULL:
+                    recordDataNode->len = 0;
+                    recordDataNode->nodeType = COL_NULL;
+                    break;
+            }
+            recordDataNode = recordDataNode->next;
+        }
+        recordData.serialize(*(records[i]));
+    }
+    if (insertFileHandler->insertAllRecords(records)) { // succeed
+        return dbInsert->valueLists.size();
+    }
+    return -1; // failure. Note: when fail, no record will be inserted
+}
