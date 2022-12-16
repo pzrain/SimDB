@@ -36,9 +36,9 @@ private:
 
     int _checkFormat(FileHandler* fileHandlers[], TableHeader* tableHeaders[], vector<string> &selectTables, vector<DBExpItem*> &expressions);
 
-    int _selectRecords(DBSelect* dbSelect, vector<RecordData>& resRecords, vector<RecordId*>& resRecordIds);
+    int _selectRecords(DBSelect* dbSelect, vector<RecordData>& resRecords, vector<RecordId*>& resRecordIds, vector<string>& colNames);
 
-    int _iterateWhere(vector<string> selectTables, vector<DBExpression> expressions, vector<RecordData>& records, vector<RecordId*>& recordIds);
+    int _iterateWhere(vector<string> selectTables, vector<DBExpression> expressions, vector<RecordId*>& recordIds);
 
 public:
     TableManager(string databaseName_, BufPageManager* bufPageManager_);

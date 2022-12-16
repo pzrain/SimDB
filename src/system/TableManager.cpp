@@ -527,7 +527,7 @@ void* transformType(RecordDataNode* recordDataNode) {
     return res;
 }
 
-int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression> expressions, vector<RecordData>& resRecords, vector<RecordId*>& resRecordIds) {
+int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression> expressions, vector<RecordId*>& resRecordIds) {
     int cur = 0;
     std::vector<RecordId*> res[2], tempRes;
     FileHandler* fileHandlers[MAX_SELECT_TABLE];
@@ -778,6 +778,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     return -1;
                 }
                 vector<RecordData> tempRecordData;
+                vector<string> tempColNames;
                 if (((DBSelect*)(expressions[i].rVal))->selectItems.size() > 1) {
                     printf("[Error] nesty selection in tuple form is incompatible with IN op.\n");
                     return -1;
@@ -790,7 +791,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     continue;
                 }
                 // recursive search
-                _selectRecords((DBSelect*)expressions[i].rVal, tempRecordData, tempRes);
+                _selectRecords((DBSelect*)expressions[i].rVal, tempRecordData, tempRes, tempColNames);
                 preFlag = false;
                 for (int k = 0; k < tempRecordData.size(); k++) {
                     void* rData = transformType(tempRecordData[k].head);
@@ -841,6 +842,14 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     printf("[Error] incompatible type for %s.%s and %d.\n", lItem->expTable.c_str(), lItem->expCol.c_str(), expressions[i].rType);
                     return -1;
                 }
+                if (equalAsPre && preFlag) {
+                    res[cur].push_back(curRecordId);
+                    if (tableNum > 0) {
+                        res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                    }
+                    continue;
+                }
+                preFlag = false;
                 bool flag = false;
                 std::string regStr = "";
                 switch (expressions[i].op) {
@@ -897,15 +906,16 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     if (tableNum > 0) {
                         res[cur].push_back(res[cur ^ 1][j ^ 1]);
                     }
+                    preFlag = flag;
                 }
             }
         }
         preRecordDataNode = curRecordDataNode;
     }
+    resRecordIds = res[cur];
 }
 
-int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& records, vector<RecordId*>& recordIds) {
-    records.clear();
+int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& records, vector<RecordId*>& recordIds, vector<string>& colNames) {
     
     int tableSize = dbSelect->selectTables.size();
     if (tableSize > MAX_SELECT_TABLE) {
@@ -939,21 +949,55 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& records
         return -1;
     }
 
+    /* check group and aggrevate selection*/
+    if (dbSelect->groupByEn) {
+        for (int i = 0; i < dbSelect->selectItems.size(); i++) {
+            DBSelItem tempSelItem = dbSelect->selectItems[i];
+            if (tempSelItem.selectType == ORD_TYPE) {
+                if (tempSelItem.item.expTable != dbSelect->groupByCol.expTable || tempSelItem.item.expCol != dbSelect->groupByCol.expCol) {
+                    printf("[Error] cannot select %s.%s when group by %s.%s\n", tempSelItem.item.expTable.c_str(), tempSelItem.item.expCol.c_str(), dbSelect->groupByCol.expTable.c_str(), dbSelect->groupByCol.expCol.c_str());
+                    return -1;
+                }
+            } else {
+                int j;
+                for (j = 0; j < dbSelect->selectTables.size(); j++) {
+                    if (!strcmp(tempSelItem.item.expTable.c_str(), dbSelect->selectTables[j].c_str())) {
+                        break;
+                    }
+                }
+                int index = checkColExist(tableHeaders[j], tempSelItem.item.expCol.c_str());
+                TableEntryDescNode* tempTableEntryDescNode = tableHeaders[j]->getTableEntryDesc().getCol(index);
+                if (tempTableEntryDescNode->colType == COL_NULL || tempTableEntryDescNode->colType == COL_VARCHAR) {
+                    printf("[Error] cannot conduct aggregate selection on column with NULL type of VARCHAR type.\n");
+                    return -1;
+                }
+            }
+        }
+    }
+
     assert(dbSelect->limitEn || (!dbSelect->limitEn && !dbSelect->offsetEn));
     if ((dbSelect->limitEn && dbSelect->limitNum < 0) || (dbSelect->offsetEn && dbSelect->offsetNum < 0)) {
         printf("[Error] invalid value of limitNum %d or offsetNum %d.\n", dbSelect->limitNum, dbSelect->offsetNum);
         return -1;
     }
 
-    _iterateWhere(dbSelect->selectTables, dbSelect->expressions, records, recordIds);
+    _iterateWhere(dbSelect->selectTables, dbSelect->expressions, recordIds);
 
     /* group by: https://stackoverflow.com/questions/11991079/select-a-column-in-sql-not-in-group-by */
+
+
+    if (dbSelect->limitEn) {
+        if (dbSelect->offsetEn) {
+            
+        }
+    }
 }
 
 int TableManager::selectRecords(DBSelect* dbSelect) {
     vector<RecordData> records;
     vector<RecordId*> recordIds;
-    int cnt = _selectRecords(dbSelect, records, recordIds);
+    vector<string> colNames;
+    int cnt = _selectRecords(dbSelect, records, recordIds, colNames);
     // print the records
 
     return cnt;
