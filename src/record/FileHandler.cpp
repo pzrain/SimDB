@@ -369,7 +369,8 @@ bool FileHandler::getAllRecordsAccordingToFields(std::vector<Record*>& records, 
     return true;
 }
 
-bool FileHandler::insertAllRecords(const std::vector<Record*>& records) {
+bool FileHandler::insertAllRecords(const std::vector<Record*>& records, std::vector<RecordId>& recordIds) {
+    recordIds.clear();
     for (Record* record : records) {
         if (!tableHeader->fillDefault(*record)) {
             printf("[ERROR] fail to fill default value to record.\n");
@@ -419,6 +420,7 @@ bool FileHandler::insertAllRecords(const std::vector<Record*>& records) {
             uint8_t* recordData = (uint8_t*)(((uint8_t*)data) + offset);
             offset = sizeof(int16_t);
             memcpy(recordData + offset, records[done++]->data, tableHeader->recordLen - sizeof(int16_t));
+            recordIds.push_back(RecordId(pageId, slotId));
             pageHeader->firstEmptySlot = ((int16_t*)recordData)[0];
             ((int16_t*)recordData)[0] = SLOT_DIRTY;
             if (slotId > pageHeader->maximumSlot) {

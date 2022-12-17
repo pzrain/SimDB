@@ -67,7 +67,7 @@ public:
     // if you want get i-th field, please set the i-th bit of enable (from low to high) to 1
     // return true if succeed
 
-    bool insertAllRecords(const std::vector<Record*>&);
+    bool insertAllRecords(const std::vector<Record*>&, std::vector<RecordId>&);
     // insert records in bulk
 
     int getRecordNum();
