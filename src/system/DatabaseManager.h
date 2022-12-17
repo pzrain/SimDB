@@ -10,24 +10,6 @@
 
 using namespace std;
 
-struct DBMeta {
-    int tableNum;
-    int colNum[DB_MAX_TABLE_NUM];
-    int indexNum[DB_MAX_TABLE_NUM];
-    int foreignKeyNum[DB_MAX_TABLE_NUM];
-
-    char tableNames[DB_MAX_TABLE_NUM][TAB_MAX_NAME_LEN];
-    char indexNames[DB_MAX_TABLE_NUM][TAB_MAX_COL_NUM][20];
-    
-    bool isPrimaryKey[DB_MAX_TABLE_NUM][TAB_MAX_COL_NUM]; // wheater a column is a primary key
-    bool isUniqueKey[DB_MAX_TABLE_NUM][TAB_MAX_COL_NUM];
-    
-    char foreignKeyNames[DB_MAX_TABLE_NUM][MAX_FOREIGN_KEY_NUM][20];
-    uint8_t foreignKeyColumn[DB_MAX_TABLE_NUM][MAX_FOREIGN_KEY_NUM]; // use foreign key index to quickly find column 
-    // more ...
-
-    DBMeta();
-};
 class DatabaseManager {
 private:
     string BASE_PATH;

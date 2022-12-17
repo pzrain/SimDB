@@ -40,8 +40,13 @@ private:
 
     int _iterateWhere(vector<string> selectTables, vector<DBExpression> expressions, vector<RecordId*>& recordIds);
 
+    bool _checkConstraintOnInsert(string tableName, RecordData* recordData, DBMeta* dbMeta);
+
+    bool _checkConstraintOnDelete(string tableName, RecordData* recordData, DBMeta* dbMeta);
+
 public:
     TableManager(string databaseName_, BufPageManager* bufPageManager_);
+    
     ~TableManager();
 
     inline bool checkTableName(string name);
@@ -84,20 +89,20 @@ public:
     */
     int createPrimaryKey(string tableName, string colName);
 
-    int dropPrimaryKey(string tableName, string colName);
+    int dropPrimaryKey(string tableName, string colName, DBMeta* dbMeta);
 
     /**
      * @brief add one foreign key, it is stored in the TableEntry. The return value will be store in database meta data.
      * @return column index if successfully find the correct column else -1
     */
-    int createForeignKey(string tableName, string foreignKeyName, string colName, string refTableName, string refTableCol);
+    int createForeignKey(string tableName, string foreignKeyName, string colName, string refTableName, string refTableCol, int& refIndex);
     
     /**
      * @brief set the foreignKeyConstraint of the column's entry to false.
      * @param colIndex column index of the entrys array, quickly find the correct entry
      * @return 0 if success, -1 if fail
     */
-    int dropForeignKey(string tableName, uint8_t colIndex);
+    int dropForeignKey(string tableName, uint8_t colIndex, DBMeta* dbMeta);
 
     /**
      * @brief refer to createPrimaryKey
@@ -108,15 +113,15 @@ public:
      */
     int createUniqueKey(string tableName, string colName);
 
-    int dropUniqueKey(string tableName, string colName);
+    int dropUniqueKey(string tableName, string colName, DBMeta* dbMeta);
 
     int selectRecords(DBSelect* dbSelect);
 
-    int updateRecords(string tableName, DBUpdate* dbUpdate);
+    int updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* dbMeta);
 
-    int insertRecords(string tableName, DBInsert* dbInsert);
+    int insertRecords(string tableName, DBInsert* dbInsert, DBMeta* dbMeta);
 
-    int dropRecords(string tableName, DBDelete* dbDelete);
+    int dropRecords(string tableName, DBDelete* dbDelete, DBMeta* dbMeta);
 };
 
 #endif

@@ -172,7 +172,6 @@ int TableManager::saveChangeToFile(const char* tableName) {
         return -1;
     }
     recordManager->closeFile(fileHandler);
-    // TODO: test if changes have been saved
     return 0;
 }
 
@@ -304,7 +303,7 @@ int TableManager::createPrimaryKey(string tableName, string colName) {
     uint8_t colType;
     if (index >= 0) {
         tableHeader->entrys[index].primaryKeyConstraint = true;
-        tableHeader->entrys[index].uniqueConstraint = false; // make sure primaryKeyConstraint and uniqueConstrain don't co-exist
+        // tableHeader->entrys[index].uniqueConstraint = false; // make sure primaryKeyConstraint and uniqueConstrain don't co-exist
         indexLen = tableHeader->entrys[index].colLen;
         colType = tableHeader->entrys[index].colType;
     } else {
@@ -341,7 +340,7 @@ int TableManager::createPrimaryKey(string tableName, string colName) {
     return index;
 }
 
-int TableManager::dropPrimaryKey(string tableName, string colName) {
+int TableManager::dropPrimaryKey(string tableName, string colName, DBMeta* dbMeta) {
     if(!checkTableName(tableName))
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
@@ -365,12 +364,32 @@ int TableManager::dropPrimaryKey(string tableName, string colName) {
         return -1;
     }
 
-    indexManager->removeIndex(tableName.c_str(), colName.c_str());
+    int tableNum = -1, indexNum = -1;
+    for(int i = 0; i < dbMeta->tableNum; i++) {
+        if(strcmp(tableName.c_str(), dbMeta->tableNames[i]) == 0) {
+            tableNum = i;
+            break;
+        }
+    }
+    for (int i = 0; i < dbMeta->indexNum[tableNum]; i++) {
+        if (strcmp(dbMeta->indexNames[tableNum][i], colName.c_str()) == 0) {
+            indexNum = i;
+            break;
+        }
+    }
+
+    /* 
+        if the index has been mannually set up, then it should not be removed
+        when the primary key is dropped
+     */
+    if (!dbMeta->mannuallyCreateIndex[tableNum][indexNum] && !tableHeader->entrys[index].uniqueConstraint && dbMeta->foreignKeyRefColumn[tableNum][index] == 0)  {
+        indexManager->removeIndex(tableName.c_str(), colName.c_str());
+    }
 
     return index;
 }
 
-int TableManager::createForeignKey(string tableName, string foreignKeyName, string colName, string refTableName, string refTableCol) {
+int TableManager::createForeignKey(string tableName, string foreignKeyName, string colName, string refTableName, string refTableCol, int& refIndex) {
     if(!checkTableName(tableName))
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
@@ -385,6 +404,10 @@ int TableManager::createForeignKey(string tableName, string foreignKeyName, stri
         printf("[Error] table dose not exist!\n");
         return -1;
     }
+    if (tableName == refTableName) {
+        printf("[Error] can not build foreign key within one table.\n");
+        return -1;
+    }
     fileHandler = recordManager->findTable(tableName.c_str());
     if(fileHandler == nullptr)
         return -1;
@@ -393,15 +416,20 @@ int TableManager::createForeignKey(string tableName, string foreignKeyName, stri
     FileHandler* refFileHandler = recordManager->findTable(refTableName.c_str());
     TableHeader* refTableHeader = refFileHandler->getTableHeader();
     assert(refFileHandler != nullptr);
-    int refIndex = checkColExist(refFileHandler->getTableHeader(), refTableCol.c_str());
+    refIndex = checkColExist(refFileHandler->getTableHeader(), refTableCol.c_str());
     if (index >= 0 && refIndex >= 0) {
         // if (refTableHeader->entrys[refIndex].primaryKeyConstraint == false) {
         //     printf("[Error] can not build foreign key on ref table's non-primary-key field.\n");
         //     return -1;
         // }
+
         /* 
             According to course doc, foreign column doesn't have to be parimary key nor have index
          */
+        if (!indexManager->hasIndex(tableName.c_str(), colName.c_str())) {
+            printf("[Info] automatically build index for local table.\n");
+            indexManager->createIndex(tableName.c_str(), colName.c_str(), tableHeader->entrys[index].colLen, tableHeader->entrys[index].colType);
+        }
         if (!indexManager->hasIndex(refTableName.c_str(), refTableCol.c_str())) {
             printf("[Info] automatically build index for foreign table.\n");
             indexManager->createIndex(refTableName.c_str(), refTableCol.c_str(), refTableHeader->entrys[refIndex].colLen, refTableHeader->entrys[refIndex].colType);
@@ -420,7 +448,7 @@ int TableManager::createForeignKey(string tableName, string foreignKeyName, stri
     return index;
 }
 
-int TableManager::dropForeignKey(string tableName, uint8_t colIndex) {
+int TableManager::dropForeignKey(string tableName, uint8_t colIndex, DBMeta* dbMeta) {
     if(!checkTableName(tableName))
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
@@ -436,6 +464,53 @@ int TableManager::dropForeignKey(string tableName, uint8_t colIndex) {
         printf("[Error] this table dose not have this foreign key\n");
         return -1;
     }
+    
+    // remove the index created on foreign table
+    char* refTableName = tableHeader->entrys[colIndex].foreignKeyTableName;
+    char* refColName = tableHeader->entrys[colIndex].foreignKeyColName;
+    FileHandler* refFileHandler = recordManager->findTable(refTableName);
+    int refIndex = checkColExist(refFileHandler->getTableHeader(), refColName);
+    if (indexManager->hasIndex(tableName.c_str(), tableHeader->entrys[colIndex].colName)) {
+        int tableNum = -1, indexNum = -1;
+        for(int i = 0; i < dbMeta->tableNum; i++) {
+            if(strcmp(tableName.c_str(), dbMeta->tableNames[i]) == 0) {
+                tableNum = i;
+                break;
+            }
+        }
+        for (int i = 0; i < dbMeta->indexNum[tableNum]; i++) {
+            if (strcmp(dbMeta->indexNames[tableNum][i], tableHeader->entrys[colIndex].colName) == 0) {
+                indexNum = i;
+                break;
+            }
+        }
+        if (!dbMeta->mannuallyCreateIndex[tableNum][indexNum] && !dbMeta->isPrimaryKey[tableNum][colIndex] && !dbMeta->isUniqueKey[tableNum][colIndex]) {
+            if (dbMeta->foreignKeyOnCol[tableNum][colIndex] == 1) {
+                indexManager->removeIndex(tableName.c_str(), tableHeader->entrys[colIndex].colName);
+            }
+        }
+    }
+    if (indexManager->hasIndex(refTableName, refColName)) {
+        int tableNum = -1, indexNum = -1;
+        for(int i = 0; i < dbMeta->tableNum; i++) {
+            if(strcmp(refTableName, dbMeta->tableNames[i]) == 0) {
+                tableNum = i;
+                break;
+            }
+        }
+        for (int i = 0; i < dbMeta->indexNum[tableNum]; i++) {
+            if (strcmp(dbMeta->indexNames[tableNum][i], refColName) == 0) {
+                indexNum = i;
+                break;
+            }
+        }
+        if (!dbMeta->mannuallyCreateIndex[tableNum][indexNum] && !dbMeta->isPrimaryKey[tableNum][refIndex] && !dbMeta->isUniqueKey[tableNum][refIndex]) {
+            if (dbMeta->foreignKeyOnCol[tableNum][refIndex] == 1) {
+                indexManager->removeIndex(refTableName, refColName);
+            }
+        }
+    }
+
     tableHeader->entrys[colIndex].foreignKeyConstraint = false;
     return 0;
 }
@@ -452,16 +527,16 @@ int TableManager::createUniqueKey(string tableName, string colName) {
         if (tableHeader->entrys[index].uniqueConstraint == true) {
             printf("[Info] the unique constraint of %s has already been created.\n", colName.c_str());
             return index;
-        } else if (tableHeader->entrys[index].primaryKeyConstraint == true) {
+        } /* else if (tableHeader->entrys[index].primaryKeyConstraint == true) {
             printf("[Error] can not create unique constraint on primary key.\n");
             return -1;
-        }
+        } */
         tableHeader->entrys[index].uniqueConstraint = true;
     }
     return res;
 }
 
-int TableManager::dropUniqueKey(string tableName, string colName) {
+int TableManager::dropUniqueKey(string tableName, string colName, DBMeta* dbMeta) {
     if(!checkTableName(tableName))
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
@@ -486,7 +561,25 @@ int TableManager::dropUniqueKey(string tableName, string colName) {
     }
 
     assert(indexManager->hasIndex(tableName.c_str(), colName.c_str()));
-    return indexManager->removeIndex(tableName.c_str(), colName.c_str());
+
+    int tableNum = -1, indexNum = -1;
+    for(int i = 0; i < dbMeta->tableNum; i++) {
+        if(strcmp(tableName.c_str(), dbMeta->tableNames[i]) == 0) {
+            tableNum = i;
+            break;
+        }
+    }
+    for (int i = 0; i < dbMeta->indexNum[tableNum]; i++) {
+        if (strcmp(dbMeta->indexNames[tableNum][i], colName.c_str()) == 0) {
+            indexNum = i;
+            break;
+        }
+    }
+
+    if (!dbMeta->mannuallyCreateIndex[tableNum][indexNum] && !tableHeader->entrys[index].primaryKeyConstraint && dbMeta->foreignKeyOnCol[tableNum][index] == 0) {
+        indexManager->removeIndex(tableName.c_str(), colName.c_str());
+    }
+    return index;
 }
 
 int TableManager::_checkFormat(FileHandler* fileHandlers[], TableHeader* tableHeaders[], vector<string> &selectTables, vector<DBExpItem*> &waitChecked) {
@@ -1347,7 +1440,7 @@ int TableManager::selectRecords(DBSelect* dbSelect) {
     return cnt;
 }
 
-int TableManager::insertRecords(string tableName, DBInsert* dbInsert) {
+int TableManager::insertRecords(string tableName, DBInsert* dbInsert, DBMeta* dbMeta) {
     if (dbInsert->valueLists.size() == 0) {
         return 0;
     }
@@ -1385,20 +1478,25 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert) {
             }
             recordDataNode = recordDataNode->next;
         }
+        if (!_checkConstraintOnInsert(tableName, &recordData, dbMeta)) {
+            return -1;
+        }
         recordData.serialize(*(records[i]));
     }
     if (insertFileHandler->insertAllRecords(records)) { // succeed
+        // TODO insert
         return dbInsert->valueLists.size();
     }
     return -1; // failure. Note: when fail, no record will be inserted
 }
 
-int TableManager::dropRecords(string tableName, DBDelete* dbDelete) {
+int TableManager::dropRecords(string tableName, DBDelete* dbDelete, DBMeta* dbMeta) {
     FileHandler* deleteFileHandler = recordManager->findTable(tableName.c_str());
     TableHeader* tableHeader = deleteFileHandler->getTableHeader();
     vector<string> selectTables = {tableName};
     vector<RecordId*> recordIds;
     vector<Record*> removedRecords;
+    TableEntryDesc tableEntryDesc = tableHeader->getTableEntryDesc();
 
     vector<DBExpItem*> waitChecked;
     for (int i = 0; i < dbDelete->expression.size(); i++) {
@@ -1420,7 +1518,13 @@ int TableManager::dropRecords(string tableName, DBDelete* dbDelete) {
     for (int i = 0; i < recordIds.size(); i++) {
         removedRecords.push_back(new Record(deleteFileHandler->getRecordLen()));
         if (!deleteFileHandler->removeRecord(*recordIds[i], *removedRecords[i])) {
-            break;   
+            break;
+        }
+        // TODO index
+        RecordData recordData;
+        removedRecords[i]->deserialize(recordData, tableEntryDesc);
+        if (_checkConstraintOnDelete(tableName, &recordData, dbMeta)) {
+            break;
         }
     }
     bool errorFlag = false;
@@ -1435,7 +1539,7 @@ int TableManager::dropRecords(string tableName, DBDelete* dbDelete) {
     return errorFlag ? -1 : recordIds.size();
 }
 
-int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate) {
+int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* dbMeta) {
     FileHandler* updateFileHandler = recordManager->findTable(tableName.c_str());
     TableHeader* tableHeader = updateFileHandler->getTableHeader();
     TableEntryDesc tableEntryDesc = tableHeader->getTableEntryDesc();
@@ -1478,6 +1582,11 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate) {
         updateFileHandler->getRecord(*recordIds[i], *rawRecords[i]);
         RecordData updatedRecordData;
         rawRecords[i]->deserialize(updatedRecordData, tableEntryDesc);
+
+        if (!_checkConstraintOnDelete(tableName, &updatedRecordData, dbMeta)) {
+            break;
+        }
+
         for (int j = 0; j < dbUpdate->expItem.size(); j++) {
             RecordDataNode* recordDataNode = updatedRecordData.getData(colIds[j]);
             switch (dbUpdate->expItem[j].rType) {
@@ -1507,6 +1616,11 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate) {
             }
             recordDataNode->nodeType = (TB_COL_TYPE)dbUpdate->expItem[j].rType;
         }
+
+        if (_checkConstraintOnInsert(tableName, &updatedRecordData, dbMeta)) {
+            break;
+        }
+        // TODO index
         Record updatedRecord(updateFileHandler->getRecordLen());
         updatedRecordData.serialize(updatedRecord);
         if (!updateFileHandler->updateRecord(*recordIds[i], updatedRecord)) {
@@ -1527,4 +1641,126 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate) {
     }
 
     return errorFlag ? -1 : recordIds.size();
+}
+
+bool TableManager::_checkConstraintOnInsert(string tableName, RecordData* recordData, DBMeta* dbMeta) {
+    int tableNum = -1;
+    for (int i = 0; i < dbMeta->tableNum; i++) {
+        if (!strcmp(tableName.c_str(), dbMeta->tableNames[i])) {
+            tableName = i;
+            break;
+        }
+    }
+    if (tableNum == -1) {
+        return false;
+    }
+
+    FileHandler* checkFileHandler = recordManager->findTable(tableName.c_str());
+    TableHeader* tableHeader = checkFileHandler->getTableHeader();
+    char colName[64];
+    for (int i = 0; i < dbMeta->colNum[tableNum]; i++) {
+        if (dbMeta->isPrimaryKey[tableNum][i] || dbMeta->isUniqueKey[tableNum][i]) {
+            RecordDataNode* recordDataNode = recordData->getData(i);
+            void* checkData = nullptr;
+            switch (recordDataNode->nodeType) {
+                case COL_INT: checkData = recordDataNode->content.intContent; break;
+                case COL_FLOAT: checkData = recordDataNode->content.floatContent; break;
+                case COL_VARCHAR: checkData = recordDataNode->content.charContent; break;
+                default: break;
+            }
+            if (checkData == nullptr) {
+                return false; // note: encounter null value
+            }
+            
+            tableHeader->getCol(i, colName);
+            vector<int> res;
+            if (!indexManager->hasIndex(tableName.c_str(), colName)) {
+                fprintf(stderr, "no index on primary key or unique key.\n");
+                assert(false);
+            }
+            indexManager->search(tableName.c_str(), colName, checkData, res);
+            if (res.size() > 0) {
+                printf("[Error] fail in checking primary or unique constraint.\n");
+                return false;
+            }
+        }
+    }
+    for (int i = 0; i < dbMeta->foreignKeyNum[tableNum]; i++) {
+        int col = dbMeta->foreignKeyColumn[tableNum][i];
+        int refTable = dbMeta->foreignKeyRefTable[tableNum][i];
+        int refCol = dbMeta->foreignKeyRefColumn[tableNum][i];
+        string refTableName = dbMeta->tableNames[refTable];
+        FileHandler* foreignFileHandler = recordManager->findTable(refTableName.c_str());
+        foreignFileHandler->getTableHeader()->getCol(refCol, colName);
+        if (!indexManager->hasIndex(tableName.c_str(), colName)) {
+            fprintf(stderr, "no index on foreign key when insert.\n");
+            assert(false);
+        }
+        vector<int> res;
+        RecordDataNode* recordDataNode = recordData->getData(col);
+        void* checkData = nullptr;
+        switch (recordDataNode->nodeType) {
+            case COL_INT: checkData = recordDataNode->content.intContent; break;
+            case COL_FLOAT: checkData = recordDataNode->content.floatContent; break;
+            case COL_VARCHAR: checkData = recordDataNode->content.charContent; break;
+            default: break;
+        }
+        if (checkData == nullptr) {
+            return -1;
+        }
+        indexManager->search(refTableName.c_str(), colName, checkData, res);
+        if (res.size() == 0) {
+            printf("[Error] fail to insert/update due to confilct in foreign key constraint.\n");
+            return false;
+        }
+    }
+    return true;
+}
+
+bool TableManager::_checkConstraintOnDelete(string tableName, RecordData* recordData, DBMeta* dbMeta) {
+    int tableNum = -1;
+    for (int i = 0; i < dbMeta->tableNum; i++) {
+        if (!strcmp(tableName.c_str(), dbMeta->tableNames[i])) {
+            tableName = i;
+            break;
+        }
+    }
+    if (tableNum == -1) {
+        return false;
+    }
+
+    FileHandler* checkFileHandler = recordManager->findTable(tableName.c_str());
+    TableHeader* tableHeader = checkFileHandler->getTableHeader();
+    char colName[64];
+    for (int i = 0; i < dbMeta->refKeyNum[tableNum]; i++) {
+        int col = dbMeta->refKeyColumn[tableNum][i];
+        int refTable = dbMeta->refKeyRefTable[tableNum][i];
+        int refCol = dbMeta->refKeyRefColumn[tableNum][i];
+        string refTableName = dbMeta->tableNames[refTable];
+        FileHandler* foreignFileHandler = recordManager->findTable(refTableName.c_str());
+        foreignFileHandler->getTableHeader()->getCol(refCol, colName);
+
+        RecordDataNode* recordDataNode = recordData->getData(col);
+        void* checkData = nullptr;
+        switch (recordDataNode->nodeType) {
+            case COL_INT: checkData = recordDataNode->content.intContent; break;
+            case COL_FLOAT: checkData = recordDataNode->content.floatContent; break;
+            case COL_VARCHAR: checkData = recordDataNode->content.charContent; break;
+            default: break;
+        }
+        if (!indexManager->hasIndex(refTableName.c_str(), colName)) {
+            fprintf(stderr, "no index on foreign key when delete.\n");
+            assert(false);
+        }
+        /* 
+            should foreign key be unique?
+         */
+        vector<int> res;
+        indexManager->search(refTableName.c_str(), colName, checkData, res);
+        if (res.size() > 0) {
+            printf("[Error] fail to delete due to conflict in foreign key constraint.\n");
+            return false;
+        }
+    }
+    return true;
 }

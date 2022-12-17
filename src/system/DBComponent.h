@@ -2,7 +2,47 @@
 #define __DBCOMPONENT_H__
 #include <string>
 #include <vector>
+#include <cstring>
 #include "../common.h"
+
+struct DBMeta {
+    int tableNum;
+    int colNum[DB_MAX_TABLE_NUM];
+    int indexNum[DB_MAX_TABLE_NUM];
+    int foreignKeyNum[DB_MAX_TABLE_NUM]; // self to reference
+    int refKeyNum[DB_MAX_TABLE_NUM];     // reference to self
+
+    char tableNames[DB_MAX_TABLE_NUM][TAB_MAX_NAME_LEN];
+    char indexNames[DB_MAX_TABLE_NUM][TAB_MAX_COL_NUM][20];
+    bool mannuallyCreateIndex[DB_MAX_TABLE_NUM][TAB_MAX_COL_NUM];
+    int foreignKeyOnCol[DB_MAX_TABLE_NUM][TAB_MAX_COL_NUM];
+    
+    bool isPrimaryKey[DB_MAX_TABLE_NUM][TAB_MAX_COL_NUM]; // wheater a column is a primary key
+    bool isUniqueKey[DB_MAX_TABLE_NUM][TAB_MAX_COL_NUM];
+    
+    char foreignKeyNames[DB_MAX_TABLE_NUM][MAX_FOREIGN_KEY_NUM][20];
+    uint8_t foreignToRef[DB_MAX_TABLE_NUM][MAX_FOREIGN_KEY_NUM];
+    uint8_t foreignKeyColumn[DB_MAX_TABLE_NUM][MAX_FOREIGN_KEY_NUM]; // use foreign key index to quickly find column 
+    uint8_t foreignKeyRefTable[DB_MAX_TABLE_NUM][MAX_FOREIGN_KEY_NUM]; 
+    uint8_t foreignKeyRefColumn[DB_MAX_TABLE_NUM][MAX_FOREIGN_KEY_NUM];
+
+    uint8_t refKeyColumn[DB_MAX_TABLE_NUM][MAX_FOREIGN_KEY_NUM]; // use foreign key index to quickly find column 
+    uint8_t refKeyRefTable[DB_MAX_TABLE_NUM][MAX_FOREIGN_KEY_NUM]; 
+    uint8_t refKeyRefColumn[DB_MAX_TABLE_NUM][MAX_FOREIGN_KEY_NUM];
+
+    DBMeta() {
+        tableNum = 0;
+        for (int i = 0; i < DB_MAX_TABLE_NUM; i++) {
+            colNum[i] = 0;
+            indexNum[i] = 0;
+            foreignKeyNum[i] = 0;
+        }
+        memset(foreignKeyOnCol, 0, sizeof(foreignKeyOnCol));
+        memset(isPrimaryKey, false, sizeof(isPrimaryKey));
+        memset(isUniqueKey, false, sizeof(isUniqueKey));
+        memset(mannuallyCreateIndex, false, sizeof(mannuallyCreateIndex));
+    }
+};
 
 // expTable.expCol  or  expCol (set expTable to "")
 struct DBExpItem{

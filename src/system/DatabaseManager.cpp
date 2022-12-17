@@ -7,17 +7,6 @@
 #include <cstring>
 #include "DatabaseManager.h"
 
-DBMeta::DBMeta() {
-    tableNum = 0;
-    for (int i = 0; i < DB_MAX_TABLE_NUM; i++) {
-        colNum[i] = 0;
-        indexNum[i] = 0;
-        foreignKeyNum[i] = 0;
-    }
-    memset(isPrimaryKey, false, sizeof(isPrimaryKey));
-    memset(isUniqueKey, false, sizeof(isUniqueKey));
-}
-
 DatabaseManager::DatabaseManager() {
     BASE_PATH = "database/";
     databaseStroeFileId = -1;
@@ -246,8 +235,9 @@ int DatabaseManager::createTable(string name, char colName[][COL_MAX_NAME_LEN], 
     strcpy(metaData->tableNames[metaData->tableNum], name.c_str());
     metaData->colNum[metaData->tableNum] = colNum;
     metaData->foreignKeyNum[metaData->tableNum] = 0;
-    for(int i = 0; i < colNum; i++) {
+    for(int i = 0; i < TAB_MAX_COL_NUM; i++) {
         metaData->isPrimaryKey[metaData->tableNum][i] = false;
+        metaData->isUniqueKey[metaData->tableNum][i] = false;
     }
     metaData->tableNum++;
     delete[] tableEntrys;
@@ -277,11 +267,24 @@ int DatabaseManager::dropTable(string name) {
     if(tableManager->dropTable(name) == 0) {
         strcpy(metaData->tableNames[tableToDrop], metaData->tableNames[metaData->tableNum-1]);
         metaData->colNum[tableToDrop] = metaData->colNum[metaData->tableNum-1];
-        // TODO delete foreign key
-        for(int i = 0; i < metaData->colNum[metaData->tableNum-1]; i++) {
+        for(int i = 0; i < TAB_MAX_COL_NUM; i++) { // note: this should be TAB_MAX_COL_NUM
             metaData->isPrimaryKey[tableToDrop][i] = metaData->isPrimaryKey[metaData->tableNum-1][i];
             metaData->isUniqueKey[tableToDrop][i] = metaData->isUniqueKey[metaData->tableNum-1][i];
+        }
+        for (int i = 0; i < metaData->foreignKeyNum[metaData->tableNum-1]; i++) {
+            int refTableNum = metaData->foreignKeyRefTable[tableToDrop][i];
+            int refColNum = metaData->foreignKeyRefColumn[tableToDrop][i];
+            int refKeyIndex = metaData->foreignToRef[tableToDrop][i];
+            metaData->refKeyColumn[refTableNum][refKeyIndex] = metaData->refKeyColumn[refTableNum][metaData->refKeyNum[refTableNum]-1];
+            metaData->refKeyRefTable[refTableNum][refKeyIndex] = metaData->refKeyRefTable[refTableNum][metaData->refKeyNum[refTableNum]-1];
+            metaData->refKeyRefColumn[refTableNum][refKeyIndex] = metaData->refKeyRefColumn[refTableNum][metaData->refKeyNum[refTableNum]-1];
+            metaData->refKeyNum[refTableNum]--;
 
+            metaData->foreignKeyOnCol[tableToDrop][i] = metaData->foreignKeyOnCol[metaData->tableNum-1][i];
+            strcpy(metaData->foreignKeyNames[tableToDrop][i], metaData->foreignKeyNames[metaData->tableNum-1][i]);
+            metaData->foreignKeyColumn[tableToDrop][i] = metaData->foreignKeyColumn[metaData->tableNum-1][i];
+            metaData->foreignKeyRefTable[tableToDrop][i] = metaData->foreignKeyRefTable[metaData->tableNum-1][i];
+            metaData->foreignKeyRefColumn[tableToDrop][i] = metaData->foreignKeyRefColumn[metaData->tableNum-1][i];
         }
         metaData->tableNum--;
         return 0;
@@ -315,6 +318,7 @@ int DatabaseManager::createIndex(string tableName, string colName) {
             }
         }
         strcpy(metaData->indexNames[tableNum][metaData->indexNum[tableNum]], colName.c_str());
+        metaData->mannuallyCreateIndex[tableNum][metaData->indexNum[tableNum]] = true;
         metaData->indexNum[tableNum]++;
     }
     return res;
@@ -330,7 +334,15 @@ int DatabaseManager::dropIndex(string tableName, string colName) {
                 break;
             }
         }
-        strcpy(metaData->indexNames[tableNum][metaData->indexNum[tableNum]], metaData->indexNames[tableNum][metaData->indexNum[tableNum]-1]);
+        int indexNum = -1;
+        for (int i = 0; i < metaData->indexNum[tableNum]; i++) {
+            if (strcmp(metaData->indexNames[tableNum][i], colName.c_str()) == 0) {
+                indexNum = i;
+                break;
+            }
+        }
+        strcpy(metaData->indexNames[tableNum][indexNum], metaData->indexNames[tableNum][metaData->indexNum[tableNum]-1]);
+        metaData->mannuallyCreateIndex[tableNum][indexNum] = metaData->mannuallyCreateIndex[tableNum][metaData->indexNum[tableNum]-1];
         metaData->indexNum[tableNum]--;
     }
     return res;
@@ -403,26 +415,33 @@ int DatabaseManager::createForeignKey(string tableName, string foreignKeyName, s
         fprintf(stderr, "meta data error when add foreign key\n");
         return -1;
     }
-    /*
-        Note: can different tables have the same foreign key name ?
-    */
     for(int i = 0; i < metaData->foreignKeyNum[tableNum]; i++) {
         if(strcmp(foreignKeyName.c_str(), metaData->foreignKeyNames[tableNum][i]) == 0) {
             printf("[Error] foreign key already exists\n");
             return -1;
         }
     }
-
-    int colIndex = tableManager->createForeignKey(tableName, foreignKeyName, colName, refTableName, refTableCol);
+    int refIndex;
+    int colIndex = tableManager->createForeignKey(tableName, foreignKeyName, colName, refTableName, refTableCol, refIndex);
     if(colIndex == -1) {
         printf("[Error] error in creating foreign key.\n");
         return -1;
     }
+    metaData->foreignKeyOnCol[tableNum][colIndex]++;
+    metaData->foreignKeyOnCol[refTableNum][refIndex]++;
 
     strcpy(metaData->foreignKeyNames[tableNum][metaData->foreignKeyNum[tableNum]], foreignKeyName.c_str());
     metaData->foreignKeyColumn[tableNum][metaData->foreignKeyNum[tableNum]] = colIndex; // colIndex will stay unchanged, so this is valid
+    metaData->foreignKeyRefTable[tableNum][metaData->foreignKeyNum[tableNum]] = refTableNum;
+    metaData->foreignKeyRefColumn[tableNum][metaData->foreignKeyNum[tableNum]] = refIndex;
+    metaData->foreignToRef[tableNum][metaData->foreignKeyNum[tableNum]] = metaData->refKeyNum[refTableNum];
     metaData->foreignKeyNum[tableNum]++;
-    
+
+    metaData->refKeyColumn[refTableNum][metaData->refKeyNum[refTableNum]] = refIndex;
+    metaData->refKeyRefTable[refTableNum][metaData->refKeyNum[refTableNum]] = tableNum;
+    metaData->refKeyRefColumn[refTableNum][metaData->refKeyNum[refTableNum]] = colIndex;
+    metaData->refKeyNum[refTableNum]++;
+
     return 0;
 }
 
@@ -448,15 +467,30 @@ int DatabaseManager::dropForeignKey(string tableName, string foreignKeyName) {
     }
     if(foreignKeyIndex == -1) {
         // printf("meta data error when drop foreign key\n");
-        printf("[Error] specified column does not exist.\n");
+        printf("[Error] specified foreign key does not exist.\n");
     }
 
-    int ret = tableManager->dropForeignKey(tableName, metaData->foreignKeyColumn[tableNum][foreignKeyIndex]);
+    int ret = tableManager->dropForeignKey(tableName, metaData->foreignKeyColumn[tableNum][foreignKeyIndex], metaData);
     if(ret == -1)
         return -1;
+    metaData->foreignKeyOnCol[tableNum][metaData->foreignKeyColumn[tableNum][foreignKeyIndex]]--;
+    metaData->foreignKeyOnCol[metaData->foreignKeyRefTable[tableNum][foreignKeyIndex]][metaData->foreignKeyRefColumn[tableNum][foreignKeyIndex]]--;
+
+    int refTableNum = metaData->foreignKeyRefTable[tableNum][foreignKeyIndex];
+    int refColNum = metaData->foreignKeyRefColumn[tableNum][foreignKeyIndex];
+    int refKeyIndex = metaData->foreignToRef[tableNum][foreignKeyIndex];
+    metaData->refKeyColumn[refTableNum][refKeyIndex] = metaData->refKeyColumn[refTableNum][metaData->refKeyNum[refTableNum]-1];
+    metaData->refKeyRefTable[refTableNum][refKeyIndex] = metaData->refKeyRefTable[refTableNum][metaData->refKeyNum[refTableNum]-1];
+    metaData->refKeyRefColumn[refTableNum][refKeyIndex] = metaData->refKeyRefColumn[refTableNum][metaData->refKeyNum[refTableNum]-1];
+    metaData->refKeyNum[refTableNum]--;
+
     strcpy(metaData->foreignKeyNames[tableNum][foreignKeyIndex], metaData->foreignKeyNames[tableNum][metaData->foreignKeyNum[tableNum]-1]);
     metaData->foreignKeyColumn[tableNum][foreignKeyIndex] = metaData->foreignKeyColumn[tableNum][metaData->foreignKeyNum[tableNum]-1];
+    metaData->foreignKeyRefTable[tableNum][foreignKeyIndex] = metaData->foreignKeyRefTable[tableNum][metaData->foreignKeyNum[tableNum]-1];
+    metaData->foreignKeyRefColumn[tableNum][foreignKeyIndex] = metaData->foreignKeyRefColumn[tableNum][metaData->foreignKeyNum[tableNum]-1];
+    metaData->foreignToRef[tableNum][foreignKeyIndex] = metaData->foreignToRef[tableNum][metaData->foreignKeyNum[tableNum]-1];
     metaData->foreignKeyNum[tableNum]--;
+
     return 0;
 }
 
@@ -511,13 +545,13 @@ int DatabaseManager::selectRecords(DBSelect* dbSelect) {
 }
 
 int DatabaseManager::updateRecords(string tableName, DBUpdate* dbUpdate) {
-    return tableManager->updateRecords(tableName, dbUpdate);
+    return tableManager->updateRecords(tableName, dbUpdate, metaData);
 }
 
 int DatabaseManager::insertRecords(string tableName, DBInsert* dbInsert) {
-    return tableManager->insertRecords(tableName, dbInsert);
+    return tableManager->insertRecords(tableName, dbInsert, metaData);
 }
 
 int DatabaseManager::dropRecords(string tableName, DBDelete* dbDelete) {
-    return tableManager->dropRecords(tableName, dbDelete);
+    return tableManager->dropRecords(tableName, dbDelete, metaData);
 }
