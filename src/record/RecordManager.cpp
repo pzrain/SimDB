@@ -78,22 +78,21 @@ int RecordManager::createFile(const char* tableName) {
 
 int RecordManager::removeFile(const char* tableName) {
     findTable(tableName);
-    assert(currentIndex == -1);
+    assert(currentIndex != -1);
     char filename[TAB_MAX_NAME_LEN];
     sprintf(filename, "database/%s/%s.db", databaseName, tableName);
-    return bufPageManager->fileManager->removeFile(filename);
+    return bufPageManager->fileManager->removeFile(filename) ? 0 : -1;
 }
 
-int RecordManager::openFile(const char* tableName, FileHandler* fileHandler) {
+FileHandler* RecordManager::openFile(const char* tableName) {
     if (findTable(tableName) != nullptr) {
         printf("[Info] this table has already been opened.\n");
-        fileHandler = fileHandlers[currentIndex];
-        return 0;
+        return fileHandlers[currentIndex];
     }
     int index = findEmptyIndex();
     if (index < 0) {
         printf("[ERROR] database can accept no more tables.\n");
-        return -1;
+        return nullptr;
     }
     char filename[TAB_MAX_NAME_LEN];
     sprintf(filename, "database/%s/%s.db", databaseName, tableName);
@@ -102,10 +101,9 @@ int RecordManager::openFile(const char* tableName, FileHandler* fileHandler) {
     if (bufPageManager->fileManager->openFile(filename, fileId)) {
         fileHandlers[index]->init(bufPageManager, fileId, tableName);
         strcpy(tableNames[index], tableName);
-        fileHandler = fileHandlers[index];
-        return 0;
+        return fileHandlers[index];
     }
-    return -1;
+    return nullptr;
 }
 
 int RecordManager::closeFile(FileHandler* fileHandler) {

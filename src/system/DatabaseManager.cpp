@@ -19,6 +19,7 @@ DatabaseManager::DatabaseManager() {
     databaseStroeFileId = -1;
     databaseUsedName = "";
     databaseUsed = false;
+    MyBitMap::initConst();
     fileManager = new FileManager();
     bufPageManager = new BufPageManager(fileManager);
     metaData = new DBMeta();
@@ -26,10 +27,22 @@ DatabaseManager::DatabaseManager() {
 }
 
 DatabaseManager::~DatabaseManager() {
+    if (databaseUsed) {
+        assert(databaseStroeFileId > -1);
+        writeMetaData(databaseStroeFileId, metaData);
+        for(int i = 0; i < metaData->tableNum; i++) {
+            tableManager->saveChangeToFile(metaData->tableNames[i]);
+        }
+        databaseUsedName = "";
+        databaseStroeFileId = -1;
+        databaseUsed = false;
+    }
     delete metaData;
     delete fileManager;
     delete bufPageManager;
-    delete tableManager;
+    if (tableManager != nullptr) {
+        delete tableManager;
+    }
 }
 
 inline bool DatabaseManager::checkDatabaseName(string name) {
@@ -61,17 +74,18 @@ inline int DatabaseManager::searchTableByName(string name) {
 
 int DatabaseManager::readMetaData(int fileId, DBMeta* meta) {
     int index;
-    BufType loadData = bufPageManager->getPage(databaseStroeFileId, 0, index);
+    BufType loadData = bufPageManager->getPage(fileId, 0, index);
     memcpy((uint8_t*)meta, (uint8_t*)loadData, sizeof(DBMeta));
     return 0;
 }
 
 int DatabaseManager::writeMetaData(int fileId, DBMeta* meta) {
     int index;
-    BufType storeData = bufPageManager->getPage(databaseStroeFileId, 0, index);
+    BufType storeData;
+    storeData = bufPageManager->getPage(fileId, 0, index);
     memcpy((uint8_t*)storeData, (uint8_t*)meta, sizeof(DBMeta));
     bufPageManager->markDirty(index);
-    bufPageManager->writeBack(index);
+    // bufPageManager->writeBack(index);
     return 0;
 }
 
@@ -88,13 +102,13 @@ int DatabaseManager::createDatabase(string name) {
         // init database meta data
         path = path + ".DBstore";
         if(!checkFileExist(path)) { 
+            int fileId;
             bufPageManager->fileManager->createFile(path.c_str());
-            bufPageManager->fileManager->openFile(path.c_str(), databaseStroeFileId);
+            bufPageManager->fileManager->openFile(path.c_str(), fileId);
             DBMeta* initMeta = new DBMeta;
             initMeta->tableNum = 0;
             initMeta->foreignKeyNum = 0;
-            writeMetaData(databaseStroeFileId, initMeta);
-            databaseStroeFileId = -1;
+            writeMetaData(fileId, initMeta);
         }
         return 0;
     }
@@ -107,6 +121,11 @@ int DatabaseManager::dropDatabase(string name) {
     if(!checkDatabaseName(name))
         return -1;
     
+    if (databaseUsed && name == databaseUsedName) {
+        printf("[Error] can not drop currently using database.\n");
+        return -1;
+    }
+
     string path = BASE_PATH + name + '/';
     if(!checkFileExist(path)) {
         printf("[Error] database does not exist !\n");
@@ -118,9 +137,13 @@ int DatabaseManager::dropDatabase(string name) {
 }
 
 int DatabaseManager::switchDatabase(string name) {
+    if (name == databaseUsedName) {
+        printf("[Info] databse %s is already in use.\n", name.c_str());
+        return 0;
+    }
     if (databaseUsed) {
+        assert(databaseStroeFileId > -1);
         writeMetaData(databaseStroeFileId, metaData);
-        bufPageManager->close();
         for(int i = 0; i < metaData->tableNum; i++) {
             tableManager->saveChangeToFile(metaData->tableNames[i]);
         }
@@ -156,23 +179,22 @@ int DatabaseManager::switchDatabase(string name) {
     }
     bufPageManager->fileManager->openFile(path.c_str(), databaseStroeFileId);
     readMetaData(databaseStroeFileId, metaData);
-
     for(int i = 0; i < metaData->tableNum; i++) {
         tableManager->openTable(metaData->tableNames[i]);
     }
-
+    printf("Database changed.\n");
     return 0;
 }
 
 int DatabaseManager::showDatabases() {
-    printf("Databases:\n");
+    printf("===== Show Databases =====\n");
     int cnt = 0;
     for (const auto & entry : std::filesystem::directory_iterator(BASE_PATH)) {
         std::string str(entry.path().c_str());
         printf("%s\n", str.substr(BASE_PATH.length(), str.length() - BASE_PATH.length()).c_str());
         cnt += 1;
     }
-    printf("%d databases in total.\n", cnt);
+    printf("===== %d databases in total =====\n", cnt);
     return 0;
 }
 
@@ -180,8 +202,12 @@ string DatabaseManager::getDatabaseName() {
     return databaseUsedName == "" ? "simDB" : databaseUsedName;
 }
 
-int DatabaseManager::listTablesOfDatabase(string name) {
-    printf("============%s=============\n", name.c_str());
+int DatabaseManager::listTablesOfDatabase() {
+    if (!databaseUsed) {
+        printf("[Error] use a database first!\n");
+        return -1;
+    }
+    printf("============%s=============\n", databaseUsedName.c_str());
     for(int i = 0; i < metaData->tableNum; i++) {
         printf("table%d: %-64s\n", i, metaData->tableNames[i]);
     }
@@ -198,12 +224,10 @@ int DatabaseManager::createTable(string name, char colName[][COL_MAX_NAME_LEN], 
     TableEntry* tableEntrys = new TableEntry[colNum];
     for(int i = 0; i < colNum; i++) {
         tableEntrys[i] = TableEntry(colName[i], colType[i]);
-        if(colType[i] == COL_VARCHAR)
-            tableEntrys[i].colLen = colLen[i];
+        tableEntrys[i].colLen = colLen[i];
     }
-
     if(tableManager->creatTable(name, tableEntrys, colNum) != 0) {
-        printf("report error when create table in database manager");
+        printf("report error when create table in database manager\n");
         return -1;
     }
     
@@ -234,8 +258,8 @@ int DatabaseManager::dropTable(string name) {
     }
 
     int tableToDrop = searchTableByName(name);
-    if(tableToDrop != -1) {
-        printf("[Error] database is empty !\n");
+    if(tableToDrop == -1) {
+        printf("[Error] no such table %s!\n", name.c_str());
         return -1;
     }
     if(tableManager->dropTable(name) == 0) {
@@ -244,11 +268,13 @@ int DatabaseManager::dropTable(string name) {
         // TODO delete foreign key
         for(int i = 0; i < metaData->colNum[metaData->tableNum-1]; i++) {
             metaData->isPrimaryKey[tableToDrop][i] = metaData->isPrimaryKey[metaData->tableNum-1][i];
+            metaData->isUniqueKey[tableToDrop][i] = metaData->isUniqueKey[metaData->tableNum-1][i];
+
         }
         metaData->tableNum--;
         return 0;
     }
-    return 0;
+    return -1;
 }
 
 int DatabaseManager::renameTable(string oldName, string newName) {

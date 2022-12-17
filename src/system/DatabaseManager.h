@@ -88,7 +88,7 @@ public:
      * SHOW DATABASE <database name>;
      * SHOW TABLES
     */
-    int listTablesOfDatabase(string name);
+    int listTablesOfDatabase();
 
     /**
      * @brief set the property of all the columns of the table.

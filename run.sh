@@ -16,3 +16,4 @@ if [ $# -eq 1 ] && [ $COMPILE_FLAG = '-c' ]; then
 fi
 mkdir -p database
 ./bin/SimDB 2>msg.debug
+# rm -r database

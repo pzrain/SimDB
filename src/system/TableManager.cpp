@@ -14,7 +14,7 @@ TableManager::TableManager(string databaseName_,  BufPageManager* bufPageManager
 TableManager::~TableManager() {
     delete recordManager;
     delete indexManager;
-    delete fileHandler;
+    // delete fileHandler;
 }
 
 int TableManager::checkColExist(TableHeader* tableHeader, const char* colName) {
@@ -48,7 +48,8 @@ int TableManager::creatTable(string tableName, TableEntry* tableEntrys, int colN
         fprintf(stderr, "report error when create file in table manager\n");
         return -1;
     }
-    if(recordManager->openFile(tableName.c_str(), fileHandler) != 0) {
+    fileHandler = recordManager->openFile(tableName.c_str());
+    if(fileHandler == nullptr) {
         fprintf(stderr, "report error when open file in tablemanager\n");
         return -1;
     }
@@ -66,7 +67,7 @@ int TableManager::openTable(string name) {
         return -1;
     }
 
-    if(recordManager->openFile(name.c_str(), fileHandler) != 0) {
+    if((fileHandler = recordManager->openFile(name.c_str())) == nullptr) {
         printf("[Error] error in opening table %s.\n", name.c_str());
         return -1;
     }
@@ -102,9 +103,9 @@ int TableManager::listTableInfo(string name) {
     if(fileHandler == nullptr)
         return -1;
     TableHeader* tableHeader = fileHandler->getTableHeader();
-    printf("======================begin======================\n");
+    printf("====================begin %s====================\n", name.c_str());
     for(int i = 0; i < tableHeader->colNum; i++) {
-        printf("%64s|", tableHeader->entrys[i].colName);
+        printf("%s|", tableHeader->entrys[i].colName);
     }
     printf("\n===============================================\n");
     for(int i = 0; i < tableHeader->colNum; i++) {
@@ -115,10 +116,13 @@ int TableManager::listTableInfo(string name) {
             break;
         case 1:
             printf("INT|");
+            break;
         case 2:
             printf("VARCHAR(%d)|", tableHeader->entrys[i].colLen);
+            break;
         case 3:
             printf("FLOAT|");
+            break;
         default:
             break;
         }
@@ -155,7 +159,7 @@ int TableManager::renameTable(string oldName, string newName) {
         return -1;
     }
     
-    if(recordManager->openFile(newName.c_str(), fileHandler) != 0) {
+    if((fileHandler = recordManager->openFile(newName.c_str())) == nullptr) {
         printf("[Error] can not open the file after rename it !\n");
         return -1;
     }
@@ -860,7 +864,6 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                 }
                 preFlag = false;
                 bool flag = false;
-                std::string regStr = "";
                 switch (expressions[i].op) {
                     case EQU_TYPE:
                         if (compare->equ(searchData, expressions[i].rVal)) {
@@ -897,7 +900,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                             printf("[Error] right expression in LIKE must be VARCHAR.\n");
                             return -1;
                         }
-                        regStr = ((char*)expressions[i].rVal);
+                        string regStr = ((char*)expressions[i].rVal);
                         string::size_type pos(0); 
                         while ((pos = regStr.find("%")) != std::string::npos) {
                             regStr.replace(pos, 1, ".*");
