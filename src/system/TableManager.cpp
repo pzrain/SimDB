@@ -1447,6 +1447,8 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert, DBMeta* db
     FileHandler* insertFileHandler = recordManager->findTable(tableName.c_str());
     int valueSize = dbInsert->valueLists[0].size();
     vector<Record*> records;
+    vector<vector<void*>> indexData;
+    indexData.resize(valueSize);
     records.resize(dbInsert->valueLists.size());
     for (int i = 0; i < dbInsert->valueLists.size(); i++) {
         RecordData recordData(valueSize);
@@ -1458,22 +1460,28 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert, DBMeta* db
                     recordDataNode->nodeType = COL_INT;
                     recordDataNode->content.intContent = new int;
                     *recordDataNode->content.intContent = *(int*)dbInsert->valueLists[i][j];
+                    indexData[j].push_back((int*)dbInsert->valueLists[i][j]);
                     break;
                 case DB_LIST_FLOAT:
                     recordDataNode->len = 4;
                     recordDataNode->nodeType = COL_FLOAT;
                     recordDataNode->content.floatContent = new float;
                     *recordDataNode->content.floatContent = *(float*)dbInsert->valueLists[i][j];
+                    indexData[j].push_back((float*)dbInsert->valueLists[i][j]);
                     break;
                 case DB_LIST_CHAR:
                     recordDataNode->len = strlen((char*)dbInsert->valueLists[i][j]);
                     recordDataNode->nodeType = COL_VARCHAR;
                     recordDataNode->content.charContent = new char[recordDataNode->len];
                     strcpy(recordDataNode->content.charContent, (char*)dbInsert->valueLists[i][j]);
+                    indexData[j].push_back((char*)dbInsert->valueLists[i][j]);
                     break;
                 case DB_LIST_NULL:
                     recordDataNode->len = 0;
                     recordDataNode->nodeType = COL_NULL;
+                    indexData[j].push_back(nullptr);
+                    fprintf(stderr, "Null type is not supported currently.\n");
+                    assert(false);
                     break;
             }
             recordDataNode = recordDataNode->next;
@@ -1483,8 +1491,25 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert, DBMeta* db
         }
         recordData.serialize(*(records[i]));
     }
-    if (insertFileHandler->insertAllRecords(records)) { // succeed
-        // TODO insert
+    vector<RecordId> recordIds;
+    vector<int> vals;
+    vector<int> pageIds, slotIds;
+    if (insertFileHandler->insertAllRecords(records, recordIds)) { // succeed
+        // insert indexes
+        for (RecordId recordId : recordIds) {
+            pageIds.push_back(recordId.getPageId());
+            slotIds.push_back(recordId.getSlotId());
+        }
+        char colName[64];
+        TableHeader* tableHeader = insertFileHandler->getTableHeader();
+        for (int i = 0; i < tableHeader->colNum; i++) {
+            tableHeader->getCol(i, colName);
+            if (indexManager->hasIndex(tableName.c_str(), colName)) {
+                vals.clear();
+                indexManager->transform(tableName.c_str(), colName, vals, pageIds, slotIds);
+                indexManager->insert(tableName.c_str(), colName, indexData[i], vals);
+            }
+        }
         return dbInsert->valueLists.size();
     }
     return -1; // failure. Note: when fail, no record will be inserted
@@ -1515,26 +1540,87 @@ int TableManager::dropRecords(string tableName, DBDelete* dbDelete, DBMeta* dbMe
         return -1;
     }
 
+    bool colHasIndex[TAB_MAX_COL_NUM] = {false};
+    char colName[TAB_MAX_COL_NUM][64];
+    for (int i = 0; i < tableHeader->colNum; i++) {
+        tableHeader->getCol(i, colName[i]);
+        if (indexManager->hasIndex(tableName.c_str(), colName[i])) {
+            colHasIndex[i] = true;
+        }
+    }
+
+    vector<vector<void*>> indexDatas;
+    indexDatas.resize(tableHeader->colNum);
+
     for (int i = 0; i < recordIds.size(); i++) {
         removedRecords.push_back(new Record(deleteFileHandler->getRecordLen()));
         if (!deleteFileHandler->removeRecord(*recordIds[i], *removedRecords[i])) {
             break;
         }
-        // TODO index
         RecordData recordData;
         removedRecords[i]->deserialize(recordData, tableEntryDesc);
         if (_checkConstraintOnDelete(tableName, &recordData, dbMeta)) {
             break;
         }
+        RecordDataNode* recordDataNode = recordData.head;
+        for (int j = 0; j < tableHeader->colNum; j++) {
+            void* indexData = nullptr;
+            switch (recordDataNode->nodeType) {
+                case COL_INT: 
+                    indexData = new int;
+                    *(int*)indexData = *recordDataNode->content.intContent; 
+                    break;
+                case COL_FLOAT: 
+                    indexData = new float;
+                    *(float*)indexData = *recordDataNode->content.floatContent;
+                    indexData = recordDataNode->content.floatContent;
+                    break;
+                case COL_VARCHAR: 
+                    indexData = new char[recordDataNode->len];
+                    memcpy(indexData, recordDataNode->content.charContent, recordDataNode->len);
+                    break;
+                default: 
+                    fprintf(stderr, "Null type is not supported currently.\n");
+                    assert(false);
+                    break;
+            }
+            if (colHasIndex[j]) {
+                int val;
+                indexManager->transform(tableName.c_str(), colName[j], val, recordIds[i]->getPageId(), recordIds[i]->getSlotId());
+                indexDatas[j].push_back(indexData);
+                indexManager->remove(tableName.c_str(), colName[j], indexData, val);
+            }
+            recordDataNode = recordDataNode->next;
+        }
     }
     bool errorFlag = false;
     if (removedRecords.size() < recordIds.size()) { // encouter error when removing records
         errorFlag = true;
-        deleteFileHandler->insertAllRecords(removedRecords); // memcpy method, so Record newed can be safely deleted
+        vector<RecordId> recordIds;
+        deleteFileHandler->insertAllRecords(removedRecords, recordIds); // memcpy method, so Record newed can be safely deleted
         // note: although the records are inserted back, its position may not be the same as before
+        
+        //restore index
+        vector<int> pageIds, slotIds;
+        for (RecordId recordId : recordIds) {
+            pageIds.push_back(recordId.getPageId());
+            slotIds.push_back(recordId.getSlotId());
+        }
+        for (int i = 0; i < tableHeader->colNum; i++) {
+            if (colHasIndex[i]) {
+                vector<int> vals;
+                indexManager->transform(tableName.c_str(), colName[i], vals, pageIds, slotIds);
+                indexManager->insert(tableName.c_str(), colName[i], indexDatas[i], vals);
+            }
+        }
     }
     for (int i = 0; i < removedRecords.size(); i++) {
         delete removedRecords[i];
+    }
+    for (int i = 0; i < tableHeader->colNum; i++) {
+        for (int j = 0; j < indexDatas[i].size(); j++) {
+            delete indexDatas[i][j];
+        }
     }
     return errorFlag ? -1 : recordIds.size();
 }
@@ -1576,6 +1662,19 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
     if (_iterateWhere(selectTables, dbUpdate->expressions, recordIds) == -1) {
         return -1;
     }
+
+    bool colHasIndex[TAB_MAX_COL_NUM] = {false};
+    char colName[TAB_MAX_COL_NUM][64];
+    for (int i = 0; i < tableHeader->colNum; i++) {
+        tableHeader->getCol(i, colName[i]);
+        if (indexManager->hasIndex(tableName.c_str(), colName[i])) {
+            colHasIndex[i] = true;
+        }
+    }
+    vector<vector<void*>> updatedIndexDatas;
+    vector<vector<void*>> rawIndexDatas;
+    updatedIndexDatas.resize(tableHeader->colNum);
+    rawIndexDatas.resize(tableHeader->colNum);
 
     for (int i = 0; i < recordIds.size(); i++) {
         rawRecords.push_back(new Record(updateFileHandler->getRecordLen()));
@@ -1620,10 +1719,49 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
         if (_checkConstraintOnInsert(tableName, &updatedRecordData, dbMeta)) {
             break;
         }
-        // TODO index
+
         Record updatedRecord(updateFileHandler->getRecordLen());
         updatedRecordData.serialize(updatedRecord);
         if (!updateFileHandler->updateRecord(*recordIds[i], updatedRecord)) {
+            RecordData rawRecordData;
+            rawRecords[i]->deserialize(rawRecordData, tableEntryDesc);
+            RecordDataNode *updatedRecordDataNode = updatedRecordData.head, *rawRecordDataNode = rawRecordData.head;
+            for (int j = 0; j < tableHeader->colNum; j++) {
+                void* updatedIndexData = nullptr;
+                void* rawIndexData = nullptr;
+                switch (rawRecordDataNode->nodeType) {
+                    case COL_INT:
+                        updatedIndexData = new int;
+                        *(int*)updatedIndexData = *updatedRecordDataNode->content.intContent;
+                        rawIndexData = new int;
+                        *(int*)rawIndexData = *rawRecordDataNode->content.intContent;
+                        break;
+                    case COL_FLOAT:
+                        updatedIndexData = new float;
+                        *(float*)updatedIndexData = *updatedRecordDataNode->content.floatContent;
+                        rawIndexData = new float;
+                        *(float*)rawIndexData = *rawRecordDataNode->content.floatContent;
+                        break;
+                    case COL_VARCHAR:
+                        updatedIndexData = new char[updatedRecordDataNode->len];
+                        memcpy(updatedIndexData, updatedRecordDataNode->content.charContent, updatedRecordDataNode->len);
+                        rawIndexData = new char[rawRecordDataNode->len];
+                        memcpy(rawIndexData, rawRecordDataNode->content.charContent, rawRecordDataNode->len);
+                        break;
+                    default:
+                        fprintf(stderr, "Null type is not supported currently.\n");
+                        assert(false);
+                        break;
+                }
+                if (colHasIndex[j]) {
+                    int val;
+                    indexManager->transform(tableName.c_str(), colName[j], val, recordIds[i]->getPageId(), recordIds[i]->getSlotId());
+                    updatedIndexDatas[j].push_back(updatedIndexData);
+                    rawIndexDatas[j].push_back(rawIndexData);
+                    indexManager->remove(tableName.c_str(), colName[j], rawIndexData, val);
+                    indexManager->insert(tableName.c_str(), colName[j], updatedIndexData, val);
+                }
+            }
             break;
         }
     }
@@ -1634,10 +1772,33 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
         for (int i = 0; i < rawRecords.size(); i++) {
             updateFileHandler->updateRecord(*recordIds[i], *rawRecords[i]);
         }
+        //restore index
+        vector<int> pageIds, slotIds;
+        for (RecordId* recordId : recordIds) {
+            pageIds.push_back(recordId->getPageId());
+            slotIds.push_back(recordId->getSlotId());
+        }
+        for (int i = 0; i < tableHeader->colNum; i++) {
+            if (colHasIndex[i]) {
+                vector<int> vals;
+                indexManager->transform(tableName.c_str(), colName[i], vals, pageIds, slotIds);
+                for (int j = 0; j < vals.size(); j++) {
+                    indexManager->remove(tableName.c_str(), colName[i], updatedIndexDatas[i][j], vals[j]);
+                    indexManager->insert(tableName.c_str(), colName[i], rawIndexDatas[i][j], vals[j]);
+                }
+            }
+        }
     }
 
     for (int i = 0; i < rawRecords.size(); i++) {
         delete rawRecords[i];
+    }
+
+    for (int i = 0; i < tableHeader->colNum; i++) {
+        for (int j = 0; j < updatedIndexDatas.size(); j++) {
+            delete updatedIndexDatas[i][j];
+            delete rawIndexDatas[i][j];
+        }
     }
 
     return errorFlag ? -1 : recordIds.size();
