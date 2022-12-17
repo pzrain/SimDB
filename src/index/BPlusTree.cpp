@@ -498,6 +498,53 @@ void BPlusTree::insert(void* data, const int val) {
     recycle(rec, pageIndex, true);
 }
 
+void BPlusTree::update(void* data, int oldVal, int newVal) {
+    int curPageId = -1, index;
+    IndexPage* cur = nullptr;
+    std::vector<IndexPage*> rec;
+    std::vector<int> pageIndex;
+    while (true) {
+        int pos = searchUpperBound(data), pageId, slotId;
+        while (pos >= 0) {
+            _transformR(pos, pageId, slotId);
+            if (pageId != curPageId) {
+                cur = new IndexPage((uint8_t*)(bufPageManager->getPage(fileId, pageId, index)), indexLen, colType, pageId);
+                curPageId = pageId;
+                rec.push_back(cur);
+                pageIndex.push_back(index);
+            }
+            if (!cur->getCompare()->equ(data, cur->getData(slotId))) {
+                pos = -1;
+                break;
+            }
+            int nextSlot = *cur->getNextIndex(slotId), nextPageId, nextPos;
+            int lastSlot = *cur->getLastIndex(slotId);
+            if (*cur->getVal(slotId) == oldVal) { // when find oldVal, substituate it to newVal and return
+                *(cur->getVal(slotId)) = newVal;
+                pos = -1;
+                break;
+            }
+            if (nextSlot < 0 && *(cur->getNextPage()) >= 0) {
+                nextPageId = *(cur->getNextPage());
+                IndexPage* nextIndexPage = new IndexPage((uint8_t*)(bufPageManager->getPage(fileId, nextPageId, index)), indexLen, colType, nextPageId);
+                rec.push_back(nextIndexPage);
+                pageIndex.push_back(index);
+                _transform(nextPos, nextPageId, *nextIndexPage->getFirstIndex());
+            } else if (nextSlot >= 0) {
+                nextPageId = pageId;
+                _transform(nextPos, nextPageId, nextSlot);
+            } else {
+                nextPos = -1;
+            }
+            pos = nextPos;
+        }
+        if (pos < 0) {
+            break;
+        }
+    }
+    recycle(rec, pageIndex, true);
+}
+
 void BPlusTree::remove(void* data, int val) {
     int curPageId = -1, index;
     IndexPage* cur = nullptr;

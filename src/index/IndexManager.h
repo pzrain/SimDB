@@ -55,6 +55,8 @@ public:
     int remove(const char* tableName, const char* indexName, void* data, int val = -1);
     // remove those index whose key is equal to data
 
+    int update(const char* tableName, const char* indexName, void* data, int oldVal, int newVal);
+
     void transform(const char* tableName, const char* indexName, int& val, int pageId, int slotId);
 
     void transform(const char* tableName, const char* indexName, std::vector<int>& vals, std::vector<int> pageIds, std::vector<int> slotIds);

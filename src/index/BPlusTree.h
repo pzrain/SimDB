@@ -51,6 +51,8 @@ public:
 
     void remove(void* data, int val = -1);
 
+    void update(void* data, int oldVal, int newVal);
+
     void transform(int& val, int pageId, int slotId);
 
     void transformR(int val, int& pageId, int& slotId);
