@@ -49,7 +49,7 @@ public:
 
     void insert(void* data, const int val);
 
-    void remove(void* data);
+    void remove(void* data, int val = -1);
 
     void transform(int& val, int pageId, int slotId);
 

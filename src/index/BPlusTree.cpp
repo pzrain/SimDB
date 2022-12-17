@@ -498,7 +498,7 @@ void BPlusTree::insert(void* data, const int val) {
     recycle(rec, pageIndex, true);
 }
 
-void BPlusTree::remove(void* data) {
+void BPlusTree::remove(void* data, int val) {
     int curPageId = -1, index;
     IndexPage* cur = nullptr;
     std::vector<IndexPage*> rec;
@@ -519,7 +519,11 @@ void BPlusTree::remove(void* data) {
             }
             int nextSlot = *cur->getNextIndex(slotId), nextPageId, nextPos;
             int lastSlot = *cur->getLastIndex(slotId);
-            cur->removeSlot(slotId);
+            bool removeFlag = false;
+            if (val < 0 || *cur->getVal(slotId) == val) { // when val > 0, only remove slot that has the exact val
+                cur->removeSlot(slotId);
+                removeFlag = true;
+            }
             if ((cur->getPageId() != indexHeader->rootPageId) && cur->underflow()) {
                 dealUnderFlow(cur, rec, pageIndex);
                 break;
@@ -527,7 +531,9 @@ void BPlusTree::remove(void* data) {
                 if (nextSlot < 0 && *(cur->getNextPage()) >= 0) {
                     // the last index of this page is deleted
                     // under this condition, the father index should be updated
-                    update(cur, cur->getData(lastSlot), rec, pageIndex);
+                    if (removeFlag) { // only update when actually remove
+                        update(cur, cur->getData(lastSlot), rec, pageIndex);
+                    }
                     nextPageId = *(cur->getNextPage());
                     IndexPage* nextIndexPage = new IndexPage((uint8_t*)(bufPageManager->getPage(fileId, nextPageId, index)), indexLen, colType, nextPageId);
                     rec.push_back(nextIndexPage);

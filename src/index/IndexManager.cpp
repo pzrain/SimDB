@@ -221,13 +221,13 @@ int IndexManager::searchBetween(const char* tableName, const char* indexName, vo
     return 0;
 }
 
-int IndexManager::remove(const char* tableName, const char* indexName, void* data) {
+int IndexManager::remove(const char* tableName, const char* indexName, void* data, int val) {
     BPlusTree* cur = findIndex(tableName, indexName);
     if (cur == nullptr) {
         printf("[ERROR] index %s has not been created.\n", indexName);
         return -1;
     }
-    cur->remove(data);
+    cur->remove(data, val);
     return 0;
 }
 

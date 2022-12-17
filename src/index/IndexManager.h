@@ -52,7 +52,7 @@ public:
     // int lData = 3;
     // searchBetween(tableName, indexName, &lData, nullptr, res);
 
-    int remove(const char* tableName, const char* indexName, void* data);
+    int remove(const char* tableName, const char* indexName, void* data, int val = -1);
     // remove those index whose key is equal to data
 
     void transform(const char* tableName, const char* indexName, int& val, int pageId, int slotId);
