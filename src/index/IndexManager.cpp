@@ -33,6 +33,7 @@ IndexManager::~IndexManager() {
     for (int i = 0; i < DB_MAX_TABLE_NUM; i++) {
         for (int j = 0; j < TAB_MAX_COL_NUM; j++) {
             if (bPlusTree[i][j]) {
+                bufPageManager->close();
                 bufPageManager->fileManager->closeFile(fileIds[i][j]);
                 delete bPlusTree[i][j];
                 bPlusTree[i][j] = nullptr;
@@ -86,6 +87,7 @@ int IndexManager::showIndex() {
     for (int i = 0; i < DB_MAX_TABLE_NUM; i++) {
         for (int j = 0; j < TAB_MAX_COL_NUM; j++) {
             if (bPlusTree[i][j]) {
+                cnt++;
                 printf("%s.%s\n", tableNames[i], indexNames[i][j]);
             }
         }
@@ -97,6 +99,30 @@ bool IndexManager::hasIndex(const char* tableName, const char* indexName) {
     char fileName[DB_MAX_NAME_LEN + TAB_MAX_NAME_LEN + TAB_MAX_NAME_LEN + 30];
     sprintf(fileName, "database/%s/%s_%s.index", databaseName, tableName, indexName);
     return (access(fileName, 0) != -1);
+}
+
+int IndexManager::initIndex(std::vector<std::string> indexTableNames, std::vector<std::vector<std::string>> indexColNames, std::vector<std::vector<uint16_t>> indexLens, std::vector<std::vector<uint8_t>> colTypes) {
+    int tableSiz = indexTableNames.size();
+    char fileName[DB_MAX_NAME_LEN + TAB_MAX_NAME_LEN + TAB_MAX_NAME_LEN + 30];
+    for (int i = 0; i < tableSiz; i++) {
+        for (int j = 0; j < indexColNames[i].size(); j++) {
+            sprintf(fileName, "database/%s/%s_%s.index", databaseName, indexTableNames[i].c_str(), indexColNames[i][j].c_str());
+            if (bufPageManager->fileManager->createFile(fileName)) {
+                int fileId, emptyI, emptyJ;
+                if (bufPageManager->fileManager->openFile(fileName, fileId)) {
+                    if (findEmptyIndex(emptyI, emptyJ) == -1) {
+                        printf("[ERROR] indexManager can accept no more index.\n");
+                        return -1;
+                    }
+                    fileIds[emptyI][emptyJ] = fileId;
+                    strcpy(tableNames[emptyI], indexTableNames[i].c_str());
+                    strcpy(indexNames[emptyI][emptyJ], indexColNames[i][j].c_str());
+                    bPlusTree[emptyI][emptyJ] = new BPlusTree(fileId, bufPageManager, indexLens[i][j], colTypes[i][j]);
+                }
+            }
+        }
+    }
+    return 0;
 }
 
 int IndexManager::createIndex(const char* tableName, const char* indexName, uint16_t indexLen, uint8_t colType) {
@@ -139,6 +165,7 @@ int IndexManager::removeIndex(const char* tableName, const char* indexName) {
                 if (bPlusTree[i][j] && strcmp(indexNames[i][j], indexName) == 0) {
                     delete bPlusTree[i][j];
                     bPlusTree[i][j] = nullptr;
+                    break;
                 }
             }
         }

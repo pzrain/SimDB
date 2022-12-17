@@ -22,6 +22,8 @@ public:
 
     ~IndexManager();
 
+    int initIndex(std::vector<std::string> tableNames, std::vector<std::vector<std::string>> colNames, std::vector<std::vector<uint16_t>> indexLens, std::vector<std::vector<uint8_t>> colTypes);
+
     int createIndex(const char* tableName, const char* indexName, uint16_t indexLen, uint8_t colType);
     // build index
     // return 0 if succeed, otherwise -1
