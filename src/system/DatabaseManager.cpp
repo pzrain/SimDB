@@ -10,6 +10,8 @@
 DBMeta::DBMeta() {
     tableNum = 0;
     for (int i = 0; i < DB_MAX_TABLE_NUM; i++) {
+        colNum[i] = 0;
+        indexNum[i] = 0;
         foreignKeyNum[i] = 0;
     }
     memset(isPrimaryKey, false, sizeof(isPrimaryKey));
@@ -40,11 +42,11 @@ DatabaseManager::~DatabaseManager() {
         databaseUsed = false;
     }
     delete metaData;
-    delete fileManager;
-    delete bufPageManager;
     if (tableManager != nullptr) {
         delete tableManager;
     }
+    delete bufPageManager;
+    delete fileManager;
 }
 
 inline bool DatabaseManager::checkDatabaseName(string name) {
@@ -107,11 +109,7 @@ int DatabaseManager::createDatabase(string name) {
             int fileId;
             bufPageManager->fileManager->createFile(path.c_str());
             bufPageManager->fileManager->openFile(path.c_str(), fileId);
-            DBMeta* initMeta = new DBMeta;
-            initMeta->tableNum = 0;
-            for (int i = 0; i < DB_MAX_TABLE_NUM; i++) {
-                initMeta->foreignKeyNum[i] = 0;
-            }
+            DBMeta* initMeta = new DBMeta();
             writeMetaData(fileId, initMeta);
         }
         return 0;
@@ -186,6 +184,16 @@ int DatabaseManager::switchDatabase(string name) {
     for(int i = 0; i < metaData->tableNum; i++) {
         tableManager->openTable(metaData->tableNames[i]);
     }
+    vector<string> indexTableNames;
+    vector<vector<string>> indexColNames;
+    for (int i = 0; i < metaData->tableNum; i++) {
+        indexTableNames.push_back(metaData->tableNames[i]);
+        indexColNames.push_back(vector<string>());
+        for (int j = 0; j < metaData->indexNum[i]; j++) {
+            indexColNames[i].push_back(metaData->indexNames[i][j]);
+        }
+    }
+    tableManager->initIndex(indexTableNames, indexColNames);
     printf("Database changed.\n");
     return 0;
 }
@@ -297,11 +305,35 @@ int DatabaseManager::renameTable(string oldName, string newName) {
 }
 
 int DatabaseManager::createIndex(string tableName, string colName) {
-    return tableManager->createIndex(tableName, colName);
+    int res = tableManager->createIndex(tableName, colName);
+    if (res > -1) {
+        int tableNum = -1;
+        for(int i = 0; i < metaData->tableNum; i++) {
+            if(strcmp(tableName.c_str(), metaData->tableNames[i]) == 0) {
+                tableNum = i;
+                break;
+            }
+        }
+        strcpy(metaData->indexNames[tableNum][metaData->indexNum[tableNum]], colName.c_str());
+        metaData->indexNum[tableNum]++;
+    }
+    return res;
 }
 
 int DatabaseManager::dropIndex(string tableName, string colName) {
-    return tableManager->dropIndex(tableName, colName);
+    int res = tableManager->dropIndex(tableName, colName);
+    if (res > -1) {
+        int tableNum = -1;
+        for(int i = 0; i < metaData->tableNum; i++) {
+            if(strcmp(tableName.c_str(), metaData->tableNames[i]) == 0) {
+                tableNum = i;
+                break;
+            }
+        }
+        strcpy(metaData->indexNames[tableNum][metaData->indexNum[tableNum]], metaData->indexNames[tableNum][metaData->indexNum[tableNum]-1]);
+        metaData->indexNum[tableNum]--;
+    }
+    return res;
 }
 
 int DatabaseManager::hasIndex(string tableName, string colName) {

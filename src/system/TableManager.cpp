@@ -176,6 +176,27 @@ int TableManager::saveChangeToFile(const char* tableName) {
     return 0;
 }
 
+void TableManager::initIndex(vector<string> tableNames, vector<vector<string>> colNames) {
+    vector<vector<uint16_t>> indexLens;
+    vector<vector<uint8_t>> colTypes;
+    for (int i = 0; i < tableNames.size(); i++) {
+        indexLens.push_back(vector<uint16_t>());
+        colTypes.push_back(vector<uint8_t>());
+        for (int j = 0; j < colNames[i].size(); j++) {
+            fileHandler = recordManager->findTable(tableNames[i].c_str());
+            TableHeader* tableHeader = fileHandler->getTableHeader();
+            int index = checkColExist(tableHeader, colNames[i][j].c_str());
+            if (index >= 0) {
+                uint8_t colType = tableHeader->entrys[index].colType;
+                uint16_t indexLen = tableHeader->entrys[index].colLen;
+                indexLens[i].push_back(indexLen);
+                colTypes[i].push_back(colType);
+            }
+        }
+    }
+    indexManager->initIndex(tableNames, colNames, indexLens, colTypes);
+}
+
 int TableManager::createIndex(string tableName, string colName) {
     if(!checkTableName(tableName))
         return -1;
@@ -253,8 +274,9 @@ bool TableManager::hasIndex(string tableName, string colName) {
 }
 
 int TableManager::showIndex() {
+    printf("===== Show Indexes =====\n");
     int cnt = indexManager->showIndex();
-    printf("%d indexes in total.\n", cnt);
+    printf("==== %d indexes in total. =====\n", cnt);
     return 0;
 }
 
@@ -373,9 +395,16 @@ int TableManager::createForeignKey(string tableName, string foreignKeyName, stri
     assert(refFileHandler != nullptr);
     int refIndex = checkColExist(refFileHandler->getTableHeader(), refTableCol.c_str());
     if (index >= 0 && refIndex >= 0) {
-        if (refTableHeader->entrys[refIndex].primaryKeyConstraint == false) {
-            printf("[Error] can not build foreign key on ref table's non-primary-key field.\n");
-            return -1;
+        // if (refTableHeader->entrys[refIndex].primaryKeyConstraint == false) {
+        //     printf("[Error] can not build foreign key on ref table's non-primary-key field.\n");
+        //     return -1;
+        // }
+        /* 
+            According to course doc, foreign column doesn't have to be parimary key nor have index
+         */
+        if (!indexManager->hasIndex(refTableName.c_str(), refTableCol.c_str())) {
+            printf("[Info] automatically build index for foreign table.\n");
+            indexManager->createIndex(refTableName.c_str(), refTableCol.c_str(), refTableHeader->entrys[refIndex].colLen, refTableHeader->entrys[refIndex].colType);
         }
         if (tableHeader->entrys[index].foreignKeyConstraint == true) {
             printf("[Error] the column %s already has a foreign key.\n", colName.c_str());

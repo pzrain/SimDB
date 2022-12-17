@@ -68,6 +68,8 @@ public:
 
     int saveChangeToFile(const char* tableName);
 
+    void initIndex(vector<string> tableNames, vector<vector<string>> colNames);
+
     int createIndex(string tableName, string colName);
 
     int dropIndex(string tableName, string colName);
