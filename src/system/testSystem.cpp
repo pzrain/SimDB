@@ -23,8 +23,8 @@ void testOperateDB(DatabaseManager* databaseManager) {
     databaseManager->renameTable("table_2", "table_3");
     databaseManager->listTableInfo("table_3");
     databaseManager->listTablesOfDatabase();
-    databaseManager->dropTable("table_3");
-    databaseManager->listTablesOfDatabase();
+    // databaseManager->dropTable("table_3");
+    // databaseManager->listTablesOfDatabase();
     // databaseManager->switchDatabase(databaseName2);
     // databaseManager->switchDatabase(databaseName1);
     // databaseManager->listTablesOfDatabase();

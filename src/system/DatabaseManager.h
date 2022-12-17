@@ -13,15 +13,15 @@ using namespace std;
 struct DBMeta {
     int tableNum;
     int colNum[DB_MAX_TABLE_NUM];
-    int foreignKeyNum;
+    int foreignKeyNum[DB_MAX_TABLE_NUM];
 
     char tableNames[DB_MAX_TABLE_NUM][TAB_MAX_NAME_LEN];
     
     bool isPrimaryKey[DB_MAX_TABLE_NUM][TAB_MAX_COL_NUM]; // wheater a column is a primary key
     bool isUniqueKey[DB_MAX_TABLE_NUM][TAB_MAX_COL_NUM];
     
-    char foreignKeyNames[MAX_FOREIGN_KEY_NUM][64];
-    uint8_t foreignKeyColumn[MAX_FOREIGN_KEY_NUM]; // use foreign key index to quickly find column 
+    char foreignKeyNames[DB_MAX_TABLE_NUM][MAX_FOREIGN_KEY_NUM][32];
+    uint8_t foreignKeyColumn[DB_MAX_TABLE_NUM][MAX_FOREIGN_KEY_NUM]; // use foreign key index to quickly find column 
     // more ...
 
     DBMeta();

@@ -9,7 +9,9 @@
 
 DBMeta::DBMeta() {
     tableNum = 0;
-    foreignKeyNum = 0;
+    for (int i = 0; i < DB_MAX_TABLE_NUM; i++) {
+        foreignKeyNum[i] = 0;
+    }
     memset(isPrimaryKey, false, sizeof(isPrimaryKey));
     memset(isUniqueKey, false, sizeof(isUniqueKey));
 }
@@ -107,7 +109,9 @@ int DatabaseManager::createDatabase(string name) {
             bufPageManager->fileManager->openFile(path.c_str(), fileId);
             DBMeta* initMeta = new DBMeta;
             initMeta->tableNum = 0;
-            initMeta->foreignKeyNum = 0;
+            for (int i = 0; i < DB_MAX_TABLE_NUM; i++) {
+                initMeta->foreignKeyNum[i] = 0;
+            }
             writeMetaData(fileId, initMeta);
         }
         return 0;
@@ -233,7 +237,7 @@ int DatabaseManager::createTable(string name, char colName[][COL_MAX_NAME_LEN], 
     
     strcpy(metaData->tableNames[metaData->tableNum], name.c_str());
     metaData->colNum[metaData->tableNum] = colNum;
-    metaData->foreignKeyNum = 0;
+    metaData->foreignKeyNum[metaData->tableNum] = 0;
     for(int i = 0; i < colNum; i++) {
         metaData->isPrimaryKey[metaData->tableNum][i] = false;
     }
@@ -370,8 +374,8 @@ int DatabaseManager::createForeignKey(string tableName, string foreignKeyName, s
     /*
         Note: can different tables have the same foreign key name ?
     */
-    for(int i = 0; i < metaData->foreignKeyNum; i++) {
-        if(strcmp(foreignKeyName.c_str(), metaData->foreignKeyNames[i]) == 0) {
+    for(int i = 0; i < metaData->foreignKeyNum[tableNum]; i++) {
+        if(strcmp(foreignKeyName.c_str(), metaData->foreignKeyNames[tableNum][i]) == 0) {
             printf("[Error] foreign key already exists\n");
             return -1;
         }
@@ -383,9 +387,9 @@ int DatabaseManager::createForeignKey(string tableName, string foreignKeyName, s
         return -1;
     }
 
-    strcpy(metaData->foreignKeyNames[metaData->foreignKeyNum], foreignKeyName.c_str());
-    metaData->foreignKeyColumn[metaData->foreignKeyNum] = colIndex; // colIndex will stay unchanged, so this is valid
-    metaData->foreignKeyNum++;
+    strcpy(metaData->foreignKeyNames[tableNum][metaData->foreignKeyNum[tableNum]], foreignKeyName.c_str());
+    metaData->foreignKeyColumn[tableNum][metaData->foreignKeyNum[tableNum]] = colIndex; // colIndex will stay unchanged, so this is valid
+    metaData->foreignKeyNum[tableNum]++;
     
     return 0;
 }
@@ -404,8 +408,8 @@ int DatabaseManager::dropForeignKey(string tableName, string foreignKeyName) {
         return -1;
     }
     int foreignKeyIndex = -1;
-    for(int i = 0; i < metaData->foreignKeyNum; i++) {
-        if(strcmp(metaData->foreignKeyNames[i], foreignKeyName.c_str()) == 0) {
+    for(int i = 0; i < metaData->foreignKeyNum[tableNum]; i++) {
+        if(strcmp(metaData->foreignKeyNames[tableNum][i], foreignKeyName.c_str()) == 0) {
             foreignKeyIndex = i;
             break;
         }
@@ -415,12 +419,12 @@ int DatabaseManager::dropForeignKey(string tableName, string foreignKeyName) {
         printf("[Error] specified column does not exist.\n");
     }
 
-    int ret = tableManager->dropForeignKey(tableName, metaData->foreignKeyColumn[foreignKeyIndex]);
+    int ret = tableManager->dropForeignKey(tableName, metaData->foreignKeyColumn[tableNum][foreignKeyIndex]);
     if(ret == -1)
         return -1;
-    strcpy(metaData->foreignKeyNames[foreignKeyIndex], metaData->foreignKeyNames[metaData->foreignKeyNum-1]);
-    metaData->foreignKeyColumn[foreignKeyIndex] = metaData->foreignKeyColumn[metaData->foreignKeyNum-1];
-    metaData->foreignKeyNum--;
+    strcpy(metaData->foreignKeyNames[tableNum][foreignKeyIndex], metaData->foreignKeyNames[tableNum][metaData->foreignKeyNum[tableNum]-1]);
+    metaData->foreignKeyColumn[tableNum][foreignKeyIndex] = metaData->foreignKeyColumn[tableNum][metaData->foreignKeyNum[tableNum]-1];
+    metaData->foreignKeyNum[tableNum]--;
     return 0;
 }
 
