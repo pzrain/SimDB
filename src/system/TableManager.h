@@ -44,6 +44,8 @@ private:
 
     bool _checkConstraintOnDelete(string tableName, RecordData* recordData, DBMeta* dbMeta);
 
+    int _createAndAddIndex(string tableName, string colName, uint16_t indexLen, uint8_t colType, int index);
+
 public:
     TableManager(string databaseName_, BufPageManager* bufPageManager_);
     
@@ -102,7 +104,7 @@ public:
      * @param colIndex column index of the entrys array, quickly find the correct entry
      * @return 0 if success, -1 if fail
     */
-    int dropForeignKey(string tableName, uint8_t colIndex, DBMeta* dbMeta);
+    int dropForeignKey(string tableName, uint8_t colIndex, DBMeta* dbMeta, string refTableName, int refColIndex);
 
     /**
      * @brief refer to createPrimaryKey

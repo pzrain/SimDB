@@ -371,7 +371,7 @@ int DatabaseManager::createPrimaryKey(string tableName, vector<string> colNames,
     for(int i = 0; i < colNum; i++) {
         int colIndex = tableManager->createPrimaryKey(tableName, colNames[i]);
         if(colIndex == -1) {
-            printf("[Error] error in adding %d primary key error\n", i);
+            printf("[Error] error in adding %d:%s primary key\n", i, colNames[i].c_str());
             return -1;
         }
         metaData->isPrimaryKey[tableNum][colIndex] = true;
@@ -393,7 +393,7 @@ int DatabaseManager::dropPrimaryKey(string tableName, vector<string> colNames, i
         return -1;
     }
     for(int i = 0; i < colNum; i++) {
-        int colIndex = tableManager->createPrimaryKey(tableName, colNames[i]);
+        int colIndex = tableManager->dropPrimaryKey(tableName, colNames[i], metaData);
         if(colIndex == -1) {
             printf("[Error] error in dropping %d primary key error.\n", i);
             return -1;
@@ -470,15 +470,15 @@ int DatabaseManager::dropForeignKey(string tableName, string foreignKeyName) {
         printf("[Error] specified foreign key does not exist.\n");
     }
 
-    int ret = tableManager->dropForeignKey(tableName, metaData->foreignKeyColumn[tableNum][foreignKeyIndex], metaData);
+    int refTableNum = metaData->foreignKeyRefTable[tableNum][foreignKeyIndex];
+    int refColNum = metaData->foreignKeyRefColumn[tableNum][foreignKeyIndex];
+    int refKeyIndex = metaData->foreignToRef[tableNum][foreignKeyIndex];
+    int ret = tableManager->dropForeignKey(tableName, metaData->foreignKeyColumn[tableNum][foreignKeyIndex], metaData, metaData->tableNames[refTableNum], refColNum);
     if(ret == -1)
         return -1;
     metaData->foreignKeyOnCol[tableNum][metaData->foreignKeyColumn[tableNum][foreignKeyIndex]]--;
     metaData->foreignKeyOnCol[metaData->foreignKeyRefTable[tableNum][foreignKeyIndex]][metaData->foreignKeyRefColumn[tableNum][foreignKeyIndex]]--;
 
-    int refTableNum = metaData->foreignKeyRefTable[tableNum][foreignKeyIndex];
-    int refColNum = metaData->foreignKeyRefColumn[tableNum][foreignKeyIndex];
-    int refKeyIndex = metaData->foreignToRef[tableNum][foreignKeyIndex];
     metaData->refKeyColumn[refTableNum][refKeyIndex] = metaData->refKeyColumn[refTableNum][metaData->refKeyNum[refTableNum]-1];
     metaData->refKeyRefTable[refTableNum][refKeyIndex] = metaData->refKeyRefTable[refTableNum][metaData->refKeyNum[refTableNum]-1];
     metaData->refKeyRefColumn[refTableNum][refKeyIndex] = metaData->refKeyRefColumn[refTableNum][metaData->refKeyNum[refTableNum]-1];
@@ -530,7 +530,7 @@ int DatabaseManager::dropUniqueKey(string tableName, vector<string> colNames, in
         return -1;
     }
     for(int i = 0; i < colNum; i++) {
-        int colIndex = tableManager->createUniqueKey(tableName, colNames[i]);
+        int colIndex = tableManager->dropUniqueKey(tableName, colNames[i], metaData);
         if(colIndex == -1) {
             printf("[Error] error in dropping %d unique key error.\n", i);
             return -1;

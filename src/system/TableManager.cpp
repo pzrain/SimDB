@@ -163,6 +163,7 @@ int TableManager::renameTable(string oldName, string newName) {
         printf("[Error] can not open the file after rename it !\n");
         return -1;
     }
+    indexManager->renameIndex(oldName.c_str(), newName.c_str());
     return 0;
 }
 
@@ -225,29 +226,7 @@ int TableManager::createIndex(string tableName, string colName) {
         return index;
     }
 
-    int res = indexManager->createIndex(tableName.c_str(), colName.c_str(), indexLen, colType);
-
-    // add pre-existing records to the newly-added index
-    if (res >= 0) {
-        std::vector<Record*> records;
-        std::vector<RecordId*> recordIds;
-        fileHandler->getAllRecordsAccordingToFields(records, recordIds, (1 << index));
-        std::vector<void*> insertDatas;
-        std::vector<int> insertVals;
-        std::vector<int> pageIds, slotIds;
-        for (int i = 0; i < records.size(); i++) {
-            insertDatas.push_back((void*)(records[i]->data));
-            pageIds.push_back(recordIds[i]->getPageId());
-            slotIds.push_back(recordIds[i]->getSlotId());
-        }
-        insertVals.resize(records.size());
-        indexManager->transform(tableName.c_str(), colName.c_str(), insertVals, pageIds, slotIds);
-        res = indexManager->insert(tableName.c_str(), colName.c_str(), insertDatas, insertVals);
-        for (int i = 0; i < records.size(); i++) {
-            delete records[i];
-            delete recordIds[i];
-        }
-    }
+    int res = _createAndAddIndex(tableName, colName, indexLen, colType, index);
     return res;    
 }
 
@@ -277,6 +256,30 @@ int TableManager::showIndex() {
     int cnt = indexManager->showIndex();
     printf("==== %d indexes in total. =====\n", cnt);
     return 0;
+}
+
+int TableManager::_createAndAddIndex(string tableName, string colName, uint16_t indexLen, uint8_t colType, int index) {
+    int res = indexManager->createIndex(tableName.c_str(), colName.c_str(), indexLen, colType);
+    // add pre-existing records to the newly-added index
+    std::vector<Record*> records;
+    std::vector<RecordId*> recordIds;
+    fileHandler->getAllRecordsAccordingToFields(records, recordIds, (1 << index));
+    std::vector<void*> insertDatas;
+    std::vector<int> insertVals;
+    std::vector<int> pageIds, slotIds;
+    for (int i = 0; i < records.size(); i++) {
+        insertDatas.push_back((void*)(records[i]->data));
+        pageIds.push_back(recordIds[i]->getPageId());
+        slotIds.push_back(recordIds[i]->getSlotId());
+    }
+    insertVals.resize(records.size());
+    indexManager->transform(tableName.c_str(), colName.c_str(), insertVals, pageIds, slotIds);
+    indexManager->insert(tableName.c_str(), colName.c_str(), insertDatas, insertVals);
+    for (int i = 0; i < records.size(); i++) {
+        delete records[i];
+        delete recordIds[i];
+    }
+    return res;
 }
 
 int TableManager::createPrimaryKey(string tableName, string colName) {
@@ -314,29 +317,11 @@ int TableManager::createPrimaryKey(string tableName, string colName) {
         printf("[Info] the index has already been created.\n");
         return index;
     }
-    indexManager->createIndex(tableName.c_str(), colName.c_str(), indexLen, colType);
     // add pre-existing records to the newly-added index
     // however when primary key is enabled as the table is created
     // there should be no record to add
 
-    std::vector<Record*> records;
-    std::vector<RecordId*> recordIds;
-    fileHandler->getAllRecordsAccordingToFields(records, recordIds, (1 << index));
-    std::vector<void*> insertDatas;
-    std::vector<int> insertVals;
-    std::vector<int> pageIds, slotIds;
-    for (int i = 0; i < records.size(); i++) {
-        insertDatas.push_back((void*)(records[i]->data));
-        pageIds.push_back(recordIds[i]->getPageId());
-        slotIds.push_back(recordIds[i]->getSlotId());
-    }
-    insertVals.resize(records.size());
-    indexManager->transform(tableName.c_str(), colName.c_str(), insertVals, pageIds, slotIds);
-    indexManager->insert(tableName.c_str(), colName.c_str(), insertDatas, insertVals);
-    for (int i = 0; i < records.size(); i++) {
-        delete records[i];
-        delete recordIds[i];
-    }
+    _createAndAddIndex(tableName, colName, indexLen, colType, index);
     return index;
 }
 
@@ -383,7 +368,10 @@ int TableManager::dropPrimaryKey(string tableName, string colName, DBMeta* dbMet
         when the primary key is dropped
      */
     if (!dbMeta->mannuallyCreateIndex[tableNum][indexNum] && !tableHeader->entrys[index].uniqueConstraint && dbMeta->foreignKeyRefColumn[tableNum][index] == 0)  {
-        indexManager->removeIndex(tableName.c_str(), colName.c_str());
+        if (dbMeta->foreignKeyOnCol[tableNum][index] == 0) {
+            printf("[Info] automatically remove Index on %s.%s.\n", tableName.c_str(), colName.c_str());
+            indexManager->removeIndex(tableName.c_str(), colName.c_str());
+        }
     }
 
     return index;
@@ -422,25 +410,28 @@ int TableManager::createForeignKey(string tableName, string foreignKeyName, stri
         //     printf("[Error] can not build foreign key on ref table's non-primary-key field.\n");
         //     return -1;
         // }
-
         /* 
             According to course doc, foreign column doesn't have to be parimary key nor have index
          */
+        if (tableHeader->getTableEntryDesc().getCol(index)->colType != refTableHeader->getTableEntryDesc().getCol(refIndex)->colType) {
+            printf("[Error] can not build foreign key between column of different type.\n");
+            return -1;
+        }
         if (!indexManager->hasIndex(tableName.c_str(), colName.c_str())) {
             printf("[Info] automatically build index for local table.\n");
-            indexManager->createIndex(tableName.c_str(), colName.c_str(), tableHeader->entrys[index].colLen, tableHeader->entrys[index].colType);
+            _createAndAddIndex(tableName, colName, tableHeader->entrys[index].colLen, tableHeader->entrys[index].colType, index);
         }
         if (!indexManager->hasIndex(refTableName.c_str(), refTableCol.c_str())) {
             printf("[Info] automatically build index for foreign table.\n");
-            indexManager->createIndex(refTableName.c_str(), refTableCol.c_str(), refTableHeader->entrys[refIndex].colLen, refTableHeader->entrys[refIndex].colType);
+            _createAndAddIndex(refTableName, refTableCol, refTableHeader->entrys[refIndex].colLen, refTableHeader->entrys[refIndex].colType, refIndex);
         }
-        if (tableHeader->entrys[index].foreignKeyConstraint == true) {
-            printf("[Error] the column %s already has a foreign key.\n", colName.c_str());
+        if (tableHeader->entrys[index].foreignKeyConstraint == MAX_FOREIGN_KEY_FOR_COL) {
+            printf("[Error] can not add more foreign keys for column %s.\n", colName.c_str());
             return -1;
         }
-        tableHeader->entrys[index].foreignKeyConstraint = true;
-        strcpy(tableHeader->entrys[index].foreignKeyTableName, refTableName.c_str());
-        strcpy(tableHeader->entrys[index].foreignKeyColName, refTableCol.c_str());
+        strcpy(tableHeader->entrys[index].foreignKeyTableName[tableHeader->entrys[index].foreignKeyConstraint], refTableName.c_str());
+        strcpy(tableHeader->entrys[index].foreignKeyColName[tableHeader->entrys[index].foreignKeyConstraint], refTableCol.c_str());
+        tableHeader->entrys[index].foreignKeyConstraint++;
     } else {
         printf("[Error] specified column does not exist.\n");
         return -1;
@@ -448,7 +439,7 @@ int TableManager::createForeignKey(string tableName, string foreignKeyName, stri
     return index;
 }
 
-int TableManager::dropForeignKey(string tableName, uint8_t colIndex, DBMeta* dbMeta) {
+int TableManager::dropForeignKey(string tableName, uint8_t colIndex, DBMeta* dbMeta, string refTableName, int refColIndex) {
     if(!checkTableName(tableName))
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
@@ -460,15 +451,22 @@ int TableManager::dropForeignKey(string tableName, uint8_t colIndex, DBMeta* dbM
     if(fileHandler == nullptr)
         return -1;
     TableHeader* tableHeader = fileHandler->getTableHeader();
-    if(tableHeader->entrys[colIndex].foreignKeyConstraint == false) {
+    int foreignKeyIndex = -1;
+    FileHandler* refFileHandler = recordManager->findTable(refTableName.c_str());
+    char refColName[64];
+    refFileHandler->getTableHeader()->getCol(refColIndex, refColName);
+    for (int i = 0; i < tableHeader->entrys[colIndex].foreignKeyConstraint; i++) {
+        if (strcmp(tableHeader->entrys[colIndex].foreignKeyTableName[i], refTableName.c_str()) == 0 && strcmp(tableHeader->entrys[colIndex].foreignKeyColName[i], refColName) == 0) {
+            foreignKeyIndex = i;
+            break;
+        }
+    }
+    if(foreignKeyIndex == -1) {
         printf("[Error] this table dose not have this foreign key\n");
         return -1;
     }
     
     // remove the index created on foreign table
-    char* refTableName = tableHeader->entrys[colIndex].foreignKeyTableName;
-    char* refColName = tableHeader->entrys[colIndex].foreignKeyColName;
-    FileHandler* refFileHandler = recordManager->findTable(refTableName);
     int refIndex = checkColExist(refFileHandler->getTableHeader(), refColName);
     if (indexManager->hasIndex(tableName.c_str(), tableHeader->entrys[colIndex].colName)) {
         int tableNum = -1, indexNum = -1;
@@ -486,14 +484,15 @@ int TableManager::dropForeignKey(string tableName, uint8_t colIndex, DBMeta* dbM
         }
         if (!dbMeta->mannuallyCreateIndex[tableNum][indexNum] && !dbMeta->isPrimaryKey[tableNum][colIndex] && !dbMeta->isUniqueKey[tableNum][colIndex]) {
             if (dbMeta->foreignKeyOnCol[tableNum][colIndex] == 1) {
+                printf("[Info] automatically remove Index on %s.%s.\n", tableName.c_str(), tableHeader->entrys[colIndex].colName);
                 indexManager->removeIndex(tableName.c_str(), tableHeader->entrys[colIndex].colName);
             }
         }
     }
-    if (indexManager->hasIndex(refTableName, refColName)) {
+    if (indexManager->hasIndex(refTableName.c_str(), refColName)) {
         int tableNum = -1, indexNum = -1;
         for(int i = 0; i < dbMeta->tableNum; i++) {
-            if(strcmp(refTableName, dbMeta->tableNames[i]) == 0) {
+            if(strcmp(refTableName.c_str(), dbMeta->tableNames[i]) == 0) {
                 tableNum = i;
                 break;
             }
@@ -506,12 +505,15 @@ int TableManager::dropForeignKey(string tableName, uint8_t colIndex, DBMeta* dbM
         }
         if (!dbMeta->mannuallyCreateIndex[tableNum][indexNum] && !dbMeta->isPrimaryKey[tableNum][refIndex] && !dbMeta->isUniqueKey[tableNum][refIndex]) {
             if (dbMeta->foreignKeyOnCol[tableNum][refIndex] == 1) {
-                indexManager->removeIndex(refTableName, refColName);
+                printf("[Info] automatically remove Index on %s.%s.\n", refTableName.c_str(), refColName);
+                indexManager->removeIndex(refTableName.c_str(), refColName);
             }
         }
     }
 
-    tableHeader->entrys[colIndex].foreignKeyConstraint = false;
+    strcpy(tableHeader->entrys[colIndex].foreignKeyTableName[foreignKeyIndex], tableHeader->entrys[colIndex].foreignKeyTableName[tableHeader->entrys[colIndex].foreignKeyConstraint-1]);
+    strcpy(tableHeader->entrys[colIndex].foreignKeyColName[foreignKeyIndex], tableHeader->entrys[colIndex].foreignKeyColName[tableHeader->entrys[colIndex].foreignKeyConstraint-1]);
+    tableHeader->entrys[colIndex].foreignKeyConstraint--;
     return 0;
 }
 
@@ -532,6 +534,7 @@ int TableManager::createUniqueKey(string tableName, string colName) {
             return -1;
         } */
         tableHeader->entrys[index].uniqueConstraint = true;
+        return index;
     }
     return res;
 }
@@ -577,7 +580,10 @@ int TableManager::dropUniqueKey(string tableName, string colName, DBMeta* dbMeta
     }
 
     if (!dbMeta->mannuallyCreateIndex[tableNum][indexNum] && !tableHeader->entrys[index].primaryKeyConstraint && dbMeta->foreignKeyOnCol[tableNum][index] == 0) {
-        indexManager->removeIndex(tableName.c_str(), colName.c_str());
+        if (dbMeta->foreignKeyOnCol[tableNum][index] == 0) { // no foreign key linked to this column
+            printf("[Info] automatically remove Index on %s.%s.\n", tableName.c_str(), colName.c_str());
+            indexManager->removeIndex(tableName.c_str(), colName.c_str());
+        }
     }
     return index;
 }
@@ -1542,8 +1548,10 @@ int TableManager::dropRecords(string tableName, DBDelete* dbDelete, DBMeta* dbMe
 
     bool colHasIndex[TAB_MAX_COL_NUM] = {false};
     char colName[TAB_MAX_COL_NUM][64];
+    vector<uint8_t> colTypes;
     for (int i = 0; i < tableHeader->colNum; i++) {
         tableHeader->getCol(i, colName[i]);
+        colTypes.push_back(tableHeader->getTableEntryDesc().getCol(i)->colType);
         if (indexManager->hasIndex(tableName.c_str(), colName[i])) {
             colHasIndex[i] = true;
         }
@@ -1619,7 +1627,12 @@ int TableManager::dropRecords(string tableName, DBDelete* dbDelete, DBMeta* dbMe
     }
     for (int i = 0; i < tableHeader->colNum; i++) {
         for (int j = 0; j < indexDatas[i].size(); j++) {
-            delete indexDatas[i][j];
+            switch (colTypes[i]) {
+                case COL_INT: delete (int*)indexDatas[i][j]; break;
+                case COL_FLOAT: delete (float*)indexDatas[i][j]; break;
+                case COL_VARCHAR: delete (char*)indexDatas[i][j]; break;
+                default: break;
+            }
         }
     }
     return errorFlag ? -1 : recordIds.size();
@@ -1665,8 +1678,10 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
 
     bool colHasIndex[TAB_MAX_COL_NUM] = {false};
     char colName[TAB_MAX_COL_NUM][64];
+    vector<uint8_t> colTypes;
     for (int i = 0; i < tableHeader->colNum; i++) {
         tableHeader->getCol(i, colName[i]);
+        colTypes.push_back(tableHeader->getTableEntryDesc().getCol(i)->colType);
         if (indexManager->hasIndex(tableName.c_str(), colName[i])) {
             colHasIndex[i] = true;
         }
@@ -1796,8 +1811,12 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
 
     for (int i = 0; i < tableHeader->colNum; i++) {
         for (int j = 0; j < updatedIndexDatas.size(); j++) {
-            delete updatedIndexDatas[i][j];
-            delete rawIndexDatas[i][j];
+            switch (colTypes[i]) {
+                case COL_INT: delete (int*)updatedIndexDatas[i][j]; delete (int*)rawIndexDatas[i][j]; break;
+                case COL_FLOAT: delete (float*)updatedIndexDatas[i][j]; delete (float*)rawIndexDatas[i][j]; break;
+                case COL_VARCHAR: delete (char*)updatedIndexDatas[i][j]; delete (char*)rawIndexDatas[i][j]; break;
+                default: break;
+            }
         }
     }
 

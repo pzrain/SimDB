@@ -1,6 +1,7 @@
 #include "DatabaseManager.h"
 
 void testOperateDB(DatabaseManager* databaseManager) {
+    printf("=====TEST OPERATE DB=====\n");
     string databaseName1 = "demo1";
     string databaseName2 = "demo2";
     string databaseName3 = "demo3";
@@ -35,11 +36,38 @@ void testOperateDB(DatabaseManager* databaseManager) {
     // databaseManager->switchDatabase(databaseName2);
     // databaseManager->switchDatabase(databaseName1);
     // databaseManager->listTablesOfDatabase();
+    printf("\n");
+}
+
+void testConstraint(DatabaseManager* databaseManager) {
+    printf("=====TEST CONSTRAINT=====\n");
+    string databaseName1 = "demo1";
+    string databaseName2 = "demo2";
+    string databaseName3 = "demo3";
+    databaseManager->switchDatabase(databaseName1);
+    databaseManager->createPrimaryKey("table_3", {"colName_1"}, 1);
+    databaseManager->createPrimaryKey("table_3", {"colName_2"}, 1);
+    databaseManager->dropPrimaryKey("table_3", {"colName_2"}, 1);
+    databaseManager->dropPrimaryKey("table_3", {"colName_1"}, 1);
+    databaseManager->createPrimaryKey("table_3", {"colName_2"}, 1);
+
+    databaseManager->createUniqueKey("table_3", {"colName_1"}, 1);
+    databaseManager->dropPrimaryKey("table_3", {"colName_2"}, 1);
+    databaseManager->createUniqueKey("table_3", {"colName_2"}, 1);
+
+    databaseManager->createForeignKey("table_3", "foreignKey1", "colName_2", "table_1", "colName_2");
+    databaseManager->createForeignKey("table_3", "foreignKey2", "colName_2", "table_1", "colName_1");
+    databaseManager->dropForeignKey("table_3", "foreignKey1");
+    databaseManager->createPrimaryKey("table_3", {"colName_2"}, 1);
+    databaseManager->dropUniqueKey("table_3", {"colName_2"}, 1);
+    databaseManager->showIndex();
+    printf("\n");
 }
 
 int main() {
     printf("RUN TEST\n");
     DatabaseManager* databaseManager = new DatabaseManager;
     testOperateDB(databaseManager);
+    testConstraint(databaseManager);
     delete databaseManager;
 }
