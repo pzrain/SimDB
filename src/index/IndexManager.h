@@ -6,6 +6,7 @@
 class IndexManager{
 private:
     bool valid;
+    bool validTable[DB_MAX_TABLE_NUM];
     BufPageManager* bufPageManager;
     char databaseName[DB_MAX_NAME_LEN];
     char tableNames[DB_MAX_TABLE_NUM][TAB_MAX_NAME_LEN];
@@ -15,7 +16,7 @@ private:
 
     BPlusTree* findIndex(const char* tableName, const char* indexName);
 
-    int findEmptyIndex(int &emptyI, int &emptyJ);
+    int findEmptyIndex(int &emptyI, int &emptyJ, const char* tableName);
     
 public:
     IndexManager(BufPageManager* bufPageManager_, const char* databaseName_);
@@ -23,6 +24,10 @@ public:
     ~IndexManager();
 
     int initIndex(std::vector<std::string> tableNames, std::vector<std::vector<std::string>> colNames, std::vector<std::vector<uint16_t>> indexLens, std::vector<std::vector<uint8_t>> colTypes);
+    // init index when open a database
+
+    void renameIndex(const char* oldTableName, const char* newTableName);
+    // rename the tableNamess
 
     int createIndex(const char* tableName, const char* indexName, uint16_t indexLen, uint8_t colType);
     // build index

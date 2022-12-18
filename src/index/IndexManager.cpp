@@ -1,10 +1,12 @@
 #include "IndexManager.h"
 #include "unistd.h"
+#include <cstring>
 #include <sys/types.h>
 #include <sys/stat.h>
 
 IndexManager::IndexManager(BufPageManager* bufPageManager_, const char* databaseName_) {
     valid = true;
+    memset(validTable, false, sizeof(validTable));
     bufPageManager = bufPageManager_;
     struct stat info;
     char databaseDirectory[DB_MAX_NAME_LEN + 30];
@@ -42,8 +44,15 @@ IndexManager::~IndexManager() {
     }
 }
 
-int IndexManager::findEmptyIndex(int &emptyI, int &emptyJ) {
+int IndexManager::findEmptyIndex(int &emptyI, int &emptyJ, const char* tableName) {
     for (int i = 0; i < DB_MAX_TABLE_NUM; i++) {
+        if (validTable[i] && strcmp(tableNames[i], tableName) != 0) {
+            continue;
+        }
+        if (!validTable[i]) {
+            strcpy(tableNames[i], tableName);
+            validTable[i] = true;
+        }
         for (int j = 0; j < TAB_MAX_COL_NUM; j++) {
             if (bPlusTree[i][j] == nullptr) {
                 emptyI = i;
@@ -67,7 +76,7 @@ BPlusTree* IndexManager::findIndex(const char* tableName, const char* indexName)
         }
     }
     int emptyI, emptyJ;
-    if (findEmptyIndex(emptyI, emptyJ) == -1) {
+    if (findEmptyIndex(emptyI, emptyJ, tableName) == -1) {
         printf("[ERROR] indexManager can accept no more index.\n");
         return nullptr;
     }
@@ -110,12 +119,13 @@ int IndexManager::initIndex(std::vector<std::string> indexTableNames, std::vecto
             if (bufPageManager->fileManager->createFile(fileName)) {
                 int fileId, emptyI, emptyJ;
                 if (bufPageManager->fileManager->openFile(fileName, fileId)) {
-                    if (findEmptyIndex(emptyI, emptyJ) == -1) {
+                    if (findEmptyIndex(emptyI, emptyJ, indexTableNames[i].c_str()) == -1) {
                         printf("[ERROR] indexManager can accept no more index.\n");
                         return -1;
                     }
                     fileIds[emptyI][emptyJ] = fileId;
                     strcpy(tableNames[emptyI], indexTableNames[i].c_str());
+                    validTable[emptyI] = true;
                     strcpy(indexNames[emptyI][emptyJ], indexColNames[i][j].c_str());
                     bPlusTree[emptyI][emptyJ] = new BPlusTree(fileId, bufPageManager, indexLens[i][j], colTypes[i][j]);
                 }
@@ -123,6 +133,16 @@ int IndexManager::initIndex(std::vector<std::string> indexTableNames, std::vecto
         }
     }
     return 0;
+}
+
+void IndexManager::renameIndex(const char* oldTableName, const char* newTableName) {
+    // here we don't need to verify the validity of the name
+    for (int i = 0; i < DB_MAX_TABLE_NUM; i++) {
+        if (validTable[i] && strcmp(tableNames[i], oldTableName) == 0) {
+            strcpy(tableNames[i], newTableName);
+            return;
+        } 
+    }
 }
 
 int IndexManager::createIndex(const char* tableName, const char* indexName, uint16_t indexLen, uint8_t colType) {
@@ -135,7 +155,7 @@ int IndexManager::createIndex(const char* tableName, const char* indexName, uint
     if (bufPageManager->fileManager->createFile(fileName)) {
         int fileId, emptyI, emptyJ;
         if (bufPageManager->fileManager->openFile(fileName, fileId)) {
-            if (findEmptyIndex(emptyI, emptyJ) == -1) {
+            if (findEmptyIndex(emptyI, emptyJ, tableName) == -1) {
                 printf("[ERROR] indexManager can accept no more index.\n");
                 return -1;
             }
