@@ -1450,16 +1450,26 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert, DBMeta* db
     if (dbInsert->valueLists.size() == 0) {
         return 0;
     }
+    string path = "database/" + databaseName + '/' + tableName +".db";
+    if(!checkTableExist(path)) {
+        printf("[ERROR] table dose not exist!\n");
+        return -1;
+    }
+    printf("%s\n", tableName.c_str());
     FileHandler* insertFileHandler = recordManager->findTable(tableName.c_str());
+    printf("%d\n", insertFileHandler != nullptr);
     int valueSize = dbInsert->valueLists[0].size();
     vector<Record*> records;
     vector<vector<void*>> indexData;
     indexData.resize(valueSize);
     records.resize(dbInsert->valueLists.size());
     for (int i = 0; i < dbInsert->valueLists.size(); i++) {
+        printf("%d\n", i);
         RecordData recordData(valueSize);
         RecordDataNode* recordDataNode = recordData.head;
         for (int j = 0; j < valueSize; j++) {
+            printf("nullptr ? %d\n", recordDataNode != nullptr);
+            printf("colType = %d\n", dbInsert->valueListsType[i][j]);
             switch (dbInsert->valueListsType[i][j]) {
                 case DB_LIST_INT:
                     recordDataNode->len = 4;
@@ -1522,6 +1532,11 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert, DBMeta* db
 }
 
 int TableManager::dropRecords(string tableName, DBDelete* dbDelete, DBMeta* dbMeta) {
+    string path = "database/" + databaseName + '/' + tableName +".db";
+    if(!checkTableExist(path)) {
+        printf("[ERROR] table dose not exist!\n");
+        return -1;
+    }
     FileHandler* deleteFileHandler = recordManager->findTable(tableName.c_str());
     TableHeader* tableHeader = deleteFileHandler->getTableHeader();
     vector<string> selectTables = {tableName};
@@ -1639,6 +1654,11 @@ int TableManager::dropRecords(string tableName, DBDelete* dbDelete, DBMeta* dbMe
 }
 
 int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* dbMeta) {
+    string path = "database/" + databaseName + '/' + tableName +".db";
+    if(!checkTableExist(path)) {
+        printf("[ERROR] table dose not exist!\n");
+        return -1;
+    }
     FileHandler* updateFileHandler = recordManager->findTable(tableName.c_str());
     TableHeader* tableHeader = updateFileHandler->getTableHeader();
     TableEntryDesc tableEntryDesc = tableHeader->getTableEntryDesc();

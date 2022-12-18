@@ -615,7 +615,8 @@ RecordData::RecordData(int len) {
         fprintf(stderr, "cannot construct RecordData with negative length.\n");
         assert(false);
     }
-    RecordDataNode* cur = head;
+    head = nullptr;
+    RecordDataNode* cur;
     while (len) {
         cur = new RecordDataNode();
         cur->len = 0;

@@ -17,7 +17,7 @@ void testOperateDB(DatabaseManager* databaseManager) {
     databaseManager->switchDatabase(databaseName1);
 
     char colName[3][64] = {"colName_1", "colName_2", "colName_3"};
-    TB_COL_TYPE colTypes[] = {COL_INT, COL_FLOAT, COL_VARCHAR};
+    TB_COL_TYPE colTypes[] = {COL_VARCHAR, COL_FLOAT, COL_INT};
     int colLen[] = {4, 4, 10};
     databaseManager->createTable("table_1", colName, colTypes, colLen, 3);
     databaseManager->createTable("table_2", colName, colTypes, colLen, 3);
@@ -65,7 +65,25 @@ void testConstraint(DatabaseManager* databaseManager) {
 }
 
 void testSIUR(DatabaseManager* databaseManager) {
-
+    printf("=====TEST SIUR=====\n");
+    DBInsert* dbInsert = new DBInsert();
+    char colName1[] = "col";
+    float colName2 = 3.14;
+    int colName3 = 9;
+    std::vector<std::vector<void*>> valueLists;
+    std::vector<std::vector<DB_LIST_TYPE>> valueListsType;
+    valueLists.push_back(std::vector<void*>());
+    valueLists[0].push_back(colName1);
+    valueLists[0].push_back(&colName2);
+    valueLists[0].push_back(&colName3);
+    valueListsType.push_back(std::vector<DB_LIST_TYPE>());
+    valueListsType[0].push_back(DB_LIST_CHAR);
+    valueListsType[0].push_back(DB_LIST_FLOAT);
+    valueListsType[0].push_back(DB_LIST_INT);
+    dbInsert->valueLists = valueLists;
+    dbInsert->valueListsType = valueListsType;
+    databaseManager->insertRecords("table_3", dbInsert);
+    printf("\n");
 }
 
 int main() {
@@ -73,5 +91,6 @@ int main() {
     DatabaseManager* databaseManager = new DatabaseManager;
     testOperateDB(databaseManager);
     testConstraint(databaseManager);
+    testSIUR(databaseManager);
     delete databaseManager;
 }
