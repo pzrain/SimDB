@@ -24,7 +24,7 @@ int TableManager::checkColExist(TableHeader* tableHeader, const char* colName) {
 inline bool TableManager::checkTableName(string name) {
     size_t length = name.length();
     if(length == 0 || length > TAB_MAX_NAME_LEN) {
-        printf("[Error] invalid table name ! \n");
+        printf("[ERROR] invalid table name ! \n");
         return false;
     }
     return true;
@@ -41,7 +41,7 @@ int TableManager::creatTable(string tableName, TableEntry* tableEntrys, int colN
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
     if(checkTableExist(path)) {
-        printf("[Error] table named %s already exist!\n", tableName.c_str());
+        printf("[ERROR] table named %s already exist!\n", tableName.c_str());
         return -1;
     }
     if(recordManager->createFile(tableName.c_str()) != 0){
@@ -63,12 +63,12 @@ int TableManager::openTable(string name) {
         return -1;
     string path = "database/" + databaseName + '/' + name +".db";
     if(!checkTableExist(path)) {
-        printf("[Error] table dose not exist!\n");
+        printf("[ERROR] table dose not exist!\n");
         return -1;
     }
 
     if((fileHandler = recordManager->openFile(name.c_str())) == nullptr) {
-        printf("[Error] error in opening table %s.\n", name.c_str());
+        printf("[ERROR] error in opening table %s.\n", name.c_str());
         return -1;
     }
 
@@ -80,12 +80,12 @@ int TableManager::dropTable(string name) {
         return -1;
     string path = "database/" + databaseName + '/' + name +".db";
     if(!checkTableExist(path)) {
-        printf("[Error] table dose not exist!\n");
+        printf("[ERROR] table dose not exist!\n");
         return -1;
     }
         
     if(recordManager->removeFile(name.c_str()) != 0) {
-        printf("[Error] fail to drop the table named %s\n", name.c_str());
+        printf("[ERROR] fail to drop the table named %s\n", name.c_str());
         return -1;
     }
 
@@ -137,17 +137,17 @@ int TableManager::renameTable(string oldName, string newName) {
 
     string oldPath = "database/" + databaseName + '/' + oldName +".db";
     if(!checkTableExist(oldPath)) {
-        printf("[Error] table named %s does not exist !\n", oldName.c_str());
+        printf("[ERROR] table named %s does not exist !\n", oldName.c_str());
         return -1;
     }
 
     fileHandler = recordManager->findTable(oldName.c_str());
     if(fileHandler == nullptr) {
-        printf("[Error] can not find the table named %s !\n", oldName.c_str());
+        printf("[ERROR] can not find the table named %s !\n", oldName.c_str());
         return -1;
     }
     if(recordManager->closeFile(fileHandler) != 0) {
-        printf("[Error] can not close the file before rename it !\n");
+        printf("[ERROR] can not close the file before rename it !\n");
         return-1;
     }
     fileHandler = nullptr;
@@ -155,12 +155,12 @@ int TableManager::renameTable(string oldName, string newName) {
     string newPath = "database/" + databaseName + '/' + newName +".db";
     int ret = rename(oldPath.c_str(), newPath.c_str());
     if(ret != 0) {
-        printf("[Error] can not rename the table !\n");
+        printf("[ERROR] can not rename the table !\n");
         return -1;
     }
     
     if((fileHandler = recordManager->openFile(newName.c_str())) == nullptr) {
-        printf("[Error] can not open the file after rename it !\n");
+        printf("[ERROR] can not open the file after rename it !\n");
         return -1;
     }
     indexManager->renameIndex(oldName.c_str(), newName.c_str());
@@ -202,7 +202,7 @@ int TableManager::createIndex(string tableName, string colName) {
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
     if(!checkTableExist(path)) {
-        printf("[Error] table dose not exist!\n");
+        printf("[ERROR] table dose not exist!\n");
         return -1;
     }
 
@@ -217,13 +217,13 @@ int TableManager::createIndex(string tableName, string colName) {
         colType = tableHeader->entrys[index].colType;
         indexLen = tableHeader->entrys[index].colLen;
     } else { // column not found
-        printf("[Error] specified column does not exist.\n");
+        printf("[ERROR] specified column does not exist.\n");
         return -1;
     }
 
     if (indexManager->hasIndex(tableName.c_str(), colName.c_str())) {
-        printf("[Info] the index has already been created.\n");
-        return index;
+        printf("[INFO] the index has already been created.\n");
+        return -1;
     }
 
     int res = _createAndAddIndex(tableName, colName, indexLen, colType, index);
@@ -235,13 +235,13 @@ int TableManager::dropIndex(string tableName, string colName) {
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
     if(!checkTableExist(path)) {
-        printf("[Error] table dose not exist!\n");
+        printf("[ERROR] table dose not exist!\n");
         return -1;
     }
     // check column exists? maybe do not have to
     if (!indexManager->hasIndex(tableName.c_str(), colName.c_str())) {
-        printf("[Info] No index on %s.%s\n", tableName.c_str(), colName.c_str());
-        return 0;
+        printf("[INFO] No index on %s.%s\n", tableName.c_str(), colName.c_str());
+        return -1;
     }
 
     return indexManager->removeIndex(tableName.c_str(), colName.c_str());
@@ -287,7 +287,7 @@ int TableManager::createPrimaryKey(string tableName, string colName) {
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
     if(!checkTableExist(path)) {
-        printf("[Error] table dose not exist!\n");
+        printf("[ERROR] table dose not exist!\n");
         return -1;
     }
     fileHandler = recordManager->findTable(tableName.c_str());
@@ -298,7 +298,7 @@ int TableManager::createPrimaryKey(string tableName, string colName) {
 
     // make sure there is only one primary key
     if (tableHeader->hasPrimaryKey()) {
-        printf("[Error] can not add primary key to this table.\n");
+        printf("[ERROR] can not add primary key to this table.\n");
         return -1;
     }
 
@@ -314,8 +314,8 @@ int TableManager::createPrimaryKey(string tableName, string colName) {
         return -1;
     }
     if (indexManager->hasIndex(tableName.c_str(), colName.c_str())) {
-        printf("[Info] the index has already been created.\n");
-        return index;
+        printf("[INFO] the index has already been created.\n");
+        return -1;
     }
     // add pre-existing records to the newly-added index
     // however when primary key is enabled as the table is created
@@ -330,7 +330,7 @@ int TableManager::dropPrimaryKey(string tableName, string colName, DBMeta* dbMet
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
     if(!checkTableExist(path)) {
-        printf("[Error] table dose not exist!\n");
+        printf("[ERROR] table dose not exist!\n");
         return -1;
     }
     fileHandler = recordManager->findTable(tableName.c_str());
@@ -340,12 +340,12 @@ int TableManager::dropPrimaryKey(string tableName, string colName, DBMeta* dbMet
     int index = checkColExist(tableHeader, colName.c_str());
     if (index >= 0) {
         if (tableHeader->entrys[index].primaryKeyConstraint == false) {
-            printf("[Info] there is no primary key constraint on column %s\n", colName.c_str());
-            return index;
+            printf("[INFO] there is no primary key constraint on column %s\n", colName.c_str());
+            return -1;
         }
         tableHeader->entrys[index].primaryKeyConstraint = false;
     } else {
-        printf("[Error] specified column does not exist.\n");
+        printf("[ERROR] specified column does not exist.\n");
         return -1;
     }
 
@@ -369,7 +369,7 @@ int TableManager::dropPrimaryKey(string tableName, string colName, DBMeta* dbMet
      */
     if (!dbMeta->mannuallyCreateIndex[tableNum][indexNum] && !tableHeader->entrys[index].uniqueConstraint && dbMeta->foreignKeyRefColumn[tableNum][index] == 0)  {
         if (dbMeta->foreignKeyOnCol[tableNum][index] == 0) {
-            printf("[Info] automatically remove Index on %s.%s.\n", tableName.c_str(), colName.c_str());
+            printf("[INFO] automatically remove Index on %s.%s.\n", tableName.c_str(), colName.c_str());
             indexManager->removeIndex(tableName.c_str(), colName.c_str());
         }
     }
@@ -382,18 +382,18 @@ int TableManager::createForeignKey(string tableName, string foreignKeyName, stri
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
     if(!checkTableExist(path)) {
-        printf("[Error] table dose not exist!\n");
+        printf("[ERROR] table dose not exist!\n");
         return -1;
     }
     if(!checkTableName(refTableName))
         return -1;
     string tablePath = "database/" + databaseName + '/' + refTableName +".db";
     if(!checkTableExist(tablePath)) {
-        printf("[Error] table dose not exist!\n");
+        printf("[ERROR] table dose not exist!\n");
         return -1;
     }
     if (tableName == refTableName) {
-        printf("[Error] can not build foreign key within one table.\n");
+        printf("[ERROR] can not build foreign key within one table.\n");
         return -1;
     }
     fileHandler = recordManager->findTable(tableName.c_str());
@@ -407,33 +407,33 @@ int TableManager::createForeignKey(string tableName, string foreignKeyName, stri
     refIndex = checkColExist(refFileHandler->getTableHeader(), refTableCol.c_str());
     if (index >= 0 && refIndex >= 0) {
         // if (refTableHeader->entrys[refIndex].primaryKeyConstraint == false) {
-        //     printf("[Error] can not build foreign key on ref table's non-primary-key field.\n");
+        //     printf("[ERROR] can not build foreign key on ref table's non-primary-key field.\n");
         //     return -1;
         // }
         /* 
             According to course doc, foreign column doesn't have to be parimary key nor have index
          */
         if (tableHeader->getTableEntryDesc().getCol(index)->colType != refTableHeader->getTableEntryDesc().getCol(refIndex)->colType) {
-            printf("[Error] can not build foreign key between column of different type.\n");
+            printf("[ERROR] can not build foreign key between column of different type.\n");
             return -1;
         }
         if (!indexManager->hasIndex(tableName.c_str(), colName.c_str())) {
-            printf("[Info] automatically build index for local table.\n");
+            printf("[INFO] automatically build index for local table.\n");
             _createAndAddIndex(tableName, colName, tableHeader->entrys[index].colLen, tableHeader->entrys[index].colType, index);
         }
         if (!indexManager->hasIndex(refTableName.c_str(), refTableCol.c_str())) {
-            printf("[Info] automatically build index for foreign table.\n");
+            printf("[INFO] automatically build index for foreign table.\n");
             _createAndAddIndex(refTableName, refTableCol, refTableHeader->entrys[refIndex].colLen, refTableHeader->entrys[refIndex].colType, refIndex);
         }
         if (tableHeader->entrys[index].foreignKeyConstraint == MAX_FOREIGN_KEY_FOR_COL) {
-            printf("[Error] can not add more foreign keys for column %s.\n", colName.c_str());
+            printf("[ERROR] can not add more foreign keys for column %s.\n", colName.c_str());
             return -1;
         }
         strcpy(tableHeader->entrys[index].foreignKeyTableName[tableHeader->entrys[index].foreignKeyConstraint], refTableName.c_str());
         strcpy(tableHeader->entrys[index].foreignKeyColName[tableHeader->entrys[index].foreignKeyConstraint], refTableCol.c_str());
         tableHeader->entrys[index].foreignKeyConstraint++;
     } else {
-        printf("[Error] specified column does not exist.\n");
+        printf("[ERROR] specified column does not exist.\n");
         return -1;
     }
     return index;
@@ -444,7 +444,7 @@ int TableManager::dropForeignKey(string tableName, uint8_t colIndex, DBMeta* dbM
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
     if(!checkTableExist(path)) {
-        printf("[Error] table dose not exist!\n");
+        printf("[ERROR] table dose not exist!\n");
         return -1;
     }
     fileHandler = recordManager->findTable(tableName.c_str());
@@ -462,7 +462,7 @@ int TableManager::dropForeignKey(string tableName, uint8_t colIndex, DBMeta* dbM
         }
     }
     if(foreignKeyIndex == -1) {
-        printf("[Error] this table dose not have this foreign key\n");
+        printf("[ERROR] this table dose not have this foreign key\n");
         return -1;
     }
     
@@ -484,7 +484,7 @@ int TableManager::dropForeignKey(string tableName, uint8_t colIndex, DBMeta* dbM
         }
         if (!dbMeta->mannuallyCreateIndex[tableNum][indexNum] && !dbMeta->isPrimaryKey[tableNum][colIndex] && !dbMeta->isUniqueKey[tableNum][colIndex]) {
             if (dbMeta->foreignKeyOnCol[tableNum][colIndex] == 1) {
-                printf("[Info] automatically remove Index on %s.%s.\n", tableName.c_str(), tableHeader->entrys[colIndex].colName);
+                printf("[INFO] automatically remove Index on %s.%s.\n", tableName.c_str(), tableHeader->entrys[colIndex].colName);
                 indexManager->removeIndex(tableName.c_str(), tableHeader->entrys[colIndex].colName);
             }
         }
@@ -505,7 +505,7 @@ int TableManager::dropForeignKey(string tableName, uint8_t colIndex, DBMeta* dbM
         }
         if (!dbMeta->mannuallyCreateIndex[tableNum][indexNum] && !dbMeta->isPrimaryKey[tableNum][refIndex] && !dbMeta->isUniqueKey[tableNum][refIndex]) {
             if (dbMeta->foreignKeyOnCol[tableNum][refIndex] == 1) {
-                printf("[Info] automatically remove Index on %s.%s.\n", refTableName.c_str(), refColName);
+                printf("[INFO] automatically remove Index on %s.%s.\n", refTableName.c_str(), refColName);
                 indexManager->removeIndex(refTableName.c_str(), refColName);
             }
         }
@@ -527,10 +527,10 @@ int TableManager::createUniqueKey(string tableName, string colName) {
         int index = checkColExist(tableHeader, colName.c_str());
         assert(index >= 0);
         if (tableHeader->entrys[index].uniqueConstraint == true) {
-            printf("[Info] the unique constraint of %s has already been created.\n", colName.c_str());
-            return index;
+            printf("[INFO] the unique constraint of %s has already been created.\n", colName.c_str());
+            return -1;
         } /* else if (tableHeader->entrys[index].primaryKeyConstraint == true) {
-            printf("[Error] can not create unique constraint on primary key.\n");
+            printf("[ERROR] can not create unique constraint on primary key.\n");
             return -1;
         } */
         tableHeader->entrys[index].uniqueConstraint = true;
@@ -544,7 +544,7 @@ int TableManager::dropUniqueKey(string tableName, string colName, DBMeta* dbMeta
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
     if(!checkTableExist(path)) {
-        printf("[Error] table dose not exist!\n");
+        printf("[ERROR] table dose not exist!\n");
         return -1;
     }
     fileHandler = recordManager->findTable(tableName.c_str());
@@ -554,12 +554,12 @@ int TableManager::dropUniqueKey(string tableName, string colName, DBMeta* dbMeta
     int index = checkColExist(tableHeader, colName.c_str());
     if (index >= 0) {
         if (tableHeader->entrys[index].uniqueConstraint == false) {
-            printf("[Info] specified column dose not have unique constraint.\n");
-            return index;
+            printf("[INFO] specified column dose not have unique constraint.\n");
+            return -1;
         }
         tableHeader->entrys[index].uniqueConstraint = false;
     } else {
-        printf("[Error] specified column does not exist.\n");
+        printf("[ERROR] specified column does not exist.\n");
         return -1;
     }
 
@@ -581,7 +581,7 @@ int TableManager::dropUniqueKey(string tableName, string colName, DBMeta* dbMeta
 
     if (!dbMeta->mannuallyCreateIndex[tableNum][indexNum] && !tableHeader->entrys[index].primaryKeyConstraint && dbMeta->foreignKeyOnCol[tableNum][index] == 0) {
         if (dbMeta->foreignKeyOnCol[tableNum][index] == 0) { // no foreign key linked to this column
-            printf("[Info] automatically remove Index on %s.%s.\n", tableName.c_str(), colName.c_str());
+            printf("[INFO] automatically remove Index on %s.%s.\n", tableName.c_str(), colName.c_str());
             indexManager->removeIndex(tableName.c_str(), colName.c_str());
         }
     }
@@ -599,12 +599,12 @@ int TableManager::_checkFormat(FileHandler* fileHandlers[], TableHeader* tableHe
                 }
             }
             if (j == tableSize) {
-                printf("[Error] no such table in %s.%s\n", waitChecked[i]->expTable.c_str(), waitChecked[i]->expCol.c_str());
+                printf("[ERROR] no such table in %s.%s\n", waitChecked[i]->expTable.c_str(), waitChecked[i]->expCol.c_str());
                 return -1;
             }
             int index = checkColExist(tableHeaders[j], waitChecked[i]->expCol.c_str());
             if (index < 0) {
-                printf("[Error] no such column %s in table%s.\n", waitChecked[i]->expCol.c_str(), waitChecked[i]->expTable.c_str());
+                printf("[ERROR] no such column %s in table%s.\n", waitChecked[i]->expCol.c_str(), waitChecked[i]->expTable.c_str());
                 return -1;
             }
         } else {
@@ -616,10 +616,10 @@ int TableManager::_checkFormat(FileHandler* fileHandlers[], TableHeader* tableHe
                 }
             }
             if (hitTable == 0) {
-                printf("[Error] no table has such column %s.\n", waitChecked[i]->expCol.c_str());
+                printf("[ERROR] no table has such column %s.\n", waitChecked[i]->expCol.c_str());
                 return -1;
             } else if (hitTable >= 2) {
-                printf("[Error] ambiguous column %s.\n", waitChecked[i]->expCol.c_str());
+                printf("[ERROR] ambiguous column %s.\n", waitChecked[i]->expCol.c_str());
                 return -1;
             }
         }
@@ -735,7 +735,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                 equalAsPre = true;
             }
             if (expressions[i].rType != DB_NULL && curRecordDataNode->nodeType == COL_NULL) {
-                printf("[Error] null type currently is not supported in op other than IS(NOT) NULL.\n");
+                printf("[ERROR] null type currently is not supported in op other than IS(NOT) NULL.\n");
                 return -1;
             }
             if (expressions[i].rType == DB_ITEM) {
@@ -745,7 +745,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                 TableEntryDesc tableEntryDesc = tableHeaders[rFileId]->getTableEntryDesc();
                 TableEntryDescNode* tableEntryDescNode = tableEntryDesc.getCol(rColId);
                 if (tableEntryDescNode->colType != curRecordDataNode->nodeType) {
-                    printf("[Error] %s.%s and %s.%s don't have compatible types.\n", lItem->expTable.c_str(), lItem->expCol.c_str(), rItem->expTable.c_str(), rItem->expCol.c_str());
+                    printf("[ERROR] %s.%s and %s.%s don't have compatible types.\n", lItem->expTable.c_str(), lItem->expCol.c_str(), rItem->expTable.c_str(), rItem->expCol.c_str());
                     return -1;
                 }
                 std::vector<int> indexRes, indexResTemp;
@@ -913,13 +913,13 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                 }
             } else if (expressions[i].rType == DB_NST) {
                 if (expressions[i].op != IN_TYPE) {
-                    printf("[Error] op %d is not supported for nesty selection.\n", expressions[i].op);
+                    printf("[ERROR] op %d is not supported for nesty selection.\n", expressions[i].op);
                     return -1;
                 }
                 vector<RecordData> tempRecordData;
                 vector<string> tempColNames;
                 if (((DBSelect*)(expressions[i].rVal))->selectItems.size() > 1) {
-                    printf("[Error] nesty selection in tuple form is incompatible with IN op.\n");
+                    printf("[ERROR] nesty selection in tuple form is incompatible with IN op.\n");
                     return -1;
                 }
                 if (equalAsPre && preFlag) {
@@ -980,7 +980,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                 }
             } else { // DB_INT, DB_CHAR, DB_FLOAT
                 if (curRecordDataNode->nodeType != (TB_COL_TYPE)expressions[i].rType) {
-                    printf("[Error] incompatible type for %s.%s and %d.\n", lItem->expTable.c_str(), lItem->expCol.c_str(), expressions[i].rType);
+                    printf("[ERROR] incompatible type for %s.%s and %d.\n", lItem->expTable.c_str(), lItem->expCol.c_str(), expressions[i].rType);
                     return -1;
                 }
                 if (equalAsPre && preFlag) {
@@ -1025,7 +1025,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                         break;
                     case LIKE_TYPE: {
                         if (expressions[i].rType != DB_CHAR) {
-                            printf("[Error] right expression in LIKE must be VARCHAR.\n");
+                            printf("[ERROR] right expression in LIKE must be VARCHAR.\n");
                             return -1;
                         }
                         string regStr = ((char*)expressions[i].rVal);
@@ -1179,7 +1179,7 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resReco
     
     int tableSize = dbSelect->selectTables.size();
     if (tableSize > MAX_SELECT_TABLE) {
-        printf("[Error] join selection for more than two tables is not supported.\n");
+        printf("[ERROR] join selection for more than two tables is not supported.\n");
         return -1;
     }
     FileHandler* fileHandlers[MAX_SELECT_TABLE];
@@ -1218,7 +1218,7 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resReco
             DBSelItem tempSelItem = dbSelect->selectItems[i];
             if (tempSelItem.selectType == ORD_TYPE) {
                 if (tempSelItem.item.expTable != dbSelect->groupByCol.expTable || tempSelItem.item.expCol != dbSelect->groupByCol.expCol) {
-                    printf("[Error] cannot select %s.%s when group by %s.%s\n", tempSelItem.item.expTable.c_str(), tempSelItem.item.expCol.c_str(), dbSelect->groupByCol.expTable.c_str(), dbSelect->groupByCol.expCol.c_str());
+                    printf("[ERROR] cannot select %s.%s when group by %s.%s\n", tempSelItem.item.expTable.c_str(), tempSelItem.item.expCol.c_str(), dbSelect->groupByCol.expTable.c_str(), dbSelect->groupByCol.expCol.c_str());
                     return -1;
                 }
             }
@@ -1235,14 +1235,14 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resReco
         int index = checkColExist(tableHeaders[j], tempSelItem.item.expCol.c_str());
         TableEntryDescNode* tempTableEntryDescNode = tableHeaders[j]->getTableEntryDesc().getCol(index);
         if (tempTableEntryDescNode->colType == COL_NULL || tempTableEntryDescNode->colType == COL_VARCHAR) {
-            printf("[Error] cannot conduct aggregate selection on column with NULL type of VARCHAR type.\n");
+            printf("[ERROR] cannot conduct aggregate selection on column with NULL type of VARCHAR type.\n");
             return -1;
         }
     }
 
     assert(dbSelect->limitEn || (!dbSelect->limitEn && !dbSelect->offsetEn));
     if ((dbSelect->limitEn && dbSelect->limitNum < 0) || (dbSelect->offsetEn && dbSelect->offsetNum < 0)) {
-        printf("[Error] invalid value of limitNum %d or offsetNum %d.\n", dbSelect->limitNum, dbSelect->offsetNum);
+        printf("[ERROR] invalid value of limitNum %d or offsetNum %d.\n", dbSelect->limitNum, dbSelect->offsetNum);
         return -1;
     }
 
@@ -1655,7 +1655,7 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
         colIds.push_back(colId);
         TableEntryDescNode* tableEntryDescNode = tableEntryDesc.getCol(colId);
         if (tableEntryDescNode->colType != dbUpdate->expItem[i].rType) {
-            printf("[Error] incompatible type %d and %d in update set clause.\n", dbUpdate->expItem[i].rType, tableEntryDescNode->colType);
+            printf("[ERROR] incompatible type %d and %d in update set clause.\n", dbUpdate->expItem[i].rType, tableEntryDescNode->colType);
             return -1;
         }
         waitChecked.push_back(((DBExpItem*)dbUpdate->expItem[i].lVal));
@@ -1860,7 +1860,7 @@ bool TableManager::_checkConstraintOnInsert(string tableName, RecordData* record
             }
             indexManager->search(tableName.c_str(), colName, checkData, res);
             if (res.size() > 0) {
-                printf("[Error] fail in checking primary or unique constraint.\n");
+                printf("[ERROR] fail in checking primary or unique constraint.\n");
                 return false;
             }
         }
@@ -1890,7 +1890,7 @@ bool TableManager::_checkConstraintOnInsert(string tableName, RecordData* record
         }
         indexManager->search(refTableName.c_str(), colName, checkData, res);
         if (res.size() == 0) {
-            printf("[Error] fail to insert/update due to confilct in foreign key constraint.\n");
+            printf("[ERROR] fail to insert/update due to confilct in foreign key constraint.\n");
             return false;
         }
     }
@@ -1938,7 +1938,7 @@ bool TableManager::_checkConstraintOnDelete(string tableName, RecordData* record
         vector<int> res;
         indexManager->search(refTableName.c_str(), colName, checkData, res);
         if (res.size() > 0) {
-            printf("[Error] fail to delete due to conflict in foreign key constraint.\n");
+            printf("[ERROR] fail to delete due to conflict in foreign key constraint.\n");
             return false;
         }
     }

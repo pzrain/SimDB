@@ -331,7 +331,7 @@ int TableHeader::findFreeCol() {
 
 int TableHeader::addCol(TableEntry* tableEntry) {
     if (existCol(tableEntry->colName)) {
-        printf("[Error] Column with same name already exists.\n");
+        printf("[ERROR] Column with same name already exists.\n");
         return -1;
     }
     int8_t head = entryHead;

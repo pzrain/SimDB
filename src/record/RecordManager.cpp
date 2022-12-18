@@ -86,7 +86,7 @@ int RecordManager::removeFile(const char* tableName) {
 
 FileHandler* RecordManager::openFile(const char* tableName) {
     if (findTable(tableName) != nullptr) {
-        printf("[Info] this table has already been opened.\n");
+        printf("[INFO] this table has already been opened.\n");
         return fileHandlers[currentIndex];
     }
     int index = findEmptyIndex();

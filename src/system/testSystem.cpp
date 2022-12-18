@@ -64,6 +64,10 @@ void testConstraint(DatabaseManager* databaseManager) {
     printf("\n");
 }
 
+void testSIUR(DatabaseManager* databaseManager) {
+
+}
+
 int main() {
     printf("RUN TEST\n");
     DatabaseManager* databaseManager = new DatabaseManager;

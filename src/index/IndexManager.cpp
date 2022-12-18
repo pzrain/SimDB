@@ -105,9 +105,20 @@ int IndexManager::showIndex() {
 }
 
 bool IndexManager::hasIndex(const char* tableName, const char* indexName) {
-    char fileName[DB_MAX_NAME_LEN + TAB_MAX_NAME_LEN + TAB_MAX_NAME_LEN + 30];
-    sprintf(fileName, "database/%s/%s_%s.index", databaseName, tableName, indexName);
-    return (access(fileName, 0) != -1);
+    // char fileName[DB_MAX_NAME_LEN + TAB_MAX_NAME_LEN + TAB_MAX_NAME_LEN + 30];
+    // sprintf(fileName, "database/%s/%s_%s.index", databaseName, tableName, indexName);
+    // return (access(fileName, 0) != -1);
+    for (int i = 0; i < DB_MAX_TABLE_NUM; i++) {
+        if (!validTable[i] || strcmp(tableNames[i], tableName) != 0) {
+            continue;
+        }
+        for (int j = 0; j < TAB_MAX_COL_NUM; j++) {
+            if (bPlusTree[i][j] && strcmp(indexNames[i][j], indexName) == 0) {
+                return true;
+            } 
+        }
+    }
+    return false;
 }
 
 int IndexManager::initIndex(std::vector<std::string> indexTableNames, std::vector<std::vector<std::string>> indexColNames, std::vector<std::vector<uint16_t>> indexLens, std::vector<std::vector<uint8_t>> colTypes) {
@@ -148,7 +159,7 @@ void IndexManager::renameIndex(const char* oldTableName, const char* newTableNam
 int IndexManager::createIndex(const char* tableName, const char* indexName, uint16_t indexLen, uint8_t colType) {
     if (hasIndex(tableName, indexName)) {
         printf("[INFO] index %s already created.\n", indexName);
-        return 0;
+        return -1;
     }
     char fileName[DB_MAX_NAME_LEN + TAB_MAX_NAME_LEN + TAB_MAX_NAME_LEN + 30];
     sprintf(fileName, "database/%s/%s_%s.index", databaseName, tableName, indexName);

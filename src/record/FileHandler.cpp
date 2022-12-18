@@ -38,7 +38,7 @@ void FileHandler::init(BufPageManager* bufPageManager_, int fileId_, const char*
     fileId = fileId_;
     strcpy(tableName, tableName_);
     if (loadTableHeader(bufPageManager, fileId, tableHeader) != 0) {
-        printf("[Error] fail to load table header");
+        printf("[ERROR] fail to load table header");
         return;
     }
     if (tableHeader->valid == 0) {
@@ -52,7 +52,7 @@ void FileHandler::init(BufPageManager* bufPageManager_, int fileId_, const char*
         strcpy(tableHeader->tableName, tableName_);
         tableHeader->valid = 1;
         if (writeTableHeader(bufPageManager, fileId, tableHeader) != 0) {
-            printf("[Error] fail to write table header.\n");
+            printf("[ERROR] fail to write table header.\n");
         }
     }
 }
@@ -71,7 +71,7 @@ char* FileHandler::getTableName() {
 
 int FileHandler::operateTable(TB_OP_TYPE opCode, char* colName, TableEntry* tableEntry, int num) {
     if (tableHeader->valid == 0) {
-        printf("[Error] the table has not been initialized yet.\n");
+        printf("[ERROR] the table has not been initialized yet.\n");
         return -1;
     }
     if (opCode == TB_INIT || opCode == TB_ALTER || opCode == TB_ADD) {
@@ -108,7 +108,7 @@ int FileHandler::operateTable(TB_OP_TYPE opCode, char* colName, TableEntry* tabl
             tableHeader->printInfo();
             return 0;
         default:
-            printf("[Error] unknown op code.\n");
+            printf("[ERROR] unknown op code.\n");
             return -1;
     }
     if (res == 0) {
