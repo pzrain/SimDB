@@ -84,11 +84,11 @@ struct TableEntry{
     uint32_t checkKeyNum;
     
     bool primaryKeyConstraint;
-    bool foreignKeyConstraint;
+    uint8_t foreignKeyConstraint;
     // new
     // only be used when foreignKeyConstraint is true 
-    char foreignKeyTableName[TAB_MAX_NAME_LEN];
-    char foreignKeyColName[COL_MAX_NAME_LEN];
+    char foreignKeyTableName[MAX_FOREIGN_KEY_FOR_COL][32];
+    char foreignKeyColName[MAX_FOREIGN_KEY_FOR_COL][32];
 
     uint32_t colLen; // VARCHAR(%d), int(4), float(4)
     char colName[COL_MAX_NAME_LEN];
@@ -107,10 +107,10 @@ struct TableEntry{
     TableEntry();
 
     TableEntry(char* colName_, uint8_t colType_, bool checkConstraint_ = false, bool primaryKeyConstraint_ = false, \
-               bool foreignKeyConstraint_ = false, uint32_t colLen_ = 0, bool hasDefault_ = false, \
+               uint8_t foreignKeyConstraint_ = 0, uint32_t colLen_ = 0, bool hasDefault_ = false, \
                bool notNullConstraint_ = false, bool uniqueConstraint_ = false, bool isNull_ = false);
 
-    bool verifyConstraint(RecordDataNode* data); // TODO
+    bool verifyConstraint(RecordDataNode* data);
     // verify checkConstraint, notNullConstraint, (primaryKeyConstraint, UniqueConstraint) (and foreighKeyConstraint ?)
     // on deserialized data
     // return true if succeed else false

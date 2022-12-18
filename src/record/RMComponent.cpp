@@ -5,7 +5,7 @@
 TableEntry::TableEntry() {}
 
 TableEntry::TableEntry(char* colName_, uint8_t colType_, bool checkConstraint_, bool primaryKeyConstraint_, \
-               bool foreignKeyConstraint_, uint32_t colLen_, bool hasDefault_, \
+               uint8_t foreignKeyConstraint_, uint32_t colLen_, bool hasDefault_, \
                bool notNullConstraint_, bool uniqueConstraint_, bool isNull_) {
     colType = colType_;
     strcpy(colName, colName_);

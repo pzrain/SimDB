@@ -16,6 +16,7 @@
 
 /* System */
 #define MAX_FOREIGN_KEY_NUM 20
+#define MAX_FOREIGN_KEY_FOR_COL 5
 
 typedef enum {
     ORD_TYPE = 0,   // no aggregation operator, like MAX, MIN, SUM, COUNT, AVG
