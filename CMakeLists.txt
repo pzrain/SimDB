@@ -28,16 +28,21 @@ SET(HEADERS
 
 SET(SOURCE
 	${SOURCE}
-	src/main.cpp
+	# src/main.cpp
 )
 
 add_subdirectory(src/record)
 add_subdirectory(src/filesystem)
 add_subdirectory(src/index)
 <<<<<<< HEAD
+<<<<<<< HEAD
 add_subdirectory(src/parser)
 =======
 add_subdirectory(src/system)
+>>>>>>> system-dev
+=======
+add_subdirectory(src/system)
+add_subdirectory(src/parser)
 >>>>>>> system-dev
 
 include_directories(${ANTLR4_RUNTIME_DIRECTORY})

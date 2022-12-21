@@ -41,6 +41,7 @@ int RecordManager::findEmptyIndex() {
 }
 
 FileHandler* RecordManager::findTable(const char* tableName) {
+    currentIndex = -1;
     for (int i = 0; i < DB_MAX_TABLE_NUM; i++) {
         if (fileHandlers[i] != nullptr && strcmp(tableNames[i], tableName) == 0) {
             currentIndex = i;
@@ -65,6 +66,8 @@ inline int initFile(BufPageManager* bufPageManager, const char* filename) {
 }
 
 int RecordManager::createFile(const char* tableName) {
+    findTable(tableName);
+    assert(currentIndex == -1);
     char filename[TAB_MAX_NAME_LEN];
     sprintf(filename, "database/%s/%s.db", databaseName, tableName);
     if (bufPageManager->fileManager->createFile(filename)) {
@@ -74,37 +77,41 @@ int RecordManager::createFile(const char* tableName) {
 }
 
 int RecordManager::removeFile(const char* tableName) {
+    findTable(tableName);
+    assert(currentIndex != -1);
     char filename[TAB_MAX_NAME_LEN];
     sprintf(filename, "database/%s/%s.db", databaseName, tableName);
-    return bufPageManager->fileManager->removeFile(filename);
+    return bufPageManager->fileManager->removeFile(filename) ? 0 : -1;
 }
 
-int RecordManager::openFile(const char* tableName, FileHandler* fileHandler) {
+FileHandler* RecordManager::openFile(const char* tableName) {
     if (findTable(tableName) != nullptr) {
-        printf("[ERROR] this table has already been opened.\n");
-        return -1;
+        printf("[Info] this table has already been opened.\n");
+        return fileHandlers[currentIndex];
     }
     int index = findEmptyIndex();
     if (index < 0) {
         printf("[ERROR] database can accept no more tables.\n");
-        return -1;
+        return nullptr;
     }
     char filename[TAB_MAX_NAME_LEN];
     sprintf(filename, "database/%s/%s.db", databaseName, tableName);
     int fileId;
+    fileHandlers[index] = new FileHandler();
     if (bufPageManager->fileManager->openFile(filename, fileId)) {
-        fileHandler->init(bufPageManager, fileId, tableName);
+        fileHandlers[index]->init(bufPageManager, fileId, tableName);
         strcpy(tableNames[index], tableName);
-        fileHandlers[index] = fileHandler;
-        return 0;
+        return fileHandlers[index];
     }
-    return -1;
+    return nullptr;
 }
 
 int RecordManager::closeFile(FileHandler* fileHandler) {
+    bufPageManager->close();
     if (bufPageManager->fileManager->closeFile(fileHandler->getFileId()) == 0) {
         findTable(fileHandler->getTableName());
         if (currentIndex >= 0) {
+            delete fileHandlers[currentIndex];
             fileHandlers[currentIndex] = nullptr;
         }
         return 0;

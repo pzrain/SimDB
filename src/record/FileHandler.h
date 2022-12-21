@@ -52,22 +52,22 @@ public:
     // the page id and slot id of the inserted record will be stored in recordId
     // at present, no constraints will be checked. (TODO)
 
-    bool removeRecord(RecordId &recordId);
+    bool removeRecord(RecordId &recordId, Record &record);
 
     bool updateRecord(RecordId &recordId, Record &record);
     // parameter recordId specifies the position of the record that needed to be updated
     // parameter record will substitutes the old record
 
-    void getAllRecords(std::vector<Record*>&);
+    // ATTENTION: you should manually delete the pointer to avoid memory leak
+    void getAllRecords(std::vector<Record*>&, std::vector<RecordId*>&);
     // returns all records stores in this file
 
-    bool getAllRecordsAccordingToFields(std::vector<Record*>&, const uint16_t enable = 0);
+    bool getAllRecordsAccordingToFields(std::vector<Record*>&, std::vector<RecordId*>&, const uint16_t enable = 0);
     // get specific fields of all records storing in this file
     // if you want get i-th field, please set the i-th bit of enable (from low to high) to 1
     // return true if succeed
-    // to be implemented
 
-    bool insertAllRecords(const std::vector<Record*>&);
+    bool insertAllRecords(const std::vector<Record*>&, std::vector<RecordId>&);
     // insert records in bulk
 
     int getRecordNum();

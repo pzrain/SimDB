@@ -1,8 +1,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <filesystem>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <cstring>
 #include "DatabaseManager.h"
 
 DatabaseManager::DatabaseManager() {
@@ -10,6 +12,7 @@ DatabaseManager::DatabaseManager() {
     databaseStroeFileId = -1;
     databaseUsedName = "";
     databaseUsed = false;
+    MyBitMap::initConst();
     fileManager = new FileManager();
     bufPageManager = new BufPageManager(fileManager);
     metaData = new DBMeta();
@@ -17,10 +20,22 @@ DatabaseManager::DatabaseManager() {
 }
 
 DatabaseManager::~DatabaseManager() {
+    if (databaseUsed) {
+        assert(databaseStroeFileId > -1);
+        writeMetaData(databaseStroeFileId, metaData);
+        for(int i = 0; i < metaData->tableNum; i++) {
+            tableManager->saveChangeToFile(metaData->tableNames[i]);
+        }
+        databaseUsedName = "";
+        databaseStroeFileId = -1;
+        databaseUsed = false;
+    }
     delete metaData;
-    delete fileManager;
+    if (tableManager != nullptr) {
+        delete tableManager;
+    }
     delete bufPageManager;
-    delete tableManager;
+    delete fileManager;
 }
 
 inline bool DatabaseManager::checkDatabaseName(string name) {
@@ -40,7 +55,7 @@ inline bool DatabaseManager::checkFileExist(string path) {
 
 inline int DatabaseManager::searchTableByName(string name) {
     if(!databaseUsed) {
-        printf("use a database first\n");
+        fprintf(stderr, "use a database first\n");
         return false;
     }
     for(int i = 0; i < metaData->tableNum; i++) {
@@ -52,17 +67,18 @@ inline int DatabaseManager::searchTableByName(string name) {
 
 int DatabaseManager::readMetaData(int fileId, DBMeta* meta) {
     int index;
-    BufType loadData = bufPageManager->getPage(databaseStroeFileId, 0, index);
+    BufType loadData = bufPageManager->getPage(fileId, 0, index);
     memcpy((uint8_t*)meta, (uint8_t*)loadData, sizeof(DBMeta));
     return 0;
 }
 
 int DatabaseManager::writeMetaData(int fileId, DBMeta* meta) {
     int index;
-    BufType storeData = bufPageManager->getPage(databaseStroeFileId, 0, index);
+    BufType storeData;
+    storeData = bufPageManager->getPage(fileId, 0, index);
     memcpy((uint8_t*)storeData, (uint8_t*)meta, sizeof(DBMeta));
     bufPageManager->markDirty(index);
-    bufPageManager->writeBack(index);
+    // bufPageManager->writeBack(index);
     return 0;
 }
 
@@ -79,13 +95,11 @@ int DatabaseManager::createDatabase(string name) {
         // init database meta data
         path = path + ".DBstore";
         if(!checkFileExist(path)) { 
+            int fileId;
             bufPageManager->fileManager->createFile(path.c_str());
-            bufPageManager->fileManager->openFile(path.c_str(), databaseStroeFileId);
-            DBMeta* initMeta = new DBMeta;
-            initMeta->tableNum = 0;
-            initMeta->foreignKeyNum = 0;
-            writeMetaData(databaseStroeFileId, initMeta);
-            databaseStroeFileId = -1;
+            bufPageManager->fileManager->openFile(path.c_str(), fileId);
+            DBMeta* initMeta = new DBMeta();
+            writeMetaData(fileId, initMeta);
         }
         return 0;
     }
@@ -98,6 +112,11 @@ int DatabaseManager::dropDatabase(string name) {
     if(!checkDatabaseName(name))
         return -1;
     
+    if (databaseUsed && name == databaseUsedName) {
+        printf("[Error] can not drop currently using database.\n");
+        return -1;
+    }
+
     string path = BASE_PATH + name + '/';
     if(!checkFileExist(path)) {
         printf("[Error] database does not exist !\n");
@@ -109,9 +128,13 @@ int DatabaseManager::dropDatabase(string name) {
 }
 
 int DatabaseManager::switchDatabase(string name) {
+    if (name == databaseUsedName) {
+        printf("[Info] databse %s is already in use.\n", name.c_str());
+        return 0;
+    }
     if (databaseUsed) {
+        assert(databaseStroeFileId > -1);
         writeMetaData(databaseStroeFileId, metaData);
-        bufPageManager->close();
         for(int i = 0; i < metaData->tableNum; i++) {
             tableManager->saveChangeToFile(metaData->tableNames[i]);
         }
@@ -147,20 +170,50 @@ int DatabaseManager::switchDatabase(string name) {
     }
     bufPageManager->fileManager->openFile(path.c_str(), databaseStroeFileId);
     readMetaData(databaseStroeFileId, metaData);
-
     for(int i = 0; i < metaData->tableNum; i++) {
         tableManager->openTable(metaData->tableNames[i]);
     }
-
+    vector<string> indexTableNames;
+    vector<vector<string>> indexColNames;
+    for (int i = 0; i < metaData->tableNum; i++) {
+        indexTableNames.push_back(metaData->tableNames[i]);
+        indexColNames.push_back(vector<string>());
+        for (int j = 0; j < metaData->indexNum[i]; j++) {
+            indexColNames[i].push_back(metaData->indexNames[i][j]);
+        }
+    }
+    tableManager->initIndex(indexTableNames, indexColNames);
+    printf("Database changed.\n");
     return 0;
 }
 
-int DatabaseManager::listTablesOfDatabase(string name) {
-    printf("============%s=============\n", name.c_str());
+int DatabaseManager::showDatabases() {
+    printf("===== Show Databases =====\n");
+    int cnt = 0;
+    for (const auto & entry : std::filesystem::directory_iterator(BASE_PATH)) {
+        std::string str(entry.path().c_str());
+        printf("%s\n", str.substr(BASE_PATH.length(), str.length() - BASE_PATH.length()).c_str());
+        cnt += 1;
+    }
+    printf("===== %d databases in total =====\n", cnt);
+    return 0;
+}
+
+string DatabaseManager::getDatabaseName() {
+    return databaseUsedName == "" ? "simDB" : databaseUsedName;
+}
+
+int DatabaseManager::listTablesOfDatabase() {
+    if (!databaseUsed) {
+        printf("[Error] use a database first!\n");
+        return -1;
+    }
+    printf("============%s=============\n", databaseUsedName.c_str());
     for(int i = 0; i < metaData->tableNum; i++) {
         printf("table%d: %-64s\n", i, metaData->tableNames[i]);
     }
     printf("=============end================\n");
+    return 0;
 }
 
 int DatabaseManager::createTable(string name, char colName[][COL_MAX_NAME_LEN], TB_COL_TYPE* colType, int* colLen, int colNum) {
@@ -172,20 +225,19 @@ int DatabaseManager::createTable(string name, char colName[][COL_MAX_NAME_LEN], 
     TableEntry* tableEntrys = new TableEntry[colNum];
     for(int i = 0; i < colNum; i++) {
         tableEntrys[i] = TableEntry(colName[i], colType[i]);
-        if(colType[i] == COL_VARCHAR)
-            tableEntrys[i].colLen = colLen[i];
+        tableEntrys[i].colLen = colLen[i];
     }
-
     if(tableManager->creatTable(name, tableEntrys, colNum) != 0) {
-        printf("report error when create table in database manager");
+        printf("report error when create table in database manager\n");
         return -1;
     }
     
     strcpy(metaData->tableNames[metaData->tableNum], name.c_str());
     metaData->colNum[metaData->tableNum] = colNum;
-    metaData->foreignKeyNum = 0;
-    for(int i = 0; i < colNum; i++) {
+    metaData->foreignKeyNum[metaData->tableNum] = 0;
+    for(int i = 0; i < TAB_MAX_COL_NUM; i++) {
         metaData->isPrimaryKey[metaData->tableNum][i] = false;
+        metaData->isUniqueKey[metaData->tableNum][i] = false;
     }
     metaData->tableNum++;
     delete[] tableEntrys;
@@ -208,20 +260,36 @@ int DatabaseManager::dropTable(string name) {
     }
 
     int tableToDrop = searchTableByName(name);
-    if(tableToDrop != -1) {
-        printf("[Error] database is empty !\n");
+    if(tableToDrop == -1) {
+        printf("[Error] no such table %s!\n", name.c_str());
         return -1;
     }
     if(tableManager->dropTable(name) == 0) {
         strcpy(metaData->tableNames[tableToDrop], metaData->tableNames[metaData->tableNum-1]);
         metaData->colNum[tableToDrop] = metaData->colNum[metaData->tableNum-1];
-        // TODO delete foreign key
-        for(int i = 0; i < metaData->colNum[metaData->tableNum-1]; i++) {
+        for(int i = 0; i < TAB_MAX_COL_NUM; i++) { // note: this should be TAB_MAX_COL_NUM
             metaData->isPrimaryKey[tableToDrop][i] = metaData->isPrimaryKey[metaData->tableNum-1][i];
+            metaData->isUniqueKey[tableToDrop][i] = metaData->isUniqueKey[metaData->tableNum-1][i];
+        }
+        for (int i = 0; i < metaData->foreignKeyNum[metaData->tableNum-1]; i++) {
+            int refTableNum = metaData->foreignKeyRefTable[tableToDrop][i];
+            int refColNum = metaData->foreignKeyRefColumn[tableToDrop][i];
+            int refKeyIndex = metaData->foreignToRef[tableToDrop][i];
+            metaData->refKeyColumn[refTableNum][refKeyIndex] = metaData->refKeyColumn[refTableNum][metaData->refKeyNum[refTableNum]-1];
+            metaData->refKeyRefTable[refTableNum][refKeyIndex] = metaData->refKeyRefTable[refTableNum][metaData->refKeyNum[refTableNum]-1];
+            metaData->refKeyRefColumn[refTableNum][refKeyIndex] = metaData->refKeyRefColumn[refTableNum][metaData->refKeyNum[refTableNum]-1];
+            metaData->refKeyNum[refTableNum]--;
+
+            metaData->foreignKeyOnCol[tableToDrop][i] = metaData->foreignKeyOnCol[metaData->tableNum-1][i];
+            strcpy(metaData->foreignKeyNames[tableToDrop][i], metaData->foreignKeyNames[metaData->tableNum-1][i]);
+            metaData->foreignKeyColumn[tableToDrop][i] = metaData->foreignKeyColumn[metaData->tableNum-1][i];
+            metaData->foreignKeyRefTable[tableToDrop][i] = metaData->foreignKeyRefTable[metaData->tableNum-1][i];
+            metaData->foreignKeyRefColumn[tableToDrop][i] = metaData->foreignKeyRefColumn[metaData->tableNum-1][i];
         }
         metaData->tableNum--;
         return 0;
     }
+    return -1;
 }
 
 int DatabaseManager::renameTable(string oldName, string newName) {
@@ -239,12 +307,53 @@ int DatabaseManager::renameTable(string oldName, string newName) {
     return -1;
 }
 
-int DatabaseManager::createIndex(string tableName, string indexName, string colName, uint16_t indexLen = 0) {
-    return tableManager->createIndex(tableName, indexName, colName, indexLen);
+int DatabaseManager::createIndex(string tableName, string colName) {
+    int res = tableManager->createIndex(tableName, colName);
+    if (res > -1) {
+        int tableNum = -1;
+        for(int i = 0; i < metaData->tableNum; i++) {
+            if(strcmp(tableName.c_str(), metaData->tableNames[i]) == 0) {
+                tableNum = i;
+                break;
+            }
+        }
+        strcpy(metaData->indexNames[tableNum][metaData->indexNum[tableNum]], colName.c_str());
+        metaData->mannuallyCreateIndex[tableNum][metaData->indexNum[tableNum]] = true;
+        metaData->indexNum[tableNum]++;
+    }
+    return res;
 }
 
-int DatabaseManager::dropIndex(string tableName, string indexName) {
-    return tableManager->dropIndex(tableName, indexName);
+int DatabaseManager::dropIndex(string tableName, string colName) {
+    int res = tableManager->dropIndex(tableName, colName);
+    if (res > -1) {
+        int tableNum = -1;
+        for(int i = 0; i < metaData->tableNum; i++) {
+            if(strcmp(tableName.c_str(), metaData->tableNames[i]) == 0) {
+                tableNum = i;
+                break;
+            }
+        }
+        int indexNum = -1;
+        for (int i = 0; i < metaData->indexNum[tableNum]; i++) {
+            if (strcmp(metaData->indexNames[tableNum][i], colName.c_str()) == 0) {
+                indexNum = i;
+                break;
+            }
+        }
+        strcpy(metaData->indexNames[tableNum][indexNum], metaData->indexNames[tableNum][metaData->indexNum[tableNum]-1]);
+        metaData->mannuallyCreateIndex[tableNum][indexNum] = metaData->mannuallyCreateIndex[tableNum][metaData->indexNum[tableNum]-1];
+        metaData->indexNum[tableNum]--;
+    }
+    return res;
+}
+
+int DatabaseManager::hasIndex(string tableName, string colName) {
+    return tableManager->hasIndex(tableName, colName);
+}
+
+int DatabaseManager::showIndex() {
+    return tableManager->showIndex();
 }
 
 int DatabaseManager::createPrimaryKey(string tableName, vector<string> colNames, int colNum) {
@@ -256,16 +365,17 @@ int DatabaseManager::createPrimaryKey(string tableName, vector<string> colNames,
         }
     }
     if(tableNum == -1){
-        printf("meta data error when add primary key\n");
+        fprintf(stderr, "meta data error when add primary key\n");
         return -1;
     }
     for(int i = 0; i < colNum; i++) {
         int colIndex = tableManager->createPrimaryKey(tableName, colNames[i]);
         if(colIndex == -1) {
-            printf("add primary key error\n");
+            printf("[Error] error in adding %d:%s primary key\n", i, colNames[i].c_str());
             return -1;
         }
         metaData->isPrimaryKey[tableNum][colIndex] = true;
+        metaData->isUniqueKey[tableNum][colIndex] = false; // make sure the two never co-exist
     }
     return 0;
 }
@@ -279,13 +389,13 @@ int DatabaseManager::dropPrimaryKey(string tableName, vector<string> colNames, i
         }
     }
     if(tableNum == -1){
-        printf("meta data error when drop primary key\n");
+        fprintf(stderr, "meta data error when drop primary key\n");
         return -1;
     }
     for(int i = 0; i < colNum; i++) {
-        int colIndex = tableManager->createPrimaryKey(tableName, colNames[i]);
+        int colIndex = tableManager->dropPrimaryKey(tableName, colNames[i], metaData);
         if(colIndex == -1) {
-            printf("drop primary key error\n");
+            printf("[Error] error in dropping %d primary key error.\n", i);
             return -1;
         }
         metaData->isPrimaryKey[tableNum][colIndex] = false;
@@ -302,26 +412,36 @@ int DatabaseManager::createForeignKey(string tableName, string foreignKeyName, s
             refTableNum = i;
     }
     if(tableNum == -1 || refTableNum == -1){
-        printf("meta data error when add foreign key\n");
+        fprintf(stderr, "meta data error when add foreign key\n");
         return -1;
     }
-    for(int i = 0; i < metaData->foreignKeyNum; i++) {
-        if(strcmp(foreignKeyName.c_str(), metaData->foreignKeyNames[i]) == 0) {
-            printf("[Error] foreign key already exited\n");
+    for(int i = 0; i < metaData->foreignKeyNum[tableNum]; i++) {
+        if(strcmp(foreignKeyName.c_str(), metaData->foreignKeyNames[tableNum][i]) == 0) {
+            printf("[Error] foreign key already exists\n");
             return -1;
         }
     }
-
-    int colIndex = tableManager->createForeignKey(tableName, foreignKeyName, colName, refTableName, refTableCol);
+    int refIndex;
+    int colIndex = tableManager->createForeignKey(tableName, foreignKeyName, colName, refTableName, refTableCol, refIndex);
     if(colIndex == -1) {
-        printf("create foreign key error\n");
+        printf("[Error] error in creating foreign key.\n");
         return -1;
     }
+    metaData->foreignKeyOnCol[tableNum][colIndex]++;
+    metaData->foreignKeyOnCol[refTableNum][refIndex]++;
 
-    strcpy(metaData->foreignKeyNames[metaData->foreignKeyNum], foreignKeyName.c_str());
-    metaData->foreignKeyColumn[metaData->foreignKeyNum] = colIndex;
-    metaData->foreignKeyNum++;
-    
+    strcpy(metaData->foreignKeyNames[tableNum][metaData->foreignKeyNum[tableNum]], foreignKeyName.c_str());
+    metaData->foreignKeyColumn[tableNum][metaData->foreignKeyNum[tableNum]] = colIndex; // colIndex will stay unchanged, so this is valid
+    metaData->foreignKeyRefTable[tableNum][metaData->foreignKeyNum[tableNum]] = refTableNum;
+    metaData->foreignKeyRefColumn[tableNum][metaData->foreignKeyNum[tableNum]] = refIndex;
+    metaData->foreignToRef[tableNum][metaData->foreignKeyNum[tableNum]] = metaData->refKeyNum[refTableNum];
+    metaData->foreignKeyNum[tableNum]++;
+
+    metaData->refKeyColumn[refTableNum][metaData->refKeyNum[refTableNum]] = refIndex;
+    metaData->refKeyRefTable[refTableNum][metaData->refKeyNum[refTableNum]] = tableNum;
+    metaData->refKeyRefColumn[refTableNum][metaData->refKeyNum[refTableNum]] = colIndex;
+    metaData->refKeyNum[refTableNum]++;
+
     return 0;
 }
 
@@ -334,25 +454,104 @@ int DatabaseManager::dropForeignKey(string tableName, string foreignKeyName) {
         }
     }
     if(tableNum == -1){
-        printf("meta data error when drop foreign key\n");
+        // printf("meta data error when drop foreign key\n");
+        printf("[Error] specified table does not exist.\n");
         return -1;
     }
     int foreignKeyIndex = -1;
-    for(int i = 0; i < metaData->foreignKeyNum; i++) {
-        if(strcmp(metaData->foreignKeyNames[i], foreignKeyName.c_str()) == 0) {
+    for(int i = 0; i < metaData->foreignKeyNum[tableNum]; i++) {
+        if(strcmp(metaData->foreignKeyNames[tableNum][i], foreignKeyName.c_str()) == 0) {
             foreignKeyIndex = i;
             break;
         }
     }
     if(foreignKeyIndex == -1) {
-        printf("meta data error when drop foreign key\n");
+        // printf("meta data error when drop foreign key\n");
+        printf("[Error] specified foreign key does not exist.\n");
     }
 
-    int ret = tableManager->dropForeignKey(tableName, metaData->foreignKeyColumn[foreignKeyIndex]);
+    int refTableNum = metaData->foreignKeyRefTable[tableNum][foreignKeyIndex];
+    int refColNum = metaData->foreignKeyRefColumn[tableNum][foreignKeyIndex];
+    int refKeyIndex = metaData->foreignToRef[tableNum][foreignKeyIndex];
+    int ret = tableManager->dropForeignKey(tableName, metaData->foreignKeyColumn[tableNum][foreignKeyIndex], metaData, metaData->tableNames[refTableNum], refColNum);
     if(ret == -1)
         return -1;
-    strcpy(metaData->foreignKeyNames[foreignKeyIndex], metaData->foreignKeyNames[metaData->foreignKeyNum-1]);
-    metaData->foreignKeyColumn[foreignKeyIndex] = metaData->foreignKeyColumn[metaData->foreignKeyNum-1];
-    metaData->foreignKeyNum--;
+    metaData->foreignKeyOnCol[tableNum][metaData->foreignKeyColumn[tableNum][foreignKeyIndex]]--;
+    metaData->foreignKeyOnCol[metaData->foreignKeyRefTable[tableNum][foreignKeyIndex]][metaData->foreignKeyRefColumn[tableNum][foreignKeyIndex]]--;
+
+    metaData->refKeyColumn[refTableNum][refKeyIndex] = metaData->refKeyColumn[refTableNum][metaData->refKeyNum[refTableNum]-1];
+    metaData->refKeyRefTable[refTableNum][refKeyIndex] = metaData->refKeyRefTable[refTableNum][metaData->refKeyNum[refTableNum]-1];
+    metaData->refKeyRefColumn[refTableNum][refKeyIndex] = metaData->refKeyRefColumn[refTableNum][metaData->refKeyNum[refTableNum]-1];
+    metaData->refKeyNum[refTableNum]--;
+
+    strcpy(metaData->foreignKeyNames[tableNum][foreignKeyIndex], metaData->foreignKeyNames[tableNum][metaData->foreignKeyNum[tableNum]-1]);
+    metaData->foreignKeyColumn[tableNum][foreignKeyIndex] = metaData->foreignKeyColumn[tableNum][metaData->foreignKeyNum[tableNum]-1];
+    metaData->foreignKeyRefTable[tableNum][foreignKeyIndex] = metaData->foreignKeyRefTable[tableNum][metaData->foreignKeyNum[tableNum]-1];
+    metaData->foreignKeyRefColumn[tableNum][foreignKeyIndex] = metaData->foreignKeyRefColumn[tableNum][metaData->foreignKeyNum[tableNum]-1];
+    metaData->foreignToRef[tableNum][foreignKeyIndex] = metaData->foreignToRef[tableNum][metaData->foreignKeyNum[tableNum]-1];
+    metaData->foreignKeyNum[tableNum]--;
+
     return 0;
+}
+
+int DatabaseManager::createUniqueKey(string tableName, vector<string> colNames, int colNum) {
+    int tableNum = -1;
+    for(int i = 0; i < metaData->tableNum; i++) {
+        if(strcmp(tableName.c_str(), metaData->tableNames[i]) == 0) {
+            tableNum = i;
+            break;
+        }
+    }
+    if(tableNum == -1){
+        fprintf(stderr, "meta data error when add unique key\n");
+        return -1;
+    }
+    for(int i = 0; i < colNum; i++) {
+        int colIndex = tableManager->createUniqueKey(tableName, colNames[i]);
+        if(colIndex == -1) {
+            printf("[Error] error in adding %d unique key error\n", i);
+            return -1;
+        }
+        metaData->isUniqueKey[tableNum][colIndex] = true;
+    }
+    return 0;
+}
+
+int DatabaseManager::dropUniqueKey(string tableName, vector<string> colNames, int colNum) {
+    int tableNum = -1;
+    for(int i = 0; i < metaData->tableNum; i++) {
+        if(strcmp(tableName.c_str(), metaData->tableNames[i]) == 0) {
+            tableNum = i;
+            break;
+        }
+    }
+    if(tableNum == -1){
+        fprintf(stderr, "meta data error when drop unique key\n");
+        return -1;
+    }
+    for(int i = 0; i < colNum; i++) {
+        int colIndex = tableManager->dropUniqueKey(tableName, colNames[i], metaData);
+        if(colIndex == -1) {
+            printf("[Error] error in dropping %d unique key error.\n", i);
+            return -1;
+        }
+        metaData->isUniqueKey[tableNum][colIndex] = false;
+    }
+    return 0;
+}
+
+int DatabaseManager::selectRecords(DBSelect* dbSelect) {
+    return tableManager->selectRecords(dbSelect);
+}
+
+int DatabaseManager::updateRecords(string tableName, DBUpdate* dbUpdate) {
+    return tableManager->updateRecords(tableName, dbUpdate, metaData);
+}
+
+int DatabaseManager::insertRecords(string tableName, DBInsert* dbInsert) {
+    return tableManager->insertRecords(tableName, dbInsert, metaData);
+}
+
+int DatabaseManager::dropRecords(string tableName, DBDelete* dbDelete) {
+    return tableManager->dropRecords(tableName, dbDelete, metaData);
 }

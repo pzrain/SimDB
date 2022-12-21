@@ -212,7 +212,7 @@ bool FileHandler::insertRecord(RecordId &recordId, Record &record) {
     return true;
 }
 
-bool FileHandler::removeRecord(RecordId &recordId) {
+bool FileHandler::removeRecord(RecordId &recordId, Record &record) {
     int16_t pageId = recordId.getPageId();
     int16_t slotId = recordId.getSlotId();
 
@@ -233,6 +233,8 @@ bool FileHandler::removeRecord(RecordId &recordId) {
     size_t offset = sizeof(PageHeader) + slotId * tableHeader->recordLen;
     uint8_t* recordData = (uint8_t*)(((uint8_t*)data) + offset);
     if (((int16_t*)recordData)[0] == SLOT_DIRTY) {
+        offset = sizeof(int16_t);
+        memcpy(record.data, recordData + offset, tableHeader->recordLen - offset);
         ((int16_t*)recordData)[0] = pageHeader->firstEmptySlot;
         pageHeader->firstEmptySlot = slotId;
     } else {
@@ -286,7 +288,7 @@ bool FileHandler::updateRecord(RecordId &recordId, Record &record) {
     return true;
 }
 
-void FileHandler::getAllRecords(std::vector<Record*>& records) {
+void FileHandler::getAllRecords(std::vector<Record*>& records, std::vector<RecordId*>& recordIds) {
     int cnt = 0;
     for (int pageId = 1; pageId < tableHeader->totalPageNumber; pageId++) {
         int index;
@@ -300,12 +302,13 @@ void FileHandler::getAllRecords(std::vector<Record*>& records) {
                 continue;
             }
             records.push_back(new Record(tableHeader->recordLen - sizeof(int16_t)));
+            recordIds.push_back(new RecordId(pageId, slotId));
             memcpy(records[cnt++]->data, recordData + sizeof(int16_t), tableHeader->recordLen - sizeof(int16_t));
         }
     }
 }
 
-bool FileHandler::getAllRecordsAccordingToFields(std::vector<Record*>& records, const uint16_t enable) {
+bool FileHandler::getAllRecordsAccordingToFields(std::vector<Record*>& records, std::vector<RecordId*>& recordIds, const uint16_t enable) {
     std::vector<int> entryLen, entryIndex;
     int len = sizeof(int16_t) + sizeof(uint16_t), totalLen = sizeof(uint16_t);
     int8_t head = tableHeader->entryHead;
@@ -350,6 +353,7 @@ bool FileHandler::getAllRecordsAccordingToFields(std::vector<Record*>& records, 
                 bitmap |= (((originBitmap & (1 << entryIndex[i])) >> entryIndex[i]) << i);
             }
             records.push_back(new Record(totalLen));
+            recordIds.push_back(new RecordId(pageId, slotId));
             memcpy(records[cnt]->data, &bitmap, sizeof(uint16_t)); // write bitmap first
             size_t offsetRecord = sizeof(uint16_t), offsetRecordData = 0;
             siz = entryLen.size();
@@ -365,7 +369,8 @@ bool FileHandler::getAllRecordsAccordingToFields(std::vector<Record*>& records, 
     return true;
 }
 
-bool FileHandler::insertAllRecords(const std::vector<Record*>& records) {
+bool FileHandler::insertAllRecords(const std::vector<Record*>& records, std::vector<RecordId>& recordIds) {
+    recordIds.clear();
     for (Record* record : records) {
         if (!tableHeader->fillDefault(*record)) {
             printf("[ERROR] fail to fill default value to record.\n");
@@ -415,6 +420,7 @@ bool FileHandler::insertAllRecords(const std::vector<Record*>& records) {
             uint8_t* recordData = (uint8_t*)(((uint8_t*)data) + offset);
             offset = sizeof(int16_t);
             memcpy(recordData + offset, records[done++]->data, tableHeader->recordLen - sizeof(int16_t));
+            recordIds.push_back(RecordId(pageId, slotId));
             pageHeader->firstEmptySlot = ((int16_t*)recordData)[0];
             ((int16_t*)recordData)[0] = SLOT_DIRTY;
             if (slotId > pageHeader->maximumSlot) {

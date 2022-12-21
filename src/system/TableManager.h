@@ -16,6 +16,7 @@
 
 #include <string>
 #include <vector>
+#include "DBComponent.h"
 #include "../record/RecordManager.h"
 #include "../index/IndexManager.h"
 #include "../filesystem/bufmanager/BufPageManager.h"
@@ -29,8 +30,25 @@ private:
     IndexManager* indexManager;
     FileHandler* fileHandler;
     int tableNum;
+    const static int MAX_SELECT_TABLE = 2;
+
+    int checkColExist(TableHeader* tableHeader, const char* colName);
+
+    int _checkFormat(FileHandler* fileHandlers[], TableHeader* tableHeaders[], vector<string> &selectTables, vector<DBExpItem*> &expressions);
+
+    int _selectRecords(DBSelect* dbSelect, vector<RecordData>& resRecords, vector<string>& entryNames);
+
+    int _iterateWhere(vector<string> selectTables, vector<DBExpression> expressions, vector<RecordId*>& recordIds);
+
+    bool _checkConstraintOnInsert(string tableName, RecordData* recordData, DBMeta* dbMeta);
+
+    bool _checkConstraintOnDelete(string tableName, RecordData* recordData, DBMeta* dbMeta);
+
+    int _createAndAddIndex(string tableName, string colName, uint16_t indexLen, uint8_t colType, int index);
+
 public:
     TableManager(string databaseName_, BufPageManager* bufPageManager_);
+    
     ~TableManager();
 
     inline bool checkTableName(string name);
@@ -57,9 +75,15 @@ public:
 
     int saveChangeToFile(const char* tableName);
 
-    int createIndex(string tableName, string indexName, string colName, uint16_t indexLen_);
+    void initIndex(vector<string> tableNames, vector<vector<string>> colNames);
 
-    int dropIndex(string tableName, string indexName);
+    int createIndex(string tableName, string colName);
+
+    int dropIndex(string tableName, string colName);
+
+    bool hasIndex(string tableName, string colName);
+
+    int showIndex();
 
     /**
      * @brief add only one primary key once and also drop one once, the loop is in DatabaseManager to add more then one.
@@ -67,20 +91,39 @@ public:
     */
     int createPrimaryKey(string tableName, string colName);
 
-    int dropPrimaryKey(string tableName, string colName);
+    int dropPrimaryKey(string tableName, string colName, DBMeta* dbMeta);
 
     /**
      * @brief add one foreign key, it is stored in the TableEntry. The return value will be store in database meta data.
      * @return column index if successfully find the correct column else -1
     */
-    int createForeignKey(string tableName, string foreignKeyName, string colName, string refTableName, string refTableCol);
+    int createForeignKey(string tableName, string foreignKeyName, string colName, string refTableName, string refTableCol, int& refIndex);
     
     /**
      * @brief set the foreignKeyConstraint of the column's entry to false.
      * @param colIndex column index of the entrys array, quickly find the correct entry
      * @return 0 if success, -1 if fail
     */
-    int dropForeignKey(string tableName, uint8_t colIndex);
+    int dropForeignKey(string tableName, uint8_t colIndex, DBMeta* dbMeta, string refTableName, int refColIndex);
+
+    /**
+     * @brief refer to createPrimaryKey
+     * 
+     * @param tableName 
+     * @param colName 
+     * @return int 
+     */
+    int createUniqueKey(string tableName, string colName);
+
+    int dropUniqueKey(string tableName, string colName, DBMeta* dbMeta);
+
+    int selectRecords(DBSelect* dbSelect);
+
+    int updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* dbMeta);
+
+    int insertRecords(string tableName, DBInsert* dbInsert, DBMeta* dbMeta);
+
+    int dropRecords(string tableName, DBDelete* dbDelete, DBMeta* dbMeta);
 };
 
 #endif
