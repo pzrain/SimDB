@@ -76,6 +76,8 @@ public:
 
     TableEntryDesc getTableEntryDesc();
 
+    TableHeader* getTableHeader();
+
 };
 
 

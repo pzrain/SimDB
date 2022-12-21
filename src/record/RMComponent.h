@@ -79,8 +79,13 @@ struct TableEntry{
     
     bool primaryKeyConstraint;
     bool foreignKeyConstraint;
+    // new
+    // only be used when foreignKeyConstraint is true 
+    char foreignKeyTableName[TAB_MAX_NAME_LEN];
+    char foreignKeyColName[COL_MAX_NAME_LEN];
+
     uint32_t colLen; // VARCHAR(%d), int(4), float(4)
-    char colName[TAB_MAX_NAME_LEN];
+    char colName[COL_MAX_NAME_LEN];
     bool hasDefault;
     bool notNullConstraint;
     bool uniqueConstraint;

@@ -438,3 +438,7 @@ size_t FileHandler::getRecordLen() {
 TableEntryDesc FileHandler::getTableEntryDesc() {
     return tableHeader->getTableEntryDesc();
 }
+
+TableHeader* FileHandler::getTableHeader() {
+    return tableHeader;
+}

@@ -34,7 +34,11 @@ SET(SOURCE
 add_subdirectory(src/record)
 add_subdirectory(src/filesystem)
 add_subdirectory(src/index)
+<<<<<<< HEAD
 add_subdirectory(src/parser)
+=======
+add_subdirectory(src/system)
+>>>>>>> system-dev
 
 include_directories(${ANTLR4_RUNTIME_DIRECTORY})
 add_executable(${CMAKE_PROJECT_NAME} ${SOURCE} ${HEADERS})

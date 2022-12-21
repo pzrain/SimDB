@@ -15,7 +15,7 @@ private:
     int findEmptyIndex();
 
 public:
-    RecordManager(BufPageManager*, char* databaseName_);
+    RecordManager(BufPageManager*, const char* databaseName_);
 
     ~RecordManager();
 

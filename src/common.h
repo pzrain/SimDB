@@ -9,12 +9,14 @@
 #define DB_MAX_NAME_LEN 32
 
 /* Table Info */
+#define COL_MAX_NAME_LEN 64
 #define TAB_MAX_COL_NUM 10
 #define TAB_MAX_NAME_LEN 64
 #define TAB_MAX_LEN 128
 
 /* Parser */
 #define MAX_INPUT_SIZE 150
+#define MAX_FOREIGN_KEY_NUM 20
 
 typedef enum {
     COL_NULL = 0,
