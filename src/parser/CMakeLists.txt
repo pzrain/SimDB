@@ -59,7 +59,7 @@ FILE(GLOB ANTLR_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/antlr4/*.h")
 set(SOURCE
     ${SOURCE}
     ${ANTLR_SOURCE}
-    # ${CMAKE_CURRENT_SOURCE_DIR}/testParser.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/testParser.cpp
     PARENT_SCOPE
 )
 

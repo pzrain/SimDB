@@ -103,31 +103,33 @@ int TableManager::listTableInfo(string name) {
     if(fileHandler == nullptr)
         return -1;
     TableHeader* tableHeader = fileHandler->getTableHeader();
-    printf("====================begin %s====================\n", name.c_str());
+    printf("-------------------------%s-----------------------------\n", name.c_str());
+    printf("|");
     for(int i = 0; i < tableHeader->colNum; i++) {
-        printf("%s|", tableHeader->entrys[i].colName);
+        printf("%-20s|", tableHeader->entrys[i].colName);
     }
-    printf("\n===============================================\n");
+    printf("\n----------------------------------------------------------------\n");
+    printf("|");
     for(int i = 0; i < tableHeader->colNum; i++) {
         switch (tableHeader->entrys[i].colType)
         {
         case 0:
-            printf("NULL|");
+            printf("%-20s|", "NULL");
             break;
         case 1:
-            printf("INT|");
+            printf("%-20s|", "INT");
             break;
         case 2:
-            printf("VARCHAR(%d)|", tableHeader->entrys[i].colLen);
+            printf("VARCHAR(%d)%-10s|", tableHeader->entrys[i].colLen, "" );
             break;
         case 3:
-            printf("FLOAT|");
+            printf("%-20s|", "FLOAT");
             break;
         default:
             break;
         }
     }
-    printf("\n=====================end======================\n");
+    printf("\n----------------------------------------------------------------\n");
     return 0;
 }
 

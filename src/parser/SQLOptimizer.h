@@ -4,6 +4,7 @@
 #include "../common.h"
 #include <vector>
 #include <stdio.h>
+#include "../system/DatabaseManager.h"
 
 
 /* 

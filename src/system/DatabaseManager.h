@@ -85,7 +85,7 @@ public:
 
     /**
      * @brief only print all columns' name and data type. 
-     * SHOW TABLE <table name> (maybe DESC <table name> ?)
+     * DESC TABLE <table name>
     */
     int listTableInfo(string name);
 

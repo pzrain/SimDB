@@ -233,6 +233,7 @@ int DatabaseManager::createTable(string name, char colName[][COL_MAX_NAME_LEN], 
     }
     
     strcpy(metaData->tableNames[metaData->tableNum], name.c_str());
+    // printf("create table %s\n", name.c_str());
     metaData->colNum[metaData->tableNum] = colNum;
     metaData->foreignKeyNum[metaData->tableNum] = 0;
     for(int i = 0; i < TAB_MAX_COL_NUM; i++) {
@@ -353,6 +354,10 @@ int DatabaseManager::hasIndex(string tableName, string colName) {
 }
 
 int DatabaseManager::showIndex() {
+    if (!databaseUsed) {
+        printf("[Error] use a database first!\n");
+        return -1;
+    }
     return tableManager->showIndex();
 }
 
