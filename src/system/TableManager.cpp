@@ -4,6 +4,7 @@
 #include <regex>
 #include <algorithm>
 #include <unistd.h>
+#include <cstring>
 
 TableManager::TableManager(string databaseName_,  BufPageManager* bufPageManager_) {
     databaseName = databaseName_;
@@ -315,7 +316,7 @@ int TableManager::createPrimaryKey(string tableName, string colName) {
     }
     if (indexManager->hasIndex(tableName.c_str(), colName.c_str())) {
         printf("[INFO] the index has already been created.\n");
-        return -1;
+        return index;
     }
     // add pre-existing records to the newly-added index
     // however when primary key is enabled as the table is created
@@ -528,7 +529,7 @@ int TableManager::createUniqueKey(string tableName, string colName) {
         assert(index >= 0);
         if (tableHeader->entrys[index].uniqueConstraint == true) {
             printf("[INFO] the unique constraint of %s has already been created.\n", colName.c_str());
-            return -1;
+            return index;
         } /* else if (tableHeader->entrys[index].primaryKeyConstraint == true) {
             printf("[ERROR] can not create unique constraint on primary key.\n");
             return -1;
@@ -1455,21 +1456,25 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert, DBMeta* db
         printf("[ERROR] table dose not exist!\n");
         return -1;
     }
-    printf("%s\n", tableName.c_str());
     FileHandler* insertFileHandler = recordManager->findTable(tableName.c_str());
-    printf("%d\n", insertFileHandler != nullptr);
+    TableHeader* tableHeader = insertFileHandler->getTableHeader();
+    TableEntryDesc tableEntryDesc = tableHeader->getTableEntryDesc();
     int valueSize = dbInsert->valueLists[0].size();
     vector<Record*> records;
     vector<vector<void*>> indexData;
     indexData.resize(valueSize);
-    records.resize(dbInsert->valueLists.size());
+    // records.resize(dbInsert->valueLists.size());
     for (int i = 0; i < dbInsert->valueLists.size(); i++) {
-        printf("%d\n", i);
+        records.push_back(new Record(insertFileHandler->getRecordLen()));
+    }
+    for (int i = 0; i < dbInsert->valueLists.size(); i++) {
         RecordData recordData(valueSize);
         RecordDataNode* recordDataNode = recordData.head;
         for (int j = 0; j < valueSize; j++) {
-            printf("nullptr ? %d\n", recordDataNode != nullptr);
-            printf("colType = %d\n", dbInsert->valueListsType[i][j]);
+            if (dbInsert->valueListsType[i][j] != tableEntryDesc.getCol(j)->colType) {
+                printf("[Error] column type done't match. Types are %d and %d\n", dbInsert->valueListsType[i][j], tableEntryDesc.getCol(j)->colType);
+                return -1;
+            }
             switch (dbInsert->valueListsType[i][j]) {
                 case DB_LIST_INT:
                     recordDataNode->len = 4;
@@ -1486,7 +1491,7 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert, DBMeta* db
                     indexData[j].push_back((float*)dbInsert->valueLists[i][j]);
                     break;
                 case DB_LIST_CHAR:
-                    recordDataNode->len = strlen((char*)dbInsert->valueLists[i][j]);
+                    recordDataNode->len = dbInsert->valueListsLen[i][j];
                     recordDataNode->nodeType = COL_VARCHAR;
                     recordDataNode->content.charContent = new char[recordDataNode->len];
                     strcpy(recordDataNode->content.charContent, (char*)dbInsert->valueLists[i][j]);
@@ -1502,31 +1507,59 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert, DBMeta* db
             }
             recordDataNode = recordDataNode->next;
         }
-        if (!_checkConstraintOnInsert(tableName, &recordData, dbMeta)) {
-            return -1;
-        }
         recordData.serialize(*(records[i]));
     }
+
+    char colName[64];
     vector<RecordId> recordIds;
-    vector<int> vals;
-    vector<int> pageIds, slotIds;
+    vector<bool> hasIndexs;
+    bool errorFlag = false;
+    int insertedIndex = -1;
     if (insertFileHandler->insertAllRecords(records, recordIds)) { // succeed
         // insert indexes
-        for (RecordId recordId : recordIds) {
-            pageIds.push_back(recordId.getPageId());
-            slotIds.push_back(recordId.getSlotId());
-        }
-        char colName[64];
-        TableHeader* tableHeader = insertFileHandler->getTableHeader();
         for (int i = 0; i < tableHeader->colNum; i++) {
             tableHeader->getCol(i, colName);
-            if (indexManager->hasIndex(tableName.c_str(), colName)) {
-                vals.clear();
-                indexManager->transform(tableName.c_str(), colName, vals, pageIds, slotIds);
-                indexManager->insert(tableName.c_str(), colName, indexData[i], vals);
+            hasIndexs.push_back(indexManager->hasIndex(tableName.c_str(), colName));
+        }
+
+        for (int k = 0; k < recordIds.size(); k++) {
+            RecordData insertRecordData;
+            records[k]->deserialize(insertRecordData, tableEntryDesc);
+            if (!_checkConstraintOnInsert(tableName, &insertRecordData, dbMeta)) {
+                insertedIndex = k;
+                errorFlag = true;
+                break;
+            }
+            for (int i = 0; i < tableHeader->colNum; i++) {
+                tableHeader->getCol(i, colName);
+                if (hasIndexs[i]) {
+                    int val;
+                    indexManager->transform(tableName.c_str(), colName, val, recordIds[k].getPageId(), recordIds[k].getSlotId());
+                    indexManager->insert(tableName.c_str(), colName, indexData[i][k], val);
+                }
             }
         }
-        return dbInsert->valueLists.size();
+        if (!errorFlag) {
+            return dbInsert->valueLists.size();
+        }
+    }
+    if (errorFlag) {  // restore all inserted data and indexes
+        Record tempRecord(insertFileHandler->getRecordLen());
+        for (int i = 0; i < recordIds.size(); i++) {
+            insertFileHandler->removeRecord(recordIds[i], tempRecord);
+        }
+        for (int k = 0; k < insertedIndex; k++) {
+            RecordData insertRecordData;
+            records[k]->deserialize(insertRecordData, tableEntryDesc);
+            for (int i = 0; i < tableHeader->colNum; i++) {
+                tableHeader->getCol(i, colName);
+                if (hasIndexs[i]) {
+                    int val = -1;
+                    indexManager->transform(tableName.c_str(), colName, val, recordIds[k].getPageId(), recordIds[k].getSlotId());
+                    indexManager->remove(tableName.c_str(), colName, indexData[i][k], val);
+                }
+            }
+        }
     }
     return -1; // failure. Note: when fail, no record will be inserted
 }
@@ -1847,7 +1880,7 @@ bool TableManager::_checkConstraintOnInsert(string tableName, RecordData* record
     int tableNum = -1;
     for (int i = 0; i < dbMeta->tableNum; i++) {
         if (!strcmp(tableName.c_str(), dbMeta->tableNames[i])) {
-            tableName = i;
+            tableNum = i;
             break;
         }
     }
@@ -1921,7 +1954,7 @@ bool TableManager::_checkConstraintOnDelete(string tableName, RecordData* record
     int tableNum = -1;
     for (int i = 0; i < dbMeta->tableNum; i++) {
         if (!strcmp(tableName.c_str(), dbMeta->tableNames[i])) {
-            tableName = i;
+            tableNum = i;
             break;
         }
     }

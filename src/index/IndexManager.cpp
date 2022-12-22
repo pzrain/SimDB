@@ -279,6 +279,7 @@ void IndexManager::transform(const char* tableName, const char* indexName, int& 
 
 void IndexManager::transform(const char* tableName, const char* indexName, std::vector<int>& vals, std::vector<int> pageIds, std::vector<int> slotIds) {
     BPlusTree* cur = findIndex(tableName, indexName);
+    vals.resize(pageIds.size());
     for (int i = 0; i < vals.size(); i++) {
         cur->transform(vals[i], pageIds[i], slotIds[i]);
     }

@@ -375,7 +375,7 @@ int DatabaseManager::createPrimaryKey(string tableName, vector<string> colNames,
             return -1;
         }
         metaData->isPrimaryKey[tableNum][colIndex] = true;
-        metaData->isUniqueKey[tableNum][colIndex] = false; // make sure the two never co-exist
+        // metaData->isUniqueKey[tableNum][colIndex] = false; // make sure the two never co-exist
     }
     return 0;
 }
