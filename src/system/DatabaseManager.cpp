@@ -297,6 +297,12 @@ int DatabaseManager::renameTable(string oldName, string newName) {
         printf("[ERROR] report error when rename a table\n");
         return -1;
     }
+    for (int i = 0; i < metaData->tableNum; i++) {
+        if (strcmp(metaData->tableNames[i], newName.c_str()) == 0) {
+            printf("[ERROR] a table named %s already exists.\n", newName.c_str());
+            return -1;
+        }
+    }
     for(int i = 0; i < metaData->tableNum; i++) {
         if(strcmp(metaData->tableNames[i], oldName.c_str()) == 0){
             strcpy(metaData->tableNames[i], newName.c_str());

@@ -77,7 +77,6 @@ struct DBExpression{
     DB_EXP_TYPE lType, rType;
     DB_EXP_OP_TYPE op;
     std::vector<DB_LIST_TYPE> valueListType;
-    std::vector<int> valueListLen;
 
     DBExpression() {
         lVal = nullptr;
@@ -111,7 +110,8 @@ struct DBUpdate {
 struct DBInsert {
     std::vector<std::vector<void*>> valueLists;
     std::vector<std::vector<DB_LIST_TYPE>> valueListsType;
-    std::vector<std::vector<int>> valueListsLen;
+    std::vector<std::vector<int>> valueListsLen;  // the length of each item in the list. 
+                                                 // This is mainly for char* type data
     // list of value list
     // similar to valueListType in DBExpression
     // example 2 below shows some details

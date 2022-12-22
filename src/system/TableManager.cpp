@@ -611,7 +611,7 @@ int TableManager::_checkFormat(FileHandler* fileHandlers[], TableHeader* tableHe
         } else {
             int hitTable = 0;
             for (int j = 0; j < tableSize; j++) {
-                if (checkColExist(tableHeaders[j], waitChecked[i]->expCol.c_str())) {
+                if (checkColExist(tableHeaders[j], waitChecked[i]->expCol.c_str()) >= 0) {
                     hitTable++;
                     waitChecked[i]->expTable = selectTables[j];
                 }
@@ -695,7 +695,6 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
     } else {
         assert(false);
     }
-
     for (int i = 0; i < expressions.size(); i++) {
         bool preFlag = false; // flag indicating the previous item has been successfully selected
         std::vector<RecordId*> preRes;
@@ -791,7 +790,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     }
                     if (flag) {
                         res[cur].push_back(curRecordId);
-                        if (tableNum > 0) {
+                        if (tableNum > 1) {
                             res[cur].push_back(res[cur ^ 1][j ^ 1]);
                         }
                     }
@@ -925,7 +924,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                 }
                 if (equalAsPre && preFlag) {
                     res[cur].push_back(curRecordId);
-                    if (tableNum > 0) {
+                    if (tableNum > 1) {
                         res[cur].push_back(res[cur ^ 1][j ^ 1]);
                     }
                     continue;
@@ -939,7 +938,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     void* rData = transformType(tempRecordData[k].head);
                     if (compare->equ(searchData, rData)) {
                         res[cur].push_back(curRecordId);
-                        if (tableNum > 0) {
+                        if (tableNum > 1) {
                             res[cur].push_back(res[cur ^ 1][j ^ 1]);
                         }
                         preFlag = true;
@@ -949,7 +948,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
             } else if (expressions[i].rType == DB_LIST) {
                 if (equalAsPre && preFlag) {
                     res[cur].push_back(curRecordId);
-                    if (tableNum > 0) {
+                    if (tableNum > 1) {
                         res[cur].push_back(res[cur ^ 1][j ^ 1]);
                     }
                     continue;
@@ -960,7 +959,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     if (expressions[i].valueListType[k] == (DB_LIST_TYPE)curRecordDataNode->nodeType) {
                         if (compare->equ((*valueList)[k], searchData)) {
                             res[cur].push_back(curRecordId);
-                            if (tableNum > 0) {
+                            if (tableNum > 1) {
                                 res[cur].push_back(res[cur ^ 1][j ^ 1]);
                             }
                             preFlag = true;
@@ -975,7 +974,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                 }
                 if (curRecordDataNode->nodeType == COL_NULL) {
                     res[cur].push_back(curRecordId);
-                    if (tableNum > 0) {
+                    if (tableNum > 1) {
                         res[cur].push_back(res[cur ^ 1][j ^ 1]);
                     }
                 }
@@ -986,7 +985,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                 }
                 if (equalAsPre && preFlag) {
                     res[cur].push_back(curRecordId);
-                    if (tableNum > 0) {
+                    if (tableNum > 1) {
                         res[cur].push_back(res[cur ^ 1][j ^ 1]);
                     }
                     continue;
@@ -1045,7 +1044,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                 }
                 if (flag) {
                     res[cur].push_back(curRecordId);
-                    if (tableNum > 0) {
+                    if (tableNum > 1) {
                         res[cur].push_back(res[cur ^ 1][j ^ 1]);
                     }
                     preFlag = flag;
@@ -1054,7 +1053,10 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
             preRecordDataNode = curRecordDataNode;
         }
     }
-    resRecordIds = res[cur];
+    for (int i = 0; i < res[cur].size(); i++) {
+        RecordId* resRecordId = new RecordId(res[cur][i]->getPageId(), res[cur][i]->getSlotId());
+        resRecordIds.push_back(resRecordId);
+    }
     for (int i = 0; i < MAX_SELECT_TABLE; i++) {
         for (int j = 0; j < records[i].size(); j++) {
             delete records[i][j];
@@ -1402,6 +1404,9 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resReco
         }
         resCnt = endNum - startNum;
     }
+    for (int i = 0; i < resRecordIds.size(); i++) {
+        delete resRecordIds[i];
+    }
     return resCnt;
 }
 
@@ -1512,14 +1517,14 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert, DBMeta* db
 
     char colName[64];
     vector<RecordId> recordIds;
-    vector<bool> hasIndexs;
+    vector<bool> colHasIndex;
     bool errorFlag = false;
     int insertedIndex = -1;
     if (insertFileHandler->insertAllRecords(records, recordIds)) { // succeed
         // insert indexes
         for (int i = 0; i < tableHeader->colNum; i++) {
             tableHeader->getCol(i, colName);
-            hasIndexs.push_back(indexManager->hasIndex(tableName.c_str(), colName));
+            colHasIndex.push_back(indexManager->hasIndex(tableName.c_str(), colName));
         }
 
         for (int k = 0; k < recordIds.size(); k++) {
@@ -1532,7 +1537,7 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert, DBMeta* db
             }
             for (int i = 0; i < tableHeader->colNum; i++) {
                 tableHeader->getCol(i, colName);
-                if (hasIndexs[i]) {
+                if (colHasIndex[i]) {
                     int val;
                     indexManager->transform(tableName.c_str(), colName, val, recordIds[k].getPageId(), recordIds[k].getSlotId());
                     indexManager->insert(tableName.c_str(), colName, indexData[i][k], val);
@@ -1553,7 +1558,7 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert, DBMeta* db
             records[k]->deserialize(insertRecordData, tableEntryDesc);
             for (int i = 0; i < tableHeader->colNum; i++) {
                 tableHeader->getCol(i, colName);
-                if (hasIndexs[i]) {
+                if (colHasIndex[i]) {
                     int val = -1;
                     indexManager->transform(tableName.c_str(), colName, val, recordIds[k].getPageId(), recordIds[k].getSlotId());
                     indexManager->remove(tableName.c_str(), colName, indexData[i][k], val);
@@ -1589,7 +1594,6 @@ int TableManager::dropRecords(string tableName, DBDelete* dbDelete, DBMeta* dbMe
     if (_checkFormat(&deleteFileHandler, &tableHeader, selectTables, waitChecked) == -1) {
         return -1;
     }
-
     if (_iterateWhere(selectTables, dbDelete->expression, recordIds) == -1) {
         return -1;
     }
@@ -1607,15 +1611,22 @@ int TableManager::dropRecords(string tableName, DBDelete* dbDelete, DBMeta* dbMe
 
     vector<vector<void*>> indexDatas;
     indexDatas.resize(tableHeader->colNum);
+    bool errorFlag = false;
 
     for (int i = 0; i < recordIds.size(); i++) {
-        removedRecords.push_back(new Record(deleteFileHandler->getRecordLen()));
-        if (!deleteFileHandler->removeRecord(*recordIds[i], *removedRecords[i])) {
+        Record* removedRecord = new Record(deleteFileHandler->getRecordLen());
+        deleteFileHandler->getRecord(*recordIds[i], *removedRecord);
+        RecordData recordData;
+        removedRecord->deserialize(recordData, tableEntryDesc);
+        if (!_checkConstraintOnDelete(tableName, &recordData, dbMeta)) {
+            errorFlag = true;
             break;
         }
-        RecordData recordData;
-        removedRecords[i]->deserialize(recordData, tableEntryDesc);
-        if (_checkConstraintOnDelete(tableName, &recordData, dbMeta)) {
+        removedRecords.push_back(removedRecord);
+        if (!deleteFileHandler->removeRecord(*recordIds[i], *removedRecords[i])) {
+            delete removedRecords[removedRecords.size() - 1];
+            removedRecords.pop_back();
+            errorFlag = true;
             break;
         }
         RecordDataNode* recordDataNode = recordData.head;
@@ -1649,10 +1660,9 @@ int TableManager::dropRecords(string tableName, DBDelete* dbDelete, DBMeta* dbMe
             recordDataNode = recordDataNode->next;
         }
     }
-    bool errorFlag = false;
-    if (removedRecords.size() < recordIds.size()) { // encouter error when removing records
-        errorFlag = true;
+    if (errorFlag) { // encouter error when removing records
         vector<RecordId> recordIds;
+        recordIds.resize(removedRecords.size());
         deleteFileHandler->insertAllRecords(removedRecords, recordIds); // memcpy method, so Record newed can be safely deleted
         // note: although the records are inserted back, its position may not be the same as before
         
@@ -1672,6 +1682,9 @@ int TableManager::dropRecords(string tableName, DBDelete* dbDelete, DBMeta* dbMe
     }
     for (int i = 0; i < removedRecords.size(); i++) {
         delete removedRecords[i];
+    }
+    for (int i = 0; i < recordIds.size(); i++) {
+        delete recordIds[i];
     }
     for (int i = 0; i < tableHeader->colNum; i++) {
         for (int j = 0; j < indexDatas[i].size(); j++) {
@@ -1861,6 +1874,9 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
     for (int i = 0; i < rawRecords.size(); i++) {
         delete rawRecords[i];
     }
+    for (int i = 0; i < recordIds.size(); i++) {
+        delete recordIds[i];
+    }
 
     for (int i = 0; i < tableHeader->colNum; i++) {
         for (int j = 0; j < updatedIndexDatas.size(); j++) {
@@ -1964,14 +1980,15 @@ bool TableManager::_checkConstraintOnDelete(string tableName, RecordData* record
 
     FileHandler* checkFileHandler = recordManager->findTable(tableName.c_str());
     TableHeader* tableHeader = checkFileHandler->getTableHeader();
-    char colName[64];
+    char refColName[64], colName[64];
     for (int i = 0; i < dbMeta->refKeyNum[tableNum]; i++) {
         int col = dbMeta->refKeyColumn[tableNum][i];
         int refTable = dbMeta->refKeyRefTable[tableNum][i];
         int refCol = dbMeta->refKeyRefColumn[tableNum][i];
         string refTableName = dbMeta->tableNames[refTable];
         FileHandler* foreignFileHandler = recordManager->findTable(refTableName.c_str());
-        foreignFileHandler->getTableHeader()->getCol(refCol, colName);
+        foreignFileHandler->getTableHeader()->getCol(refCol, refColName);
+        tableHeader->getCol(col, colName);
 
         RecordDataNode* recordDataNode = recordData->getData(col);
         void* checkData = nullptr;
@@ -1981,18 +1998,26 @@ bool TableManager::_checkConstraintOnDelete(string tableName, RecordData* record
             case COL_VARCHAR: checkData = recordDataNode->content.charContent; break;
             default: break;
         }
-        if (!indexManager->hasIndex(refTableName.c_str(), colName)) {
+        if (!indexManager->hasIndex(refTableName.c_str(), refColName)) {
             fprintf(stderr, "no index on foreign key when delete.\n");
             assert(false);
         }
         /* 
             should foreign key be unique?
+            if not, then we should first check if there are duplicated values of the deleted column
          */
+        if (!indexManager->hasIndex(tableName.c_str(), colName)) {
+            fprintf(stderr, "no index on local key when delete.\n");
+            assert(false);
+        }
         vector<int> res;
-        indexManager->search(refTableName.c_str(), colName, checkData, res);
-        if (res.size() > 0) {
-            printf("[ERROR] fail to delete due to conflict in foreign key constraint.\n");
-            return false;
+        indexManager->search(tableName.c_str(), colName, checkData, res);
+        if (res.size() <= 1) {
+            indexManager->search(refTableName.c_str(), refColName, checkData, res);
+            if (res.size() > 0) {
+                printf("[ERROR] fail to delete due to conflict in foreign key constraint.\n");
+                return false;
+            }
         }
     }
     return true;
