@@ -16,7 +16,8 @@ int main() {
     std::string parseString3 = "CREATE DATABASE mysql; \
                                 USE mysql; \
                                 CREATE TABLE test_table(test_int INT, test_float FLOAT, test_char VARCHAR(8)); \
-                                DESC test_table;";
+                                DESC test_table;\
+                                INSERT INTO test_table VALUES (1, 3.3, 'abc');"; // cause segmentation fault
 
 
     std::string msg = "Fail to parse!";
