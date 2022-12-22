@@ -126,6 +126,36 @@ void testDrop(DatabaseManager* databaseManager) {
     delete dbDelete;
 }
 
+void testUpdate(DatabaseManager* databaseManager) {
+    printf("=====TEST UPDATE=====\n");
+    vector<DBExpression> expItem, expressions;
+    DBExpression itemExp;
+    DBExpItem item("", "colName_3");
+    itemExp.lVal = &item;
+    itemExp.lType = DB_ITEM;
+    int rVal = 129;
+    itemExp.rVal = &rVal;
+    itemExp.rType = DB_INT;
+    itemExp.op = EQU_TYPE;
+    expItem.push_back(itemExp);
+    DBExpression exp;
+    DBExpItem item1("", "colName_2");
+    exp.lVal = &item1;
+    exp.lType = DB_ITEM;
+    int expRVal = 2;
+    exp.rVal = &expRVal;
+    exp.rType = DB_INT;
+    exp.op = LTE_TYPE;
+    expressions.push_back(exp);
+
+    DBUpdate* dbUpdate = new DBUpdate();
+    dbUpdate->expItem = expItem;
+    dbUpdate->expressions = expressions;
+    printf("Update record num = %d\n", databaseManager->updateRecords("table_1", dbUpdate));
+    printf("\n");
+    delete dbUpdate;
+}
+
 int main() {
     printf("RUN TEST\n");
     DatabaseManager* databaseManager = new DatabaseManager;
@@ -133,5 +163,6 @@ int main() {
     testConstraint(databaseManager);
     testInsert(databaseManager);
     testDrop(databaseManager);
+    testUpdate(databaseManager);
     delete databaseManager;
 }

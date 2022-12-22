@@ -40,9 +40,11 @@ private:
 
     int _iterateWhere(vector<string> selectTables, vector<DBExpression> expressions, vector<RecordId*>& recordIds);
 
-    bool _checkConstraintOnInsert(string tableName, RecordData* recordData, DBMeta* dbMeta);
+    bool _checkConstraintOnInsert(string tableName, RecordData* recordData, DBMeta* dbMeta, vector<int> noCheckOnColIds = vector<int>());
 
-    bool _checkConstraintOnDelete(string tableName, RecordData* recordData, DBMeta* dbMeta);
+    bool _checkConstraintOnDelete(string tableName, RecordData* recordData, DBMeta* dbMeta, vector<int> noCheckOnColIds = vector<int>());
+
+    bool _checkConstraintOnUpdate(string tableName, RecordData* recordData, DBMeta* dbMeta, vector<DBExpression> expItems, vector<int> colIds);
 
     int _createAndAddIndex(string tableName, string colName, uint16_t indexLen, uint8_t colType, int index);
 

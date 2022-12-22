@@ -1717,7 +1717,13 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
     for (int i = 0; i < dbUpdate->expItem.size(); i++) {
         assert(dbUpdate->expItem[i].lType == DB_ITEM);
         assert(dbUpdate->expItem[i].rType >= DB_NULL && dbUpdate->expItem[i].rType <= DB_CHAR);
-        int colId = tableHeader->getCol((char*)dbUpdate->expItem[i].lVal);
+        int colId = tableHeader->getCol(((DBExpItem*)(dbUpdate->expItem[i].lVal))->expCol.c_str());
+        for (int j = 0; j < colIds.size(); j++) {
+            if (colId == colIds[j]) {
+                printf("[ERROR] can not set a column twice in an update statement.\n");
+                return -1;
+            }
+        }
         colIds.push_back(colId);
         TableEntryDescNode* tableEntryDescNode = tableEntryDesc.getCol(colId);
         if (tableEntryDescNode->colType != dbUpdate->expItem[i].rType) {
@@ -1756,16 +1762,14 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
     vector<vector<void*>> rawIndexDatas;
     updatedIndexDatas.resize(tableHeader->colNum);
     rawIndexDatas.resize(tableHeader->colNum);
+    bool errorFlag = false;
 
     for (int i = 0; i < recordIds.size(); i++) {
         rawRecords.push_back(new Record(updateFileHandler->getRecordLen()));
         updateFileHandler->getRecord(*recordIds[i], *rawRecords[i]);
-        RecordData updatedRecordData;
+        RecordData updatedRecordData, rawRecordData;
         rawRecords[i]->deserialize(updatedRecordData, tableEntryDesc);
-
-        if (!_checkConstraintOnDelete(tableName, &updatedRecordData, dbMeta)) {
-            break;
-        }
+        rawRecords[i]->deserialize(rawRecordData, tableEntryDesc);
 
         for (int j = 0; j < dbUpdate->expItem.size(); j++) {
             RecordDataNode* recordDataNode = updatedRecordData.getData(colIds[j]);
@@ -1797,13 +1801,14 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
             recordDataNode->nodeType = (TB_COL_TYPE)dbUpdate->expItem[j].rType;
         }
 
-        if (_checkConstraintOnInsert(tableName, &updatedRecordData, dbMeta)) {
+        if (!_checkConstraintOnUpdate(tableName, &rawRecordData, dbMeta, dbUpdate->expItem, colIds)) {
+            errorFlag = true;
             break;
         }
 
         Record updatedRecord(updateFileHandler->getRecordLen());
         updatedRecordData.serialize(updatedRecord);
-        if (!updateFileHandler->updateRecord(*recordIds[i], updatedRecord)) {
+        if (updateFileHandler->updateRecord(*recordIds[i], updatedRecord)) {
             RecordData rawRecordData;
             rawRecords[i]->deserialize(rawRecordData, tableEntryDesc);
             RecordDataNode *updatedRecordDataNode = updatedRecordData.head, *rawRecordDataNode = rawRecordData.head;
@@ -1834,7 +1839,14 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
                         assert(false);
                         break;
                 }
-                if (colHasIndex[j]) {
+                bool colHasChanged = false;
+                for (int k = 0; k < colIds.size(); k++) {
+                    if (j == colIds[k]) {
+                        colHasChanged = true;
+                        break;
+                    }
+                }
+                if (colHasIndex[j] && colHasChanged) {
                     int val;
                     indexManager->transform(tableName.c_str(), colName[j], val, recordIds[i]->getPageId(), recordIds[i]->getSlotId());
                     updatedIndexDatas[j].push_back(updatedIndexData);
@@ -1843,14 +1855,14 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
                     indexManager->insert(tableName.c_str(), colName[j], updatedIndexData, val);
                 }
             }
+        } else {
+            errorFlag = true;
             break;
         }
     }
 
-    bool errorFlag = false;
-    if (rawRecords.size() < recordIds.size()) { // restore
-        errorFlag = true;
-        for (int i = 0; i < rawRecords.size(); i++) {
+    if (errorFlag) { // restore
+        for (int i = 0; i < rawRecords.size() - 1; i++) {
             updateFileHandler->updateRecord(*recordIds[i], *rawRecords[i]);
         }
         //restore index
@@ -1863,14 +1875,13 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
             if (colHasIndex[i]) {
                 vector<int> vals;
                 indexManager->transform(tableName.c_str(), colName[i], vals, pageIds, slotIds);
-                for (int j = 0; j < vals.size(); j++) {
+                for (int j = 0; j < updatedIndexDatas[i].size(); j++) {
                     indexManager->remove(tableName.c_str(), colName[i], updatedIndexDatas[i][j], vals[j]);
                     indexManager->insert(tableName.c_str(), colName[i], rawIndexDatas[i][j], vals[j]);
                 }
             }
         }
     }
-
     for (int i = 0; i < rawRecords.size(); i++) {
         delete rawRecords[i];
     }
@@ -1879,11 +1890,11 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
     }
 
     for (int i = 0; i < tableHeader->colNum; i++) {
-        for (int j = 0; j < updatedIndexDatas.size(); j++) {
+        for (int j = 0; j < updatedIndexDatas[i].size(); j++) {
             switch (colTypes[i]) {
-                case COL_INT: delete (int*)updatedIndexDatas[i][j]; delete (int*)rawIndexDatas[i][j]; break;
-                case COL_FLOAT: delete (float*)updatedIndexDatas[i][j]; delete (float*)rawIndexDatas[i][j]; break;
-                case COL_VARCHAR: delete (char*)updatedIndexDatas[i][j]; delete (char*)rawIndexDatas[i][j]; break;
+                case COL_INT: delete (int*)(updatedIndexDatas[i][j]); delete (int*)(rawIndexDatas[i][j]); break;
+                case COL_FLOAT: delete (float*)(updatedIndexDatas[i][j]); delete (float*)(rawIndexDatas[i][j]); break;
+                case COL_VARCHAR: delete (char*)(updatedIndexDatas[i][j]); delete (char*)(rawIndexDatas[i][j]); break;
                 default: break;
             }
         }
@@ -1892,7 +1903,7 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
     return errorFlag ? -1 : recordIds.size();
 }
 
-bool TableManager::_checkConstraintOnInsert(string tableName, RecordData* recordData, DBMeta* dbMeta) {
+bool TableManager::_checkConstraintOnInsert(string tableName, RecordData* recordData, DBMeta* dbMeta, vector<int> noCheckOnColIds) {
     int tableNum = -1;
     for (int i = 0; i < dbMeta->tableNum; i++) {
         if (!strcmp(tableName.c_str(), dbMeta->tableNames[i])) {
@@ -1908,6 +1919,16 @@ bool TableManager::_checkConstraintOnInsert(string tableName, RecordData* record
     TableHeader* tableHeader = checkFileHandler->getTableHeader();
     char colName[64];
     for (int i = 0; i < dbMeta->colNum[tableNum]; i++) {
+        bool noCheck = false;
+        for (int j = 0; j < noCheckOnColIds.size(); j++) {
+            if (i == noCheckOnColIds[j]) {
+                noCheck = true;
+                break;
+            }
+        }
+        if (noCheck) {
+            continue;
+        }
         if (dbMeta->isPrimaryKey[tableNum][i] || dbMeta->isUniqueKey[tableNum][i]) {
             RecordDataNode* recordDataNode = recordData->getData(i);
             void* checkData = nullptr;
@@ -1936,6 +1957,16 @@ bool TableManager::_checkConstraintOnInsert(string tableName, RecordData* record
     }
     for (int i = 0; i < dbMeta->foreignKeyNum[tableNum]; i++) {
         int col = dbMeta->foreignKeyColumn[tableNum][i];
+        bool noCheck = false;
+        for (int j = 0; j < noCheckOnColIds.size(); j++) {
+            if (col == noCheckOnColIds[j]) {
+                noCheck = true;
+                break;
+            }
+        }
+        if (noCheck) {
+            continue;
+        }
         int refTable = dbMeta->foreignKeyRefTable[tableNum][i];
         int refCol = dbMeta->foreignKeyRefColumn[tableNum][i];
         string refTableName = dbMeta->tableNames[refTable];
@@ -1966,7 +1997,7 @@ bool TableManager::_checkConstraintOnInsert(string tableName, RecordData* record
     return true;
 }
 
-bool TableManager::_checkConstraintOnDelete(string tableName, RecordData* recordData, DBMeta* dbMeta) {
+bool TableManager::_checkConstraintOnDelete(string tableName, RecordData* recordData, DBMeta* dbMeta, vector<int> noCheckOnColIds) {
     int tableNum = -1;
     for (int i = 0; i < dbMeta->tableNum; i++) {
         if (!strcmp(tableName.c_str(), dbMeta->tableNames[i])) {
@@ -1977,12 +2008,21 @@ bool TableManager::_checkConstraintOnDelete(string tableName, RecordData* record
     if (tableNum == -1) {
         return false;
     }
-
     FileHandler* checkFileHandler = recordManager->findTable(tableName.c_str());
     TableHeader* tableHeader = checkFileHandler->getTableHeader();
     char refColName[64], colName[64];
     for (int i = 0; i < dbMeta->refKeyNum[tableNum]; i++) {
         int col = dbMeta->refKeyColumn[tableNum][i];
+        bool noCheck = false;
+        for (int j = 0; j < noCheckOnColIds.size(); j++) {
+            if (col == noCheckOnColIds[j]) {
+                noCheck = true;
+                break;
+            }
+        }
+        if (noCheck) {
+            continue;
+        }
         int refTable = dbMeta->refKeyRefTable[tableNum][i];
         int refCol = dbMeta->refKeyRefColumn[tableNum][i];
         string refTableName = dbMeta->tableNames[refTable];
@@ -2015,10 +2055,75 @@ bool TableManager::_checkConstraintOnDelete(string tableName, RecordData* record
         if (res.size() <= 1) {
             indexManager->search(refTableName.c_str(), refColName, checkData, res);
             if (res.size() > 0) {
-                printf("[ERROR] fail to delete due to conflict in foreign key constraint.\n");
+                printf("[ERROR] fail to delete/update due to conflict in foreign key constraint.\n");
                 return false;
             }
         }
     }
     return true;
+}
+
+bool TableManager::_checkConstraintOnUpdate(string tableName, RecordData* recordData, DBMeta* dbMeta, vector<DBExpression> expItems, vector<int> colIds) {
+    int tableNum = -1;
+    for (int i = 0; i < dbMeta->tableNum; i++) {
+        if (!strcmp(tableName.c_str(), dbMeta->tableNames[i])) {
+            tableNum = i;
+            break;
+        }
+    }
+    if (tableNum == -1) {
+        return false;
+    }
+    FileHandler* checkFileHandler = recordManager->findTable(tableName.c_str());
+    TableHeader* tableHeader = checkFileHandler->getTableHeader();
+    RecordData* newRecordData = new RecordData(tableHeader->colNum);
+    vector<int> noCheckOnColIds;
+    for (int i = 0; i < dbMeta->colNum[tableNum]; i++) {
+        bool inColFlag = false;
+        for (int j = 0; j < colIds.size(); j++) {
+            if (i == colIds[j]) {
+                inColFlag = true;
+                RecordDataNode* recordDataNode = recordData->getData(i);
+                RecordDataNode* newRecordDataNode = newRecordData->getData(i);
+                newRecordDataNode->nodeType = recordDataNode->nodeType;
+                newRecordDataNode->len = recordDataNode->len;
+                Compare* compare;
+                void* checkData = nullptr;
+                switch (recordDataNode->nodeType) {
+                    case COL_INT: 
+                        checkData = recordDataNode->content.intContent; 
+                        compare = new IntCompare(); 
+                        newRecordDataNode->content.intContent = new int;
+                        *newRecordDataNode->content.intContent = *(int*)expItems[j].rVal;
+                        break;
+                    case COL_FLOAT: 
+                        checkData = recordDataNode->content.floatContent; 
+                        compare = new FloatCompare(); 
+                        newRecordDataNode->content.floatContent = new float;
+                        *newRecordDataNode->content.floatContent = *(float*)expItems[j].rVal;
+                        break;
+                    case COL_VARCHAR:  
+                        checkData = recordDataNode->content.charContent; 
+                        compare = new CharCompare();
+                        newRecordDataNode->content.charContent = new char[newRecordDataNode->len];
+                        memcpy(newRecordDataNode->content.charContent, expItems[j].rVal, newRecordDataNode->len); 
+                        break;
+                    default: break;
+                }
+                if (compare->equ(checkData, expItems[j].rVal)) { // the new value to be set is the same as the old one, then this column need not to be checked
+                    noCheckOnColIds.push_back(i);
+                }
+                break;
+            }
+        }
+        if (!inColFlag) {
+            noCheckOnColIds.push_back(i);
+        }
+    }
+    bool resFlag = true;
+    if (!_checkConstraintOnDelete(tableName, recordData, dbMeta, noCheckOnColIds) || !_checkConstraintOnInsert(tableName, newRecordData, dbMeta, noCheckOnColIds)) {
+        resFlag = false;
+    }
+    delete newRecordData;
+    return resFlag;
 }
