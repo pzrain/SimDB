@@ -29,6 +29,8 @@ public:
 
     FileHandler* findTable(const char* tableName);
 
+    void renameTable(const char* oldName, const char* newName);
+
     bool isValid();
 };
 

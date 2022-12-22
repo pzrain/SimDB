@@ -448,3 +448,9 @@ TableEntryDesc FileHandler::getTableEntryDesc() {
 TableHeader* FileHandler::getTableHeader() {
     return tableHeader;
 }
+
+void FileHandler::renameTable(const char* newName) {
+    memcpy(tableName, newName, strlen(newName));
+    memcpy(tableHeader->tableName, newName, strlen(newName));
+    writeTableHeader(bufPageManager, fileId, tableHeader);
+}
