@@ -153,8 +153,10 @@ struct DBDelete {
  *  DBExpItem item2("school", "id");
  *  exp2.lVal = &item2;
  *  exp2.lType = DB_ITEM;
- *  std::vector<int*> val;          // attention: this should be vector<void*>
- *  val.resize(3);
+ *  std::vector<void*> val;          // attention: this should be vector<void*>
+ *  for (int i = 0; i < 3; i++) {
+ *      val.push_back(new int);
+ *  }
  *  *(val[0]) = 2;
  *  *(val[1]) = 3;
  *  *(val[2]) = 5;
