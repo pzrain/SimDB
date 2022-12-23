@@ -6,6 +6,7 @@
 class IndexManager{
 private:
     bool valid;
+    bool validTable[DB_MAX_TABLE_NUM];
     BufPageManager* bufPageManager;
     char databaseName[DB_MAX_NAME_LEN];
     char tableNames[DB_MAX_TABLE_NUM][TAB_MAX_NAME_LEN];
@@ -15,12 +16,18 @@ private:
 
     BPlusTree* findIndex(const char* tableName, const char* indexName);
 
-    int findEmptyIndex(int &emptyI, int &emptyJ);
+    int findEmptyIndex(int &emptyI, int &emptyJ, const char* tableName);
     
 public:
-    IndexManager(BufPageManager* bufPageManager_, char* databaseName_);
+    IndexManager(BufPageManager* bufPageManager_, const char* databaseName_);
 
     ~IndexManager();
+
+    int initIndex(std::vector<std::string> tableNames, std::vector<std::vector<std::string>> colNames, std::vector<std::vector<uint16_t>> indexLens, std::vector<std::vector<uint8_t>> colTypes);
+    // init index when open a database
+
+    void renameIndex(const char* oldTableName, const char* newTableName);
+    // rename the tableNamess
 
     int createIndex(const char* tableName, const char* indexName, uint16_t indexLen, uint8_t colType);
     // build index
@@ -43,17 +50,29 @@ public:
     // search those index whose key is equal to data
     // than store their val in vector res
 
-    int searchBetween(const char* tableName, const char* indexName, void* lData, void* rData, std::vector<int> &res);
+    int searchBetween(const char* tableName, const char* indexName, void* lData, void* rData, std::vector<int> &res, bool lIn = true, bool rIn = true);
     // search those index whose dat falls in [lData, rData]
     // set lData or rData to nullptr to get searching range [lData, infinity] or [-infinity, rData]
     // example:
     // int lData = 3;
     // searchBetween(tableName, indexName, &lData, nullptr, res);
 
-    int remove(const char* tableName, const char* indexName, void* data);
+    int remove(const char* tableName, const char* indexName, void* data, int val = -1);
     // remove those index whose key is equal to data
 
+    int update(const char* tableName, const char* indexName, void* data, int oldVal, int newVal);
+
+    void transform(const char* tableName, const char* indexName, int& val, int pageId, int slotId);
+
+    void transform(const char* tableName, const char* indexName, std::vector<int>& vals, std::vector<int> pageIds, std::vector<int> slotIds);
+
+    void transformR(const char* tableName, const char* indexName, int val, int& pageId, int& slotId);
+
+    void transformR(const char* tableName, const char* indexName, std::vector<int> vals, std::vector<int>& pageIds, std::vector<int>& slotIds);
+
     bool isValid();
+
+    int showIndex();
 };
 
 #endif

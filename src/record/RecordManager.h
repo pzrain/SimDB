@@ -15,7 +15,7 @@ private:
     int findEmptyIndex();
 
 public:
-    RecordManager(BufPageManager*, char* databaseName_);
+    RecordManager(BufPageManager*, const char* databaseName_);
 
     ~RecordManager();
 
@@ -23,11 +23,13 @@ public:
 
     int removeFile(const char* tableName);
 
-    int openFile(const char* tableName, FileHandler* fileHandler);// one file corresponds with one fileHandler
+    FileHandler* openFile(const char* tableName);// one file corresponds with one fileHandler
 
     int closeFile(FileHandler* fileHandler);
 
     FileHandler* findTable(const char* tableName);
+
+    void renameTable(const char* oldName, const char* newName);
 
     bool isValid();
 };

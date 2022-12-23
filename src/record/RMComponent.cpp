@@ -5,7 +5,7 @@
 TableEntry::TableEntry() {}
 
 TableEntry::TableEntry(char* colName_, uint8_t colType_, bool checkConstraint_, bool primaryKeyConstraint_, \
-               bool foreignKeyConstraint_, uint32_t colLen_, bool hasDefault_, \
+               uint8_t foreignKeyConstraint_, uint32_t colLen_, bool hasDefault_, \
                bool notNullConstraint_, bool uniqueConstraint_, bool isNull_) {
     colType = colType_;
     strcpy(colName, colName_);
@@ -220,7 +220,7 @@ void TableHeader::printInfo() {
     printf("==========   End  Table Info  ==========\n");
 }
 
-int TableHeader::getCol(char* colName, TableEntry& tableEntry) {
+int TableHeader::getCol(const char* colName, TableEntry& tableEntry) {
     int8_t head = entryHead;
     TableEntry entry;
     while (head >= 0) {
@@ -232,6 +232,47 @@ int TableHeader::getCol(char* colName, TableEntry& tableEntry) {
         head = entry.next;
     }
     return -1;
+}
+
+int TableHeader::getCol(const char* colName) {
+    int8_t head = entryHead;
+    TableEntry entry;
+    while (head >= 0) {
+        entry = entrys[head];
+        if (strcmp(entry.colName, colName) == 0) {
+            return head;
+        }
+        head = entry.next;
+    }
+    return -1;
+}
+
+int TableHeader::getCol(int colId, char* colName) {
+    int8_t head = entryHead;
+    TableEntry entry;
+    while (head >= 0) {
+        entry = entrys[head];
+        if (colId == 0) {
+            strcpy(colName, entry.colName);
+            return 0;
+        }
+        colId--;
+        head = entry.next;
+    }
+    return -1;
+}
+
+bool TableHeader::hasPrimaryKey() {
+    int8_t head = entryHead;
+    TableEntry entry;
+    while (head >= 0) {
+        entry = entrys[head];
+        if (entry.primaryKeyConstraint) {
+            return true;
+        }
+        head = entry.next;
+    }
+    return false;
 }
 
 int TableHeader::alterCol(TableEntry* tableEntry) {
@@ -290,7 +331,7 @@ int TableHeader::findFreeCol() {
 
 int TableHeader::addCol(TableEntry* tableEntry) {
     if (existCol(tableEntry->colName)) {
-        printf("[Error] Column with same name already exists.\n");
+        printf("[ERROR] Column with same name already exists.\n");
         return -1;
     }
     int8_t head = entryHead;
@@ -457,6 +498,18 @@ size_t TableEntryDesc::getLen() {
     return len = len_;
 }
 
+TableEntryDescNode* TableEntryDesc::getCol(unsigned int i) {
+    TableEntryDescNode* cur = head;
+    while (cur) {
+        if (i == 0) {
+            return cur;
+        }
+        cur = cur->next;
+        i--;
+    }
+    return nullptr;
+}
+
 bool Record::deserialize(RecordData& rData, TableEntryDesc& tableEntryDesc) {
     if (len != tableEntryDesc.getLen()) {
         printf("[ERROR] unmatched length between record and recordData.\n");
@@ -519,6 +572,63 @@ RecordData::~RecordData() {
         RecordDataNode* next = cur->next;
         delete cur;
         cur = next;
+    }
+}
+
+RecordData::RecordData(const RecordData &other) {
+    RecordDataNode* temp = other.head;
+    if (temp) {
+        head = new RecordDataNode();
+    } else {
+        return;
+    }
+    RecordDataNode* cur = head;
+    while (1) {
+        cur->len = temp->len;
+        cur->nodeType = temp->nodeType;
+        switch (cur->nodeType) {
+            case COL_INT:
+                cur->content.intContent = new int;
+                *(cur->content.intContent) = *(temp->content.intContent);
+                break;
+            case COL_FLOAT:
+                cur->content.floatContent = new float;
+                *(cur->content.floatContent) = *(temp->content.floatContent);
+                break;
+            case COL_VARCHAR:
+                cur->content.charContent = new char[cur->len];
+                strcpy(cur->content.charContent, temp->content.charContent);
+                break; 
+        }
+        if (temp->next) {
+            cur->next = new RecordDataNode();
+        } else {
+            break;
+        }
+        temp = temp->next;
+        cur = cur->next;
+    }
+}
+
+RecordData::RecordData(int len) {
+    if (len < 0) {
+        fprintf(stderr, "cannot construct RecordData with negative length.\n");
+        assert(false);
+    } else if (len == 0) {
+        return;
+    }
+    head = nullptr;
+    RecordDataNode* cur = new RecordDataNode();
+    head = cur;
+    while (1) {
+        cur->len = 0;
+        len--;
+        if (len > 0) {
+            cur->next = new RecordDataNode();
+            cur = cur->next;
+        } else {
+            break;
+        }
     }
 }
 
@@ -585,4 +695,16 @@ size_t RecordData::getLen() {
         cur = cur->next;
     }
     return recordLen = len;
+}
+
+RecordDataNode* RecordData::getData(unsigned int i) {
+    RecordDataNode* cur = head;
+    while (cur) {
+        if (i == 0) {
+            return cur;
+        }
+        cur = cur->next;
+        i--;
+    }
+    return nullptr;
 }

@@ -4,56 +4,7 @@
 #include "../common.h"
 #include <vector>
 #include <stdio.h>
-
-
-/* 
-    This DatabaseManager is for test only.
- */
-class DatabaseManager {
-private:
-    int tot;
-    char tableNames[10][TAB_MAX_NAME_LEN];
-    char indexNames[10][TAB_MAX_NAME_LEN];
-    std::string databaseUsedName;
-
-    void addIndex(const char* tableName, const char* indexName) {
-        strcpy(tableNames[tot], tableName);
-        strcpy(indexNames[tot++], indexName);
-    }
-
-public:
-    DatabaseManager() {
-        tot = 0;
-        addIndex("table_2", "id");
-        addIndex("table_3", "id");
-        addIndex("table_4", "id");
-        addIndex("table_5", "id");
-        databaseUsedName = "";
-    }
- 
-    bool hasIndex(const char* tableName, const char* indexName);
-    // function from dbms to check if specific column has index
-
-    int switchDatabase(std::string name) {
-        if (name != "") {
-            databaseUsedName = name;
-        }
-        return 1;
-    }
-
-    std::string getDatabaseName() { // function from dbms to get the currently used database name
-        return databaseUsedName == "" ? "mysql" : databaseUsedName;
-    }
-};
-
-bool DatabaseManager::hasIndex(const char* tableName, const char* indexName) {
-    for (int i = 0; i < tot; i++) {
-        if (strcmp(tableNames[i], tableName) == 0 && strcmp(indexNames[i], indexName) == 0) {
-            return true;
-        }
-    }
-    return false;
-}
+#include "../system/DatabaseManager.h"
 
 struct SQLOptimizerEdge {
     int x;
@@ -268,7 +219,7 @@ void testOptimizer(SQLParser::Where_and_clauseContext* whereAndClause) {
     }
 }
 
-void optimizeWhereClause(SQLParser::Where_and_clauseContext* whereAndClause, DatabaseManager* databaseManager) {
+void optimizeWhereClause(SQLParser::Where_and_clauseContext* whereAndClause, DatabaseManager* TestdatabaseManager) {
     // TODO: optimization when joining multiply tables
     SQLOptimizerGraph graph;
     std::vector<SQLParser::Where_clauseContext*> newWhereClause;
@@ -289,8 +240,8 @@ void optimizeWhereClause(SQLParser::Where_and_clauseContext* whereAndClause, Dat
                     const char* indexName1 = childWhereClause->column()->Identifier(1)->getText().c_str();
                     const char* tableName2 = exp->column()->Identifier(0)->getText().c_str();
                     const char* indexName2 = exp->column()->Identifier(1)->getText().c_str();
-                    bool isTerminal1 = !databaseManager->hasIndex(tableName1, indexName1);
-                    bool isTerminal2 = !databaseManager->hasIndex(tableName2, indexName2);
+                    bool isTerminal1 = !TestdatabaseManager->hasIndex(tableName1, indexName1);
+                    bool isTerminal2 = !TestdatabaseManager->hasIndex(tableName2, indexName2);
                     int index1 = graph.addNode(tableName1, indexName1, isTerminal1);
                     int index2 = graph.addNode(tableName2, indexName2, isTerminal2);
                     // fprintf(stderr, "%s %s %d %s %s %d\n", tableName1, indexName1, isTerminal1, tableName2, indexName2, isTerminal2);

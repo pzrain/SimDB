@@ -1,5 +1,6 @@
 .vscode
 .antlr4
+.antlr
 build
 database
 SimDB

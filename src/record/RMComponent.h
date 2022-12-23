@@ -43,7 +43,27 @@ struct RecordDataNode{
     TB_COL_TYPE nodeType;
     RecordDataNode* next = nullptr;
 
-    ~RecordDataNode() {}
+    ~RecordDataNode() {
+        switch (nodeType) {
+            case COL_INT:
+                if (content.intContent) {
+                    delete content.intContent;
+                }
+                break;
+            case COL_FLOAT:
+                if (content.floatContent) {
+                    delete content.floatContent;
+                }
+                break;
+            case COL_VARCHAR:
+                if (content.charContent) {
+                    delete content.charContent;
+                }
+                break;
+            default:
+                break;
+        }
+    }
 };
 
 class Record;
@@ -56,10 +76,16 @@ public:
     RecordData() { head = nullptr; }
 
     RecordData(RecordDataNode* head_): head(head_) {}
+
+    RecordData(const RecordData &other);
+
+    RecordData(int len);
     
     bool serialize(Record& record);
 
     size_t getLen();
+
+    RecordDataNode* getData(unsigned int i);
 
     ~RecordData();
 };
@@ -78,9 +104,14 @@ struct TableEntry{
     uint32_t checkKeyNum;
     
     bool primaryKeyConstraint;
-    bool foreignKeyConstraint;
+    uint8_t foreignKeyConstraint;
+    // new
+    // only be used when foreignKeyConstraint is true 
+    char foreignKeyTableName[MAX_FOREIGN_KEY_FOR_COL][32];
+    char foreignKeyColName[MAX_FOREIGN_KEY_FOR_COL][32];
+
     uint32_t colLen; // VARCHAR(%d), int(4), float(4)
-    char colName[TAB_MAX_NAME_LEN];
+    char colName[COL_MAX_NAME_LEN];
     bool hasDefault;
     bool notNullConstraint;
     bool uniqueConstraint;
@@ -96,10 +127,10 @@ struct TableEntry{
     TableEntry();
 
     TableEntry(char* colName_, uint8_t colType_, bool checkConstraint_ = false, bool primaryKeyConstraint_ = false, \
-               bool foreignKeyConstraint_ = false, uint32_t colLen_ = 0, bool hasDefault_ = false, \
+               uint8_t foreignKeyConstraint_ = 0, uint32_t colLen_ = 0, bool hasDefault_ = false, \
                bool notNullConstraint_ = false, bool uniqueConstraint_ = false, bool isNull_ = false);
 
-    bool verifyConstraint(RecordDataNode* data); // TODO
+    bool verifyConstraint(RecordDataNode* data);
     // verify checkConstraint, notNullConstraint, (primaryKeyConstraint, UniqueConstraint) (and foreighKeyConstraint ?)
     // on deserialized data
     // return true if succeed else false
@@ -122,6 +153,8 @@ public:
     ~TableEntryDesc();
 
     size_t getLen();
+
+    TableEntryDescNode* getCol(unsigned int i);
 };
 
 class Record{
@@ -188,7 +221,13 @@ public:
     // num is the length of the TableEntry array
     // Attention: init will not check same column name, thus should only be called to initial a tableHeader
 
-    int getCol(char* colName, TableEntry& tableEntry);
+    int getCol(const char* colName, TableEntry& tableEntry);
+
+    // only get column id
+    int getCol(const char* colName);
+
+    int getCol(int colId, char* colName);
+    // get colName according to id, return -1 if fails
 
     int alterCol(TableEntry* tableEntry);
     // update a column
@@ -211,6 +250,8 @@ public:
     bool fillDefault(RecordData& recordData);
 
     bool fillDefault(Record& record);
+
+    bool hasPrimaryKey();
 };
 
 typedef enum{

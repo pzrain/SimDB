@@ -34,6 +34,7 @@ SET(SOURCE
 add_subdirectory(src/record)
 add_subdirectory(src/filesystem)
 add_subdirectory(src/index)
+add_subdirectory(src/system)
 add_subdirectory(src/parser)
 
 include_directories(${ANTLR4_RUNTIME_DIRECTORY})
