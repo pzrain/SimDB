@@ -21,7 +21,6 @@ DatabaseManager::DatabaseManager() {
 
 DatabaseManager::~DatabaseManager() {
     if (databaseUsed) {
-        assert(databaseStroeFileId > -1);
         writeMetaData(databaseStroeFileId, metaData);
         for(int i = 0; i < metaData->tableNum; i++) {
             tableManager->saveChangeToFile(metaData->tableNames[i]);
@@ -133,7 +132,6 @@ int DatabaseManager::switchDatabase(string name) {
         return 0;
     }
     if (databaseUsed) {
-        assert(databaseStroeFileId > -1);
         writeMetaData(databaseStroeFileId, metaData);
         for(int i = 0; i < metaData->tableNum; i++) {
             tableManager->saveChangeToFile(metaData->tableNames[i]);

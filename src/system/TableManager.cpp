@@ -407,7 +407,10 @@ int TableManager::createForeignKey(string tableName, string foreignKeyName, stri
     int index = checkColExist(tableHeader, colName.c_str());
     FileHandler* refFileHandler = recordManager->findTable(refTableName.c_str());
     TableHeader* refTableHeader = refFileHandler->getTableHeader();
-    assert(refFileHandler != nullptr);
+    if (refFileHandler == nullptr) {
+        fprintf(stderr, "refFileHandler is nullptr in createForeignKey.\n");
+        return -1;
+    }
     refIndex = checkColExist(refFileHandler->getTableHeader(), refTableCol.c_str());
     if (index >= 0 && refIndex >= 0) {
         // if (refTableHeader->entrys[refIndex].primaryKeyConstraint == false) {
@@ -532,10 +535,8 @@ int TableManager::createUniqueKey(string tableName, string colName) {
     // the index is established. Next should build unique constraint
     if (res >= 0) {
         fileHandler = recordManager->findTable(tableName.c_str());
-        assert(fileHandler != nullptr);
         TableHeader* tableHeader = fileHandler->getTableHeader();
         int index = checkColExist(tableHeader, colName.c_str());
-        assert(index >= 0);
         if (tableHeader->entrys[index].uniqueConstraint == true) {
             printf("[INFO] the unique constraint of %s has already been created.\n", colName.c_str());
             return index;
@@ -574,7 +575,10 @@ int TableManager::dropUniqueKey(string tableName, string colName, DBMeta* dbMeta
         return -1;
     }
 
-    assert(indexManager->hasIndex(tableName.c_str(), colName.c_str()));
+    if (!indexManager->hasIndex(tableName.c_str(), colName.c_str())) {
+        fprintf(stderr, "indexManager has no index on uniquekey.\n");
+        return -1;
+    }
 
     int tableNum = -1, indexNum = -1;
     for(int i = 0; i < dbMeta->tableNum; i++) {
@@ -721,14 +725,19 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
             }
         }
     } else {
-        assert(false);
+        // tableNum > 2
+        // should not be here
+        return -1;
     }
     for (int i = 0; i < expressions.size(); i++) {
         bool preFlag = false; // flag indicating the previous item has been successfully selected
         std::vector<RecordId*> preRes;
         cur ^= 1;
         res[cur].clear();
-        assert(expressions[i].lType == DB_ITEM); // in SQL.g4, the left must be an item;
+        if (expressions[i].lType != DB_ITEM) { // in SQL.g4, the left must be an item;
+            fprintf(stderr, "the left must be an item.\n");
+            return -1;
+        }
         DBExpItem* lItem = (DBExpItem*)expressions[i].lVal;
         int fileId = (lItem->expTable == selectTables[0]) ? 0 : 1;
         Record curRecord(fileHandlers[fileId]->getRecordLen());
@@ -813,7 +822,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                             break;
                         default:
                             fprintf(stderr, "encouter error op type %d in search.\n", expressions[i].op);
-                            assert(false);
+                            return -1;
                             break;
                     }
                     if (flag) {
@@ -857,7 +866,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                                 break;
                             default:
                                 fprintf(stderr, "encouter error op type %d in search.\n", expressions[i].op);
-                                assert(false);
+                                return -1;
                                 break;
                         }
                         std::map<int, bool> ma; // hash to get the intersection of two sets
@@ -928,7 +937,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                                     break;
                                 default:
                                     fprintf(stderr, "encouter error op type %d in search.\n", expressions[i].op);
-                                    assert(false);
+                                    return -1;
                                     break;
                             }
                             if (flag) {
@@ -1013,7 +1022,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     }
                 } else {
                     fprintf(stderr, "error\n");
-                    assert(false);
+                    return -1;
                 }
             } else if (expressions[i].rType == DB_LIST) {
                 if (equalAsPre && preFlag) {
@@ -1040,7 +1049,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
             } else if (expressions[i].rType == DB_NULL) {
                 if (expressions[i].op != IS_TYPE && expressions[i].op != ISN_TYPE) {
                     fprintf(stderr, "Null should have op type IS or IS NOT.\n");
-                    assert(false);
+                    return -1;
                 }
                 if (curRecordDataNode->nodeType == COL_NULL) {
                     res[cur].push_back(curRecordId);
@@ -1115,7 +1124,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                         break;
                     }
                     default:
-                        assert(false);
+                        return -1;
                         break;
                 }
                 if (flag) {
@@ -1155,7 +1164,7 @@ inline void operateData(RecordData& lRecordData, RecordData& rRecordData, DB_SEL
     }
     if (colId > 0 || recordColId > 0 || !lHead || !rHead) {
         fprintf(stderr, "error in operateData\n");
-        assert(false);
+        return;
     }
     bool initialized = true;
     lHead->nodeType = (op == COUNT_TYPE) ? COL_INT : (op == AVERAGE_TYPE ? COL_FLOAT : rHead->nodeType);
@@ -1261,7 +1270,6 @@ int getMapIndex(RecordDataNode* cur, void* ma, int &cnt) {
             }
             return (*(map<string, int>*)ma)[(string)cur->content.charContent];
     }
-    assert(false);
     return -1;
 }
 
@@ -1337,8 +1345,10 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resReco
             return -1;
         }
     }
-
-    assert(dbSelect->limitEn || (!dbSelect->limitEn && !dbSelect->offsetEn));
+    if (!dbSelect->limitEn && dbSelect->offsetEn) {
+        fprintf(stderr, "can not have offset without limit.\n");
+        return -1;
+    }
     if ((dbSelect->limitEn && dbSelect->limitNum < 0) || (dbSelect->offsetEn && dbSelect->offsetNum < 0)) {
         printf("[ERROR] invalid value of limitNum %d or offsetNum %d.\n", dbSelect->limitNum, dbSelect->offsetNum);
         return -1;
@@ -1357,9 +1367,15 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resReco
             hasAggregate = true;
         }
         char colName[TAB_MAX_NAME_LEN];
-        assert(!(dbSelect->selectItems[i].star && dbSelect->selectItems[i].selectType != ORD_TYPE && dbSelect->selectItems[i].selectType != COUNT_TYPE));
+        if (dbSelect->selectItems[i].star && dbSelect->selectItems[i].selectType != ORD_TYPE && dbSelect->selectItems[i].selectType != COUNT_TYPE) {
+            fprintf(stderr, "* type only support ORD and COUNT.\n");
+            return -1;
+        }
         if (dbSelect->selectItems[i].selectType == ORD_TYPE && dbSelect->selectItems[i].star) {
-            assert(i == 0 && dbSelect->selectItems.size() == 1); // can only have one item *
+            if (i > 0 || dbSelect->selectItems.size() != 1) {
+                fprintf(stderr, "can only have one item *.\n");
+                return -1;
+            }
             int offset = 0;
             for (int j = 0; j < tableSize; j++) {
                 for (int k = 0; k < tableHeaders[j]->colNum; k++) {
@@ -1608,7 +1624,7 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert, DBMeta* db
                     recordDataNode->nodeType = COL_NULL;
                     indexData[j].push_back(nullptr);
                     fprintf(stderr, "Null type is not supported currently.\n");
-                    assert(false);
+                    return -1;
                     break;
             }
             recordDataNode = recordDataNode->next;
@@ -1749,7 +1765,7 @@ int TableManager::dropRecords(string tableName, DBDelete* dbDelete, DBMeta* dbMe
                     break;
                 default: 
                     fprintf(stderr, "Null type is not supported currently.\n");
-                    assert(false);
+                    return -1;
                     break;
             }
             if (colHasIndex[j]) {
@@ -1816,8 +1832,6 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
 
     vector<DBExpItem*> waitChecked;
     for (int i = 0; i < dbUpdate->expItem.size(); i++) {
-        assert(dbUpdate->expItem[i].lType == DB_ITEM);
-        assert(dbUpdate->expItem[i].rType >= DB_NULL && dbUpdate->expItem[i].rType <= DB_CHAR);
         int colId = tableHeader->getCol(((DBExpItem*)(dbUpdate->expItem[i].lVal))->expCol.c_str());
         for (int j = 0; j < colIds.size(); j++) {
             if (colId == colIds[j]) {
@@ -1937,7 +1951,7 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
                         break;
                     default:
                         fprintf(stderr, "Null type is not supported currently.\n");
-                        assert(false);
+                        return -1;
                         break;
                 }
                 bool colHasChanged = false;
@@ -2047,7 +2061,7 @@ bool TableManager::_checkConstraintOnInsert(string tableName, RecordData* record
             vector<int> res;
             if (!indexManager->hasIndex(tableName.c_str(), colName)) {
                 fprintf(stderr, "no index on primary key or unique key.\n");
-                assert(false);
+                return false;
             }
             indexManager->search(tableName.c_str(), colName, checkData, res);
             if (res.size() > 0) {
@@ -2075,7 +2089,7 @@ bool TableManager::_checkConstraintOnInsert(string tableName, RecordData* record
         foreignFileHandler->getTableHeader()->getCol(refCol, colName);
         if (!indexManager->hasIndex(tableName.c_str(), colName)) {
             fprintf(stderr, "no index on foreign key when insert.\n");
-            assert(false);
+            return -1;
         }
         vector<int> res;
         RecordDataNode* recordDataNode = recordData->getData(col);
@@ -2141,7 +2155,7 @@ bool TableManager::_checkConstraintOnDelete(string tableName, RecordData* record
         }
         if (!indexManager->hasIndex(refTableName.c_str(), refColName)) {
             fprintf(stderr, "no index on foreign key when delete.\n");
-            assert(false);
+            return -1;
         }
         /* 
             should foreign key be unique?
@@ -2149,7 +2163,7 @@ bool TableManager::_checkConstraintOnDelete(string tableName, RecordData* record
          */
         if (!indexManager->hasIndex(tableName.c_str(), colName)) {
             fprintf(stderr, "no index on local key when delete.\n");
-            assert(false);
+            return -1;
         }
         vector<int> res;
         indexManager->search(tableName.c_str(), colName, checkData, res);
