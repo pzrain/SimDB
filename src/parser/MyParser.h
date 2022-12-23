@@ -4,6 +4,7 @@
 #include "antlr4/SQLLexer.h"
 #include "MySQLVisitor.h"
 #include "MyErrorListener.h"
+#include "../system/DatabaseManager.h"
 
 class MyParser {
 private:
