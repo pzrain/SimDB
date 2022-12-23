@@ -63,7 +63,7 @@ public:
     
     int dropTable(string name);
 
-    int listTableInfo(string name);
+    int listTableInfo(string name, DBMeta* dbMeta);
 
     /**
      * @brief: rename process:

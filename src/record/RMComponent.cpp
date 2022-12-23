@@ -165,59 +165,96 @@ bool TableHeader::existCol(char* colName) {
 }
 
 void TableHeader::printInfo() {
-    printf("==========  Begin Table Info  ==========\n");
 
-    printf("Table name: %s\n", tableName);
-    printf("Column size: %d\n", colNum);
-    printf("Record Length: %d\n", recordLen);
-    printf("Record size: %d\n", recordSize);
+    printf("Table name: %s;\n", tableName);
+    printf("Column size: %d;\n", colNum);
+    printf("Record Length: %d;\n", recordLen);
+    printf("Record size: %d;\n", recordSize);
 
     int8_t head = entryHead;
     TableEntry entry;
     int cnt = 0;
+    int uniqueKeyCnt = 0;
+    int primaryKeyCnt = 0;
     while (head >= 0) {
         entry = entrys[head];
         printf("[column %d] name = %s, type = ", ++cnt, entry.colName);
         if (entry.uniqueConstraint) {
-            printf("Unique ");
+            uniqueKeyCnt++;
         }
         if (entry.primaryKeyConstraint) {
-            printf("Primary Key ");
+            primaryKeyCnt++;
         }
         switch (entry.colType) {
             case COL_INT:
                 printf("INT");
                 if (entry.hasDefault) {
-                    printf(", Default value = %d", entry.defaultVal.defaultValInt);
+                    printf(",          Default value = %d;", entry.defaultVal.defaultValInt);
+                } else {
+                    printf(",          Default value = Null;");
                 }
                 break;
             case COL_VARCHAR:
-                printf("VARCHAR(%d)", entry.colLen);
+                printf("VARCHAR(% 3d)", entry.colLen);
                 if (entry.hasDefault) {
-                    printf(", Default value = %s", entry.defaultVal.defaultValVarchar);
+                    printf(", Default value = %s;", entry.defaultVal.defaultValVarchar);
+                } else {
+                    printf(", Default value = Null;");
                 }
                 break;
             case COL_FLOAT:
                 printf("FLOAT");
                 if (entry.hasDefault) {
-                    printf(", Default value = %f", entry.defaultVal.defaultValFloat);
+                    printf(",          Default value = %f;", entry.defaultVal.defaultValFloat);
+                } else {
+                    printf(",          Default value = Null;");
                 }
                 break;
             case COL_NULL:
-                printf("NULL");
+                printf("NULL;");
                 break;
             default:
-                printf("Error Type");
+                fprintf(stderr, "Error Type");
                 break;
         }
-        if (entry.notNullConstraint) {
-            printf(", not NULL");
-        }
+        // if (entry.notNullConstraint) {
+        //     printf(", not NULL");
+        // }
         printf("\n");
         head = entry.next;
     }
-
-    printf("==========   End  Table Info  ==========\n");
+    if (primaryKeyCnt > 0) {
+        printf("PRIMARY KEY (");
+        head = entryHead;
+        while (head >= 0) {
+            entry = entrys[head];
+            if (entry.primaryKeyConstraint) {
+                printf("%s", entry.colName);
+                primaryKeyCnt--;
+                if (primaryKeyCnt > 0) {
+                    printf(", ");
+                }
+            }
+            head = entry.next;
+        }
+        printf(");\n");
+    }
+    if (uniqueKeyCnt > 0) {
+        printf("UNIQUE KEY (");
+        head = entryHead;
+        while (head >= 0) {
+            entry = entrys[head];
+            if (entry.uniqueConstraint) {
+                printf("%s", entry.colName);
+                uniqueKeyCnt--;
+                if (uniqueKeyCnt > 0) {
+                    printf(", ");
+                }
+            }
+            head = entry.next;
+        }
+        printf(");\n");
+    }
 }
 
 int TableHeader::getCol(const char* colName, TableEntry& tableEntry) {

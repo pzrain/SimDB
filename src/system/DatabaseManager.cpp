@@ -248,7 +248,7 @@ int DatabaseManager::listTableInfo(string name) {
         return -1;
     }
 
-    return tableManager->listTableInfo(name);
+    return tableManager->listTableInfo(name, metaData);
 }
 
 int DatabaseManager::dropTable(string name) {

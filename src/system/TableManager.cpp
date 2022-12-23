@@ -94,7 +94,7 @@ int TableManager::dropTable(string name) {
 
 }
 
-int TableManager::listTableInfo(string name) {
+int TableManager::listTableInfo(string name, DBMeta* dbMeta) {
     if(!checkTableName(name))
         return -1;
     string path = "database/" + databaseName + '/' + name +".db";
@@ -104,31 +104,60 @@ int TableManager::listTableInfo(string name) {
     if(fileHandler == nullptr)
         return -1;
     TableHeader* tableHeader = fileHandler->getTableHeader();
-    printf("====================begin %s====================\n", name.c_str());
-    for(int i = 0; i < tableHeader->colNum; i++) {
-        printf("%s|", tableHeader->entrys[i].colName);
-    }
-    printf("\n===============================================\n");
-    for(int i = 0; i < tableHeader->colNum; i++) {
-        switch (tableHeader->entrys[i].colType)
-        {
-        case 0:
-            printf("NULL|");
-            break;
-        case 1:
-            printf("INT|");
-            break;
-        case 2:
-            printf("VARCHAR(%d)|", tableHeader->entrys[i].colLen);
-            break;
-        case 3:
-            printf("FLOAT|");
-            break;
-        default:
+    int tableNum = -1;
+    for (int i = 0; i < DB_MAX_TABLE_NUM; i++) {
+        if (strcmp(name.c_str(), dbMeta->tableNames[i]) == 0) {
+            tableNum = i;
             break;
         }
     }
-    printf("\n=====================end======================\n");
+    if (tableNum == -1) {
+        return -1;
+    }
+    printf("==========  Begin Table Info  ==========\n");
+    tableHeader->printInfo();
+
+    FileHandler* refFileHandler;
+    TableHeader* refTableHeader;
+    char colName[64], refColName[64];
+    for (int i = 0; i < dbMeta->foreignKeyNum[tableNum]; i++) {
+        printf("FOREIGN KEY ");
+        tableHeader->getCol(dbMeta->foreignKeyColumn[tableNum][i], colName);
+        printf("%s (%s)", dbMeta->foreignKeyNames[tableNum][i], colName);
+        printf(" REFERENCE ");
+        refFileHandler = recordManager->findTable(dbMeta->tableNames[dbMeta->foreignKeyRefTable[tableNum][i]]);
+        refTableHeader = refFileHandler->getTableHeader();
+        refTableHeader->getCol(dbMeta->foreignKeyRefColumn[tableNum][i], refColName);
+        printf("%s.%s;\n", dbMeta->tableNames[dbMeta->foreignKeyRefTable[tableNum][i]], refColName);
+    }
+
+    indexManager->showIndex(name.c_str());
+    printf("==========   End  Table Info  ==========\n");
+    // printf("====================begin %s====================\n", name.c_str());
+    // for(int i = 0; i < tableHeader->colNum; i++) {
+    //     printf("%s|", tableHeader->entrys[i].colName);
+    // }
+    // printf("\n===============================================\n");
+    // for(int i = 0; i < tableHeader->colNum; i++) {
+    //     switch (tableHeader->entrys[i].colType)
+    //     {
+    //     case 0:
+    //         printf("NULL|");
+    //         break;
+    //     case 1:
+    //         printf("INT|");
+    //         break;
+    //     case 2:
+    //         printf("VARCHAR(%d)|", tableHeader->entrys[i].colLen);
+    //         break;
+    //     case 3:
+    //         printf("FLOAT|");
+    //         break;
+    //     default:
+    //         break;
+    //     }
+    // }
+    // printf("\n=====================end======================\n");
     return 0;
 }
 

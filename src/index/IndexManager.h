@@ -73,6 +73,8 @@ public:
     bool isValid();
 
     int showIndex();
+
+    int showIndex(const char* tableName);
 };
 
 #endif

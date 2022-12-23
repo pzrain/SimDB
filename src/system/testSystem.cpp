@@ -22,7 +22,9 @@ void testOperateDB(DatabaseManager* databaseManager) {
     databaseManager->createTable("table_1", colName, colTypes, colLen, 3);
     databaseManager->createTable("table_2", colName, colTypes, colLen, 3);
     databaseManager->renameTable("table_2", "table_3");
+    printf("listTableInfoBegin.\n");
     databaseManager->listTableInfo("table_3");
+    printf("listTableInfoEnd.\n");
     databaseManager->listTablesOfDatabase();
     databaseManager->createIndex("table_1", "colName_1");
     databaseManager->createIndex("table_1", "colName_2");
@@ -61,6 +63,7 @@ void testConstraint(DatabaseManager* databaseManager) {
     databaseManager->createPrimaryKey("table_3", {"colName_2"}, 1);
     databaseManager->dropUniqueKey("table_3", {"colName_2"}, 1);
     databaseManager->showIndex();
+    databaseManager->listTableInfo("table_3");
     // table_3.colName_1: unique key
     // table_3.colName_2: primary key
     // table_3.colName_2 AND table_1.colName_2: foreign key
