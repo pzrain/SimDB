@@ -327,7 +327,8 @@ int TableManager::createPrimaryKey(string tableName, string colName) {
     return index;
 }
 
-int TableManager::dropPrimaryKey(string tableName, string colName, DBMeta* dbMeta) {
+int TableManager::dropPrimaryKey(string tableName, string colName, DBMeta* dbMeta, int& indexDropped) {
+    indexDropped = 0;
     if(!checkTableName(tableName))
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
@@ -373,6 +374,7 @@ int TableManager::dropPrimaryKey(string tableName, string colName, DBMeta* dbMet
         if (dbMeta->foreignKeyOnCol[tableNum][index] == 0) {
             printf("[INFO] automatically remove Index on %s.%s.\n", tableName.c_str(), colName.c_str());
             indexManager->removeIndex(tableName.c_str(), colName.c_str());
+            indexDropped = 1;
         }
     }
 
@@ -441,7 +443,9 @@ int TableManager::createForeignKey(string tableName, string foreignKeyName, stri
     return index;
 }
 
-int TableManager::dropForeignKey(string tableName, uint8_t colIndex, DBMeta* dbMeta, string refTableName, int refColIndex) {
+int TableManager::dropForeignKey(string tableName, uint8_t colIndex, DBMeta* dbMeta, string refTableName, int refColIndex, int& indexDropped, int& refIndexDropped, char* resColName, char* resRefColName) {
+    indexDropped = 0;
+    refIndexDropped = 0;
     if(!checkTableName(tableName))
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
@@ -488,6 +492,8 @@ int TableManager::dropForeignKey(string tableName, uint8_t colIndex, DBMeta* dbM
             if (dbMeta->foreignKeyOnCol[tableNum][colIndex] == 1) {
                 printf("[INFO] automatically remove Index on %s.%s.\n", tableName.c_str(), tableHeader->entrys[colIndex].colName);
                 indexManager->removeIndex(tableName.c_str(), tableHeader->entrys[colIndex].colName);
+                indexDropped = 1;
+                strcpy(resColName, tableHeader->entrys[colIndex].colName);
             }
         }
     }
@@ -509,6 +515,8 @@ int TableManager::dropForeignKey(string tableName, uint8_t colIndex, DBMeta* dbM
             if (dbMeta->foreignKeyOnCol[tableNum][refIndex] == 1) {
                 printf("[INFO] automatically remove Index on %s.%s.\n", refTableName.c_str(), refColName);
                 indexManager->removeIndex(refTableName.c_str(), refColName);
+                refIndexDropped = 1;
+                strcpy(resRefColName, refColName);
             }
         }
     }
@@ -541,7 +549,8 @@ int TableManager::createUniqueKey(string tableName, string colName) {
     return res;
 }
 
-int TableManager::dropUniqueKey(string tableName, string colName, DBMeta* dbMeta) {
+int TableManager::dropUniqueKey(string tableName, string colName, DBMeta* dbMeta, int& indexDropped) {
+    indexDropped = 0;
     if(!checkTableName(tableName))
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
@@ -585,6 +594,7 @@ int TableManager::dropUniqueKey(string tableName, string colName, DBMeta* dbMeta
         if (dbMeta->foreignKeyOnCol[tableNum][index] == 0) { // no foreign key linked to this column
             printf("[INFO] automatically remove Index on %s.%s.\n", tableName.c_str(), colName.c_str());
             indexManager->removeIndex(tableName.c_str(), colName.c_str());
+            indexDropped = 1;
         }
     }
     return index;
@@ -874,14 +884,14 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                         RecordDataNode* searchRecordDataNode;
                         preRes.clear();
                         for (int k = rFileId; k < res[cur ^ 1].size(); k += tableNum) {
-                            if (tableNum > 1 && res[cur ^ 1][k ^ 1] != curRecordId) {
+                            if (tableNum > 1 && (res[cur ^ 1][k ^ 1]->getPageId() != curRecordId->getPageId() || res[cur ^ 1][k ^ 1]->getSlotId() != curRecordId->getSlotId())) {
                                 // only choose those satisfy previous conditions;
                                 continue;
                             }
                             RecordId* rRecordId = res[cur ^ 1][k];
-                            Record* searchRecord;
-                            fileHandlers[rFileId]->getRecord(*rRecordId, *searchRecord);
-                            searchRecord->deserialize(searchRecordData,tableEntryDesc);
+                            Record searchRecord(fileHandlers[rFileId]->getRecordLen());
+                            fileHandlers[rFileId]->getRecord(*rRecordId, searchRecord);
+                            searchRecord.deserialize(searchRecordData, tableEntryDesc);
                             searchRecordDataNode = searchRecordData.getData(rColId);
                             void* rData = transformType(searchRecordDataNode);
                             bool flag = false;
@@ -1566,7 +1576,8 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert, DBMeta* db
         RecordData recordData(valueSize);
         RecordDataNode* recordDataNode = recordData.head;
         for (int j = 0; j < valueSize; j++) {
-            if (dbInsert->valueListsType[i][j] != tableEntryDesc.getCol(j)->colType) {
+            TableEntryDescNode* tableEntryDescNode = tableEntryDesc.getCol(j);
+            if (dbInsert->valueListsType[i][j] != tableEntryDescNode->colType) {
                 printf("[Error] column type done't match. Types are %d and %d\n", dbInsert->valueListsType[i][j], tableEntryDesc.getCol(j)->colType);
                 return -1;
             }
@@ -1586,7 +1597,7 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert, DBMeta* db
                     indexData[j].push_back((float*)dbInsert->valueLists[i][j]);
                     break;
                 case DB_LIST_CHAR:
-                    recordDataNode->len = dbInsert->valueListsLen[i][j];
+                    recordDataNode->len = tableEntryDescNode->colLen;
                     recordDataNode->nodeType = COL_VARCHAR;
                     recordDataNode->content.charContent = new char[recordDataNode->len];
                     strcpy(recordDataNode->content.charContent, (char*)dbInsert->valueLists[i][j]);

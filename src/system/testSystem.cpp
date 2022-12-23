@@ -87,20 +87,16 @@ void testInsert(DatabaseManager* databaseManager) {
     valueListsType[0].push_back(DB_LIST_CHAR);
     valueListsType[0].push_back(DB_LIST_INT);
     valueListsType[0].push_back(DB_LIST_INT);
-    valueListsLen.push_back(std::vector<int>({10, 4, 4}));
     valueLists.push_back(std::vector<void*>());
     valueLists[1].push_back(colName21);
     valueLists[1].push_back(&colName22);
     valueLists[1].push_back(&colName23);
     valueListsType.push_back(valueListsType[0]);
-    valueListsLen.push_back(std::vector<int>({10, 4, 4}));
     dbInsert->valueLists = valueLists;
     dbInsert->valueListsType = valueListsType;
-    dbInsert->valueListsLen = valueListsLen;
     printf("Inserted record num on %s = %d\n", "table_1", databaseManager->insertRecords("table_1", dbInsert));
     dbInsert->valueLists.resize(1);
     dbInsert->valueListsType.resize(1);
-    dbInsert->valueListsLen.resize(1);
     printf("Inserted record num on %s = %d\n", "table_3", databaseManager->insertRecords("table_3", dbInsert));
     printf("\n");
     delete dbInsert;
@@ -162,6 +158,7 @@ void testSelect(DatabaseManager* databaseManager) {
      *             so "IS(NOT) Null" is not tested
      */
     printf("=====TEST SELECT=====\n");
+    databaseManager->switchDatabase("demo1");
     vector<DBSelItem> selectItems;
     vector<string> selectTables;
     vector<DBExpression> expressions;
@@ -351,6 +348,7 @@ void testSelect(DatabaseManager* databaseManager) {
     printf("(Group By) Select record num = %d\n", databaseManager->selectRecords(dbSelect));
 
     // join two tables
+    // SELECT table_3.colName_2, table_1.colName_2 FROM table_1, table_3 WHERE table_1.colName_2 <= table_3.colName_2 AND table_1.colName_2 = 1;
     dbSelect->groupByEn = false;
     selectItems.clear();
     selectTables.clear();
@@ -393,7 +391,7 @@ void testSelect(DatabaseManager* databaseManager) {
 
 int main() {
     printf("RUN TEST\n");
-    DatabaseManager* databaseManager = new DatabaseManager;
+    DatabaseManager* databaseManager = new DatabaseManager();
     testOperateDB(databaseManager);
     testConstraint(databaseManager);
     testInsert(databaseManager);

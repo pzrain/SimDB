@@ -93,7 +93,7 @@ public:
     */
     int createPrimaryKey(string tableName, string colName);
 
-    int dropPrimaryKey(string tableName, string colName, DBMeta* dbMeta);
+    int dropPrimaryKey(string tableName, string colName, DBMeta* dbMeta, int& indexDropped);
 
     /**
      * @brief add one foreign key, it is stored in the TableEntry. The return value will be store in database meta data.
@@ -106,7 +106,7 @@ public:
      * @param colIndex column index of the entrys array, quickly find the correct entry
      * @return 0 if success, -1 if fail
     */
-    int dropForeignKey(string tableName, uint8_t colIndex, DBMeta* dbMeta, string refTableName, int refColIndex);
+    int dropForeignKey(string tableName, uint8_t colIndex, DBMeta* dbMeta, string refTableName, int refColIndex, int& indexDropped, int& refIndexDropped, char* colName, char* refColName);
 
     /**
      * @brief refer to createPrimaryKey
@@ -117,7 +117,7 @@ public:
      */
     int createUniqueKey(string tableName, string colName);
 
-    int dropUniqueKey(string tableName, string colName, DBMeta* dbMeta);
+    int dropUniqueKey(string tableName, string colName, DBMeta* dbMeta, int& indexDropped);
 
     int selectRecords(DBSelect* dbSelect);
 
