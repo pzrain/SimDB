@@ -442,12 +442,13 @@ int TableManager::createForeignKey(string tableName, string foreignKeyName, stri
     }
     refIndex = checkColExist(refFileHandler->getTableHeader(), refTableCol.c_str());
     if (index >= 0 && refIndex >= 0) {
-        // if (refTableHeader->entrys[refIndex].primaryKeyConstraint == false) {
-        //     printf("[ERROR] can not build foreign key on ref table's non-primary-key field.\n");
-        //     return -1;
-        // }
+        if (refTableHeader->entrys[refIndex].primaryKeyConstraint == false) {
+            printf("[ERROR] can not build foreign key on ref table's non-primary-key field.\n");
+            return -1;
+        }
         /* 
             According to course doc, foreign column doesn't have to be parimary key nor have index
+            Updata on 2022/12/25: according to the Wechat Group, foreign key can only be created on primary key (￣、￣)
          */
         if (tableHeader->getTableEntryDesc().getCol(index)->colType != refTableHeader->getTableEntryDesc().getCol(refIndex)->colType) {
             printf("[ERROR] can not build foreign key between column of different type.\n");

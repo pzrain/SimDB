@@ -57,6 +57,7 @@ void testConstraint(DatabaseManager* databaseManager) {
     databaseManager->dropPrimaryKey("table_3", {"colName_2"}, 1);
     databaseManager->createUniqueKey("table_3", {"colName_2"}, 1);
 
+    databaseManager->createPrimaryKey("table_1", {"colName_2"}, 1);
     databaseManager->createForeignKey("table_3", "foreignKey1", "colName_2", "table_1", "colName_2");
     databaseManager->createForeignKey("table_3", "foreignKey2", "colName_2", "table_1", "colName_1");
     // databaseManager->dropForeignKey("table_3", "foreignKey1");
