@@ -1,4 +1,5 @@
 #include "parser/MyParser.h"
+#include "system/DatabaseManager.h"
 #include <cstdio>
 
 int main() {

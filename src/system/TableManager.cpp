@@ -4,6 +4,7 @@
 #include <regex>
 #include <algorithm>
 #include <unistd.h>
+#include <cstring>
 
 TableManager::TableManager(string databaseName_,  BufPageManager* bufPageManager_) {
     databaseName = databaseName_;
@@ -24,7 +25,7 @@ int TableManager::checkColExist(TableHeader* tableHeader, const char* colName) {
 inline bool TableManager::checkTableName(string name) {
     size_t length = name.length();
     if(length == 0 || length > TAB_MAX_NAME_LEN) {
-        printf("[Error] invalid table name ! \n");
+        printf("[ERROR] invalid table name ! \n");
         return false;
     }
     return true;
@@ -41,7 +42,7 @@ int TableManager::creatTable(string tableName, TableEntry* tableEntrys, int colN
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
     if(checkTableExist(path)) {
-        printf("[Error] table named %s already exist!\n", tableName.c_str());
+        printf("[ERROR] table named %s already exist!\n", tableName.c_str());
         return -1;
     }
     if(recordManager->createFile(tableName.c_str()) != 0){
@@ -63,12 +64,12 @@ int TableManager::openTable(string name) {
         return -1;
     string path = "database/" + databaseName + '/' + name +".db";
     if(!checkTableExist(path)) {
-        printf("[Error] table dose not exist!\n");
+        printf("[ERROR] table dose not exist!\n");
         return -1;
     }
 
     if((fileHandler = recordManager->openFile(name.c_str())) == nullptr) {
-        printf("[Error] error in opening table %s.\n", name.c_str());
+        printf("[ERROR] error in opening table %s.\n", name.c_str());
         return -1;
     }
 
@@ -80,12 +81,12 @@ int TableManager::dropTable(string name) {
         return -1;
     string path = "database/" + databaseName + '/' + name +".db";
     if(!checkTableExist(path)) {
-        printf("[Error] table dose not exist!\n");
+        printf("[ERROR] table dose not exist!\n");
         return -1;
     }
         
     if(recordManager->removeFile(name.c_str()) != 0) {
-        printf("[Error] fail to drop the table named %s\n", name.c_str());
+        printf("[ERROR] fail to drop the table named %s\n", name.c_str());
         return -1;
     }
 
@@ -93,7 +94,7 @@ int TableManager::dropTable(string name) {
 
 }
 
-int TableManager::listTableInfo(string name) {
+int TableManager::listTableInfo(string name, DBMeta* dbMeta) {
     if(!checkTableName(name))
         return -1;
     string path = "database/" + databaseName + '/' + name +".db";
@@ -103,33 +104,60 @@ int TableManager::listTableInfo(string name) {
     if(fileHandler == nullptr)
         return -1;
     TableHeader* tableHeader = fileHandler->getTableHeader();
-    printf("-------------------------%s-----------------------------\n", name.c_str());
-    printf("|");
-    for(int i = 0; i < tableHeader->colNum; i++) {
-        printf("%-20s|", tableHeader->entrys[i].colName);
-    }
-    printf("\n----------------------------------------------------------------\n");
-    printf("|");
-    for(int i = 0; i < tableHeader->colNum; i++) {
-        switch (tableHeader->entrys[i].colType)
-        {
-        case 0:
-            printf("%-20s|", "NULL");
-            break;
-        case 1:
-            printf("%-20s|", "INT");
-            break;
-        case 2:
-            printf("VARCHAR(%d)%-10s|", tableHeader->entrys[i].colLen, "" );
-            break;
-        case 3:
-            printf("%-20s|", "FLOAT");
-            break;
-        default:
+    int tableNum = -1;
+    for (int i = 0; i < DB_MAX_TABLE_NUM; i++) {
+        if (strcmp(name.c_str(), dbMeta->tableNames[i]) == 0) {
+            tableNum = i;
             break;
         }
     }
-    printf("\n----------------------------------------------------------------\n");
+    if (tableNum == -1) {
+        return -1;
+    }
+    printf("==========  Begin Table Info  ==========\n");
+    tableHeader->printInfo();
+
+    FileHandler* refFileHandler;
+    TableHeader* refTableHeader;
+    char colName[64], refColName[64];
+    for (int i = 0; i < dbMeta->foreignKeyNum[tableNum]; i++) {
+        printf("FOREIGN KEY ");
+        tableHeader->getCol(dbMeta->foreignKeyColumn[tableNum][i], colName);
+        printf("%s (%s)", dbMeta->foreignKeyNames[tableNum][i], colName);
+        printf(" REFERENCE ");
+        refFileHandler = recordManager->findTable(dbMeta->tableNames[dbMeta->foreignKeyRefTable[tableNum][i]]);
+        refTableHeader = refFileHandler->getTableHeader();
+        refTableHeader->getCol(dbMeta->foreignKeyRefColumn[tableNum][i], refColName);
+        printf("%s.%s;\n", dbMeta->tableNames[dbMeta->foreignKeyRefTable[tableNum][i]], refColName);
+    }
+
+    indexManager->showIndex(name.c_str());
+    printf("==========   End  Table Info  ==========\n");
+    // printf("====================begin %s====================\n", name.c_str());
+    // for(int i = 0; i < tableHeader->colNum; i++) {
+    //     printf("%s|", tableHeader->entrys[i].colName);
+    // }
+    // printf("\n===============================================\n");
+    // for(int i = 0; i < tableHeader->colNum; i++) {
+    //     switch (tableHeader->entrys[i].colType)
+    //     {
+    //     case 0:
+    //         printf("NULL|");
+    //         break;
+    //     case 1:
+    //         printf("INT|");
+    //         break;
+    //     case 2:
+    //         printf("VARCHAR(%d)|", tableHeader->entrys[i].colLen);
+    //         break;
+    //     case 3:
+    //         printf("FLOAT|");
+    //         break;
+    //     default:
+    //         break;
+    //     }
+    // }
+    // printf("\n=====================end======================\n");
     return 0;
 }
 
@@ -139,30 +167,31 @@ int TableManager::renameTable(string oldName, string newName) {
 
     string oldPath = "database/" + databaseName + '/' + oldName +".db";
     if(!checkTableExist(oldPath)) {
-        printf("[Error] table named %s does not exist !\n", oldName.c_str());
+        printf("[ERROR] table named %s does not exist !\n", oldName.c_str());
         return -1;
     }
 
     fileHandler = recordManager->findTable(oldName.c_str());
     if(fileHandler == nullptr) {
-        printf("[Error] can not find the table named %s !\n", oldName.c_str());
+        printf("[ERROR] can not find the table named %s !\n", oldName.c_str());
         return -1;
     }
+    fileHandler->renameTable(newName.c_str());
+    recordManager->renameTable(oldName.c_str(), newName.c_str());
     if(recordManager->closeFile(fileHandler) != 0) {
-        printf("[Error] can not close the file before rename it !\n");
+        printf("[ERROR] can not close the file before rename it !\n");
         return-1;
     }
-    fileHandler = nullptr;
 
     string newPath = "database/" + databaseName + '/' + newName +".db";
     int ret = rename(oldPath.c_str(), newPath.c_str());
     if(ret != 0) {
-        printf("[Error] can not rename the table !\n");
+        printf("[ERROR] can not rename the table !\n");
         return -1;
     }
     
     if((fileHandler = recordManager->openFile(newName.c_str())) == nullptr) {
-        printf("[Error] can not open the file after rename it !\n");
+        printf("[ERROR] can not open the file after rename it !\n");
         return -1;
     }
     indexManager->renameIndex(oldName.c_str(), newName.c_str());
@@ -204,7 +233,7 @@ int TableManager::createIndex(string tableName, string colName) {
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
     if(!checkTableExist(path)) {
-        printf("[Error] table dose not exist!\n");
+        printf("[ERROR] table dose not exist!\n");
         return -1;
     }
 
@@ -219,13 +248,13 @@ int TableManager::createIndex(string tableName, string colName) {
         colType = tableHeader->entrys[index].colType;
         indexLen = tableHeader->entrys[index].colLen;
     } else { // column not found
-        printf("[Error] specified column does not exist.\n");
+        printf("[ERROR] specified column does not exist.\n");
         return -1;
     }
 
     if (indexManager->hasIndex(tableName.c_str(), colName.c_str())) {
-        printf("[Info] the index has already been created.\n");
-        return index;
+        printf("[INFO] the index has already been created.\n");
+        return -1;
     }
 
     int res = _createAndAddIndex(tableName, colName, indexLen, colType, index);
@@ -237,13 +266,13 @@ int TableManager::dropIndex(string tableName, string colName) {
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
     if(!checkTableExist(path)) {
-        printf("[Error] table dose not exist!\n");
+        printf("[ERROR] table dose not exist!\n");
         return -1;
     }
     // check column exists? maybe do not have to
     if (!indexManager->hasIndex(tableName.c_str(), colName.c_str())) {
-        printf("[Info] No index on %s.%s\n", tableName.c_str(), colName.c_str());
-        return 0;
+        printf("[INFO] No index on %s.%s\n", tableName.c_str(), colName.c_str());
+        return -1;
     }
 
     return indexManager->removeIndex(tableName.c_str(), colName.c_str());
@@ -289,7 +318,7 @@ int TableManager::createPrimaryKey(string tableName, string colName) {
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
     if(!checkTableExist(path)) {
-        printf("[Error] table dose not exist!\n");
+        printf("[ERROR] table dose not exist!\n");
         return -1;
     }
     fileHandler = recordManager->findTable(tableName.c_str());
@@ -300,7 +329,7 @@ int TableManager::createPrimaryKey(string tableName, string colName) {
 
     // make sure there is only one primary key
     if (tableHeader->hasPrimaryKey()) {
-        printf("[Error] can not add primary key to this table.\n");
+        printf("[ERROR] can not add primary key to this table.\n");
         return -1;
     }
 
@@ -316,7 +345,7 @@ int TableManager::createPrimaryKey(string tableName, string colName) {
         return -1;
     }
     if (indexManager->hasIndex(tableName.c_str(), colName.c_str())) {
-        printf("[Info] the index has already been created.\n");
+        printf("[INFO] the index has already been created.\n");
         return index;
     }
     // add pre-existing records to the newly-added index
@@ -327,12 +356,13 @@ int TableManager::createPrimaryKey(string tableName, string colName) {
     return index;
 }
 
-int TableManager::dropPrimaryKey(string tableName, string colName, DBMeta* dbMeta) {
+int TableManager::dropPrimaryKey(string tableName, string colName, DBMeta* dbMeta, int& indexDropped) {
+    indexDropped = 0;
     if(!checkTableName(tableName))
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
     if(!checkTableExist(path)) {
-        printf("[Error] table dose not exist!\n");
+        printf("[ERROR] table dose not exist!\n");
         return -1;
     }
     fileHandler = recordManager->findTable(tableName.c_str());
@@ -342,12 +372,12 @@ int TableManager::dropPrimaryKey(string tableName, string colName, DBMeta* dbMet
     int index = checkColExist(tableHeader, colName.c_str());
     if (index >= 0) {
         if (tableHeader->entrys[index].primaryKeyConstraint == false) {
-            printf("[Info] there is no primary key constraint on column %s\n", colName.c_str());
-            return index;
+            printf("[INFO] there is no primary key constraint on column %s\n", colName.c_str());
+            return -1;
         }
         tableHeader->entrys[index].primaryKeyConstraint = false;
     } else {
-        printf("[Error] specified column does not exist.\n");
+        printf("[ERROR] specified column does not exist.\n");
         return -1;
     }
 
@@ -371,8 +401,9 @@ int TableManager::dropPrimaryKey(string tableName, string colName, DBMeta* dbMet
      */
     if (!dbMeta->mannuallyCreateIndex[tableNum][indexNum] && !tableHeader->entrys[index].uniqueConstraint && dbMeta->foreignKeyRefColumn[tableNum][index] == 0)  {
         if (dbMeta->foreignKeyOnCol[tableNum][index] == 0) {
-            printf("[Info] automatically remove Index on %s.%s.\n", tableName.c_str(), colName.c_str());
+            printf("[INFO] automatically remove Index on %s.%s.\n", tableName.c_str(), colName.c_str());
             indexManager->removeIndex(tableName.c_str(), colName.c_str());
+            indexDropped = 1;
         }
     }
 
@@ -384,18 +415,18 @@ int TableManager::createForeignKey(string tableName, string foreignKeyName, stri
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
     if(!checkTableExist(path)) {
-        printf("[Error] table dose not exist!\n");
+        printf("[ERROR] table dose not exist!\n");
         return -1;
     }
     if(!checkTableName(refTableName))
         return -1;
     string tablePath = "database/" + databaseName + '/' + refTableName +".db";
     if(!checkTableExist(tablePath)) {
-        printf("[Error] table dose not exist!\n");
+        printf("[ERROR] table dose not exist!\n");
         return -1;
     }
     if (tableName == refTableName) {
-        printf("[Error] can not build foreign key within one table.\n");
+        printf("[ERROR] can not build foreign key within one table.\n");
         return -1;
     }
     fileHandler = recordManager->findTable(tableName.c_str());
@@ -405,48 +436,54 @@ int TableManager::createForeignKey(string tableName, string foreignKeyName, stri
     int index = checkColExist(tableHeader, colName.c_str());
     FileHandler* refFileHandler = recordManager->findTable(refTableName.c_str());
     TableHeader* refTableHeader = refFileHandler->getTableHeader();
-    assert(refFileHandler != nullptr);
+    if (refFileHandler == nullptr) {
+        fprintf(stderr, "refFileHandler is nullptr in createForeignKey.\n");
+        return -1;
+    }
     refIndex = checkColExist(refFileHandler->getTableHeader(), refTableCol.c_str());
     if (index >= 0 && refIndex >= 0) {
-        // if (refTableHeader->entrys[refIndex].primaryKeyConstraint == false) {
-        //     printf("[Error] can not build foreign key on ref table's non-primary-key field.\n");
-        //     return -1;
-        // }
+        if (refTableHeader->entrys[refIndex].primaryKeyConstraint == false) {
+            printf("[ERROR] can not build foreign key on ref table's non-primary-key field.\n");
+            return -1;
+        }
         /* 
             According to course doc, foreign column doesn't have to be parimary key nor have index
+            Updata on 2022/12/25: according to the Wechat Group, foreign key can only be created on primary key (￣、￣)
          */
         if (tableHeader->getTableEntryDesc().getCol(index)->colType != refTableHeader->getTableEntryDesc().getCol(refIndex)->colType) {
-            printf("[Error] can not build foreign key between column of different type.\n");
+            printf("[ERROR] can not build foreign key between column of different type.\n");
             return -1;
         }
         if (!indexManager->hasIndex(tableName.c_str(), colName.c_str())) {
-            printf("[Info] automatically build index for local table.\n");
+            printf("[INFO] automatically build index for local table.\n");
             _createAndAddIndex(tableName, colName, tableHeader->entrys[index].colLen, tableHeader->entrys[index].colType, index);
         }
         if (!indexManager->hasIndex(refTableName.c_str(), refTableCol.c_str())) {
-            printf("[Info] automatically build index for foreign table.\n");
+            printf("[INFO] automatically build index for foreign table.\n");
             _createAndAddIndex(refTableName, refTableCol, refTableHeader->entrys[refIndex].colLen, refTableHeader->entrys[refIndex].colType, refIndex);
         }
         if (tableHeader->entrys[index].foreignKeyConstraint == MAX_FOREIGN_KEY_FOR_COL) {
-            printf("[Error] can not add more foreign keys for column %s.\n", colName.c_str());
+            printf("[ERROR] can not add more foreign keys for column %s.\n", colName.c_str());
             return -1;
         }
         strcpy(tableHeader->entrys[index].foreignKeyTableName[tableHeader->entrys[index].foreignKeyConstraint], refTableName.c_str());
         strcpy(tableHeader->entrys[index].foreignKeyColName[tableHeader->entrys[index].foreignKeyConstraint], refTableCol.c_str());
         tableHeader->entrys[index].foreignKeyConstraint++;
     } else {
-        printf("[Error] specified column does not exist.\n");
+        printf("[ERROR] specified column does not exist.\n");
         return -1;
     }
     return index;
 }
 
-int TableManager::dropForeignKey(string tableName, uint8_t colIndex, DBMeta* dbMeta, string refTableName, int refColIndex) {
+int TableManager::dropForeignKey(string tableName, uint8_t colIndex, DBMeta* dbMeta, string refTableName, int refColIndex, int& indexDropped, int& refIndexDropped, char* resColName, char* resRefColName) {
+    indexDropped = 0;
+    refIndexDropped = 0;
     if(!checkTableName(tableName))
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
     if(!checkTableExist(path)) {
-        printf("[Error] table dose not exist!\n");
+        printf("[ERROR] table dose not exist!\n");
         return -1;
     }
     fileHandler = recordManager->findTable(tableName.c_str());
@@ -464,7 +501,7 @@ int TableManager::dropForeignKey(string tableName, uint8_t colIndex, DBMeta* dbM
         }
     }
     if(foreignKeyIndex == -1) {
-        printf("[Error] this table dose not have this foreign key\n");
+        printf("[ERROR] this table dose not have this foreign key\n");
         return -1;
     }
     
@@ -486,8 +523,10 @@ int TableManager::dropForeignKey(string tableName, uint8_t colIndex, DBMeta* dbM
         }
         if (!dbMeta->mannuallyCreateIndex[tableNum][indexNum] && !dbMeta->isPrimaryKey[tableNum][colIndex] && !dbMeta->isUniqueKey[tableNum][colIndex]) {
             if (dbMeta->foreignKeyOnCol[tableNum][colIndex] == 1) {
-                printf("[Info] automatically remove Index on %s.%s.\n", tableName.c_str(), tableHeader->entrys[colIndex].colName);
+                printf("[INFO] automatically remove Index on %s.%s.\n", tableName.c_str(), tableHeader->entrys[colIndex].colName);
                 indexManager->removeIndex(tableName.c_str(), tableHeader->entrys[colIndex].colName);
+                indexDropped = 1;
+                strcpy(resColName, tableHeader->entrys[colIndex].colName);
             }
         }
     }
@@ -507,8 +546,10 @@ int TableManager::dropForeignKey(string tableName, uint8_t colIndex, DBMeta* dbM
         }
         if (!dbMeta->mannuallyCreateIndex[tableNum][indexNum] && !dbMeta->isPrimaryKey[tableNum][refIndex] && !dbMeta->isUniqueKey[tableNum][refIndex]) {
             if (dbMeta->foreignKeyOnCol[tableNum][refIndex] == 1) {
-                printf("[Info] automatically remove Index on %s.%s.\n", refTableName.c_str(), refColName);
+                printf("[INFO] automatically remove Index on %s.%s.\n", refTableName.c_str(), refColName);
                 indexManager->removeIndex(refTableName.c_str(), refColName);
+                refIndexDropped = 1;
+                strcpy(resRefColName, refColName);
             }
         }
     }
@@ -524,15 +565,13 @@ int TableManager::createUniqueKey(string tableName, string colName) {
     // the index is established. Next should build unique constraint
     if (res >= 0) {
         fileHandler = recordManager->findTable(tableName.c_str());
-        assert(fileHandler != nullptr);
         TableHeader* tableHeader = fileHandler->getTableHeader();
         int index = checkColExist(tableHeader, colName.c_str());
-        assert(index >= 0);
         if (tableHeader->entrys[index].uniqueConstraint == true) {
-            printf("[Info] the unique constraint of %s has already been created.\n", colName.c_str());
+            printf("[INFO] the unique constraint of %s has already been created.\n", colName.c_str());
             return index;
         } /* else if (tableHeader->entrys[index].primaryKeyConstraint == true) {
-            printf("[Error] can not create unique constraint on primary key.\n");
+            printf("[ERROR] can not create unique constraint on primary key.\n");
             return -1;
         } */
         tableHeader->entrys[index].uniqueConstraint = true;
@@ -541,12 +580,13 @@ int TableManager::createUniqueKey(string tableName, string colName) {
     return res;
 }
 
-int TableManager::dropUniqueKey(string tableName, string colName, DBMeta* dbMeta) {
+int TableManager::dropUniqueKey(string tableName, string colName, DBMeta* dbMeta, int& indexDropped) {
+    indexDropped = 0;
     if(!checkTableName(tableName))
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
     if(!checkTableExist(path)) {
-        printf("[Error] table dose not exist!\n");
+        printf("[ERROR] table dose not exist!\n");
         return -1;
     }
     fileHandler = recordManager->findTable(tableName.c_str());
@@ -556,16 +596,19 @@ int TableManager::dropUniqueKey(string tableName, string colName, DBMeta* dbMeta
     int index = checkColExist(tableHeader, colName.c_str());
     if (index >= 0) {
         if (tableHeader->entrys[index].uniqueConstraint == false) {
-            printf("[Info] specified column dose not have unique constraint.\n");
-            return index;
+            printf("[INFO] specified column dose not have unique constraint.\n");
+            return -1;
         }
         tableHeader->entrys[index].uniqueConstraint = false;
     } else {
-        printf("[Error] specified column does not exist.\n");
+        printf("[ERROR] specified column does not exist.\n");
         return -1;
     }
 
-    assert(indexManager->hasIndex(tableName.c_str(), colName.c_str()));
+    if (!indexManager->hasIndex(tableName.c_str(), colName.c_str())) {
+        fprintf(stderr, "indexManager has no index on uniquekey.\n");
+        return -1;
+    }
 
     int tableNum = -1, indexNum = -1;
     for(int i = 0; i < dbMeta->tableNum; i++) {
@@ -583,8 +626,9 @@ int TableManager::dropUniqueKey(string tableName, string colName, DBMeta* dbMeta
 
     if (!dbMeta->mannuallyCreateIndex[tableNum][indexNum] && !tableHeader->entrys[index].primaryKeyConstraint && dbMeta->foreignKeyOnCol[tableNum][index] == 0) {
         if (dbMeta->foreignKeyOnCol[tableNum][index] == 0) { // no foreign key linked to this column
-            printf("[Info] automatically remove Index on %s.%s.\n", tableName.c_str(), colName.c_str());
+            printf("[INFO] automatically remove Index on %s.%s.\n", tableName.c_str(), colName.c_str());
             indexManager->removeIndex(tableName.c_str(), colName.c_str());
+            indexDropped = 1;
         }
     }
     return index;
@@ -601,27 +645,27 @@ int TableManager::_checkFormat(FileHandler* fileHandlers[], TableHeader* tableHe
                 }
             }
             if (j == tableSize) {
-                printf("[Error] no such table in %s.%s\n", waitChecked[i]->expTable.c_str(), waitChecked[i]->expCol.c_str());
+                printf("[ERROR] no such table in %s.%s\n", waitChecked[i]->expTable.c_str(), waitChecked[i]->expCol.c_str());
                 return -1;
             }
             int index = checkColExist(tableHeaders[j], waitChecked[i]->expCol.c_str());
             if (index < 0) {
-                printf("[Error] no such column %s in table%s.\n", waitChecked[i]->expCol.c_str(), waitChecked[i]->expTable.c_str());
+                printf("[ERROR] no such column %s in table%s.\n", waitChecked[i]->expCol.c_str(), waitChecked[i]->expTable.c_str());
                 return -1;
             }
         } else {
             int hitTable = 0;
             for (int j = 0; j < tableSize; j++) {
-                if (checkColExist(tableHeaders[j], waitChecked[i]->expCol.c_str())) {
+                if (checkColExist(tableHeaders[j], waitChecked[i]->expCol.c_str()) >= 0) {
                     hitTable++;
                     waitChecked[i]->expTable = selectTables[j];
                 }
             }
             if (hitTable == 0) {
-                printf("[Error] no table has such column %s.\n", waitChecked[i]->expCol.c_str());
+                printf("[ERROR] no table has such column %s.\n", waitChecked[i]->expCol.c_str());
                 return -1;
             } else if (hitTable >= 2) {
-                printf("[Error] ambiguous column %s.\n", waitChecked[i]->expCol.c_str());
+                printf("[ERROR] ambiguous column %s.\n", waitChecked[i]->expCol.c_str());
                 return -1;
             }
         }
@@ -651,7 +695,7 @@ inline bool compareEqual(RecordDataNode* cur, RecordDataNode* pre) {
     return false;
 }
 
-void* transformType(RecordDataNode* recordDataNode) {
+inline void* transformType(RecordDataNode* recordDataNode) {
     void* res = nullptr;
     switch (recordDataNode->nodeType) {
         case COL_INT:
@@ -661,12 +705,29 @@ void* transformType(RecordDataNode* recordDataNode) {
             res = recordDataNode->content.floatContent;
             break;
         case COL_VARCHAR:
+            res = recordDataNode->content.charContent;
             break;
         default:
             recordDataNode->len = 0;
             break;
     }
     return res;
+}
+
+inline void writeBackData(void* data, RecordDataNode* recordDataNode) {
+    switch (recordDataNode->nodeType) {
+        case COL_INT:
+            recordDataNode->content.intContent = (int*)data;
+            break;
+        case COL_FLOAT:
+            recordDataNode->content.floatContent = (float*)data;
+            break;
+        case COL_VARCHAR:
+            recordDataNode->content.charContent = (char*)data;
+            break;
+        default:
+            break;
+    }
 }
 
 int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression> expressions, vector<RecordId*>& resRecordIds) {
@@ -694,15 +755,19 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
             }
         }
     } else {
-        assert(false);
+        // tableNum > 2
+        // should not be here
+        return -1;
     }
-
     for (int i = 0; i < expressions.size(); i++) {
         bool preFlag = false; // flag indicating the previous item has been successfully selected
         std::vector<RecordId*> preRes;
         cur ^= 1;
         res[cur].clear();
-        assert(expressions[i].lType == DB_ITEM); // in SQL.g4, the left must be an item;
+        if (expressions[i].lType != DB_ITEM) { // in SQL.g4, the left must be an item;
+            fprintf(stderr, "the left must be an item.\n");
+            return -1;
+        }
         DBExpItem* lItem = (DBExpItem*)expressions[i].lVal;
         int fileId = (lItem->expTable == selectTables[0]) ? 0 : 1;
         Record curRecord(fileHandlers[fileId]->getRecordLen());
@@ -737,7 +802,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                 equalAsPre = true;
             }
             if (expressions[i].rType != DB_NULL && curRecordDataNode->nodeType == COL_NULL) {
-                printf("[Error] null type currently is not supported in op other than IS(NOT) NULL.\n");
+                printf("[ERROR] null type currently is not supported in op other than IS(NOT) NULL.\n");
                 return -1;
             }
             if (expressions[i].rType == DB_ITEM) {
@@ -747,7 +812,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                 TableEntryDesc tableEntryDesc = tableHeaders[rFileId]->getTableEntryDesc();
                 TableEntryDescNode* tableEntryDescNode = tableEntryDesc.getCol(rColId);
                 if (tableEntryDescNode->colType != curRecordDataNode->nodeType) {
-                    printf("[Error] %s.%s and %s.%s don't have compatible types.\n", lItem->expTable.c_str(), lItem->expCol.c_str(), rItem->expTable.c_str(), rItem->expCol.c_str());
+                    printf("[ERROR] %s.%s and %s.%s don't have compatible types.\n", lItem->expTable.c_str(), lItem->expCol.c_str(), rItem->expTable.c_str(), rItem->expCol.c_str());
                     return -1;
                 }
                 std::vector<int> indexRes, indexResTemp;
@@ -787,12 +852,12 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                             break;
                         default:
                             fprintf(stderr, "encouter error op type %d in search.\n", expressions[i].op);
-                            assert(false);
+                            return -1;
                             break;
                     }
                     if (flag) {
                         res[cur].push_back(curRecordId);
-                        if (tableNum > 0) {
+                        if (tableNum > 1) {
                             res[cur].push_back(res[cur ^ 1][j ^ 1]);
                         }
                     }
@@ -817,21 +882,21 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                                     indexRes.push_back(indexResTemp[k]);
                                 }
                                 break;
-                            case GT_TYPE:
+                            case LT_TYPE:
                                 indexManager->searchBetween(rItem->expTable.c_str(), rItem->expCol.c_str(), searchData, nullptr, indexRes, false, true);
                                 break;
-                            case GTE_TYPE:
+                            case LTE_TYPE:
                                 indexManager->searchBetween(rItem->expTable.c_str(), rItem->expCol.c_str(), searchData, nullptr, indexRes, true, true);
                                 break;
-                            case LT_TYPE:
+                            case GT_TYPE:
                                 indexManager->searchBetween(rItem->expTable.c_str(), rItem->expCol.c_str(), nullptr, searchData, indexRes, true, false);
                                 break;
-                            case LTE_TYPE:
+                            case GTE_TYPE:
                                 indexManager->searchBetween(rItem->expTable.c_str(), rItem->expCol.c_str(), nullptr, searchData, indexRes, true, true);
                                 break;
                             default:
                                 fprintf(stderr, "encouter error op type %d in search.\n", expressions[i].op);
-                                assert(false);
+                                return -1;
                                 break;
                         }
                         std::map<int, bool> ma; // hash to get the intersection of two sets
@@ -858,14 +923,14 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                         RecordDataNode* searchRecordDataNode;
                         preRes.clear();
                         for (int k = rFileId; k < res[cur ^ 1].size(); k += tableNum) {
-                            if (tableNum > 1 && res[cur ^ 1][k ^ 1] != curRecordId) {
+                            if (tableNum > 1 && (res[cur ^ 1][k ^ 1]->getPageId() != curRecordId->getPageId() || res[cur ^ 1][k ^ 1]->getSlotId() != curRecordId->getSlotId())) {
                                 // only choose those satisfy previous conditions;
                                 continue;
                             }
                             RecordId* rRecordId = res[cur ^ 1][k];
-                            Record* searchRecord;
-                            fileHandlers[rFileId]->getRecord(*rRecordId, *searchRecord);
-                            searchRecord->deserialize(searchRecordData,tableEntryDesc);
+                            Record searchRecord(fileHandlers[rFileId]->getRecordLen());
+                            fileHandlers[rFileId]->getRecord(*rRecordId, searchRecord);
+                            searchRecord.deserialize(searchRecordData, tableEntryDesc);
                             searchRecordDataNode = searchRecordData.getData(rColId);
                             void* rData = transformType(searchRecordDataNode);
                             bool flag = false;
@@ -902,7 +967,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                                     break;
                                 default:
                                     fprintf(stderr, "encouter error op type %d in search.\n", expressions[i].op);
-                                    assert(false);
+                                    return -1;
                                     break;
                             }
                             if (flag) {
@@ -914,19 +979,19 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     }
                 }
             } else if (expressions[i].rType == DB_NST) {
-                if (expressions[i].op != IN_TYPE) {
-                    printf("[Error] op %d is not supported for nesty selection.\n", expressions[i].op);
+                if (expressions[i].op > LTE_TYPE && expressions[i].op != IN_TYPE) {
+                    printf("[ERROR] op %d is not supported for nesty selection.\n", expressions[i].op);
                     return -1;
                 }
                 vector<RecordData> tempRecordData;
                 vector<string> tempColNames;
                 if (((DBSelect*)(expressions[i].rVal))->selectItems.size() > 1) {
-                    printf("[Error] nesty selection in tuple form is incompatible with IN op.\n");
+                    printf("[ERROR] nesty selection in tuple form is incompatible with IN op.\n");
                     return -1;
                 }
                 if (equalAsPre && preFlag) {
                     res[cur].push_back(curRecordId);
-                    if (tableNum > 0) {
+                    if (tableNum > 1) {
                         res[cur].push_back(res[cur ^ 1][j ^ 1]);
                     }
                     continue;
@@ -935,22 +1000,64 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                 if (_selectRecords((DBSelect*)expressions[i].rVal, tempRecordData, tempColNames) == -1) {
                     return -1;
                 }
-                preFlag = false;
-                for (int k = 0; k < tempRecordData.size(); k++) {
-                    void* rData = transformType(tempRecordData[k].head);
-                    if (compare->equ(searchData, rData)) {
+                if (expressions[i].op == IN_TYPE) {
+                    preFlag = false;
+                    for (int k = 0; k < tempRecordData.size(); k++) {
+                        if (tempRecordData[k].head->nodeType != curRecordDataNode->nodeType) {
+                            continue;
+                        }
+                        void* rData = transformType(tempRecordData[k].head);
+                        if (compare->equ(searchData, rData)) {
+                            res[cur].push_back(curRecordId);
+                            if (tableNum > 1) {
+                                res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                            }
+                            preFlag = true;
+                            break;
+                        }    
+                    }
+                } else if (expressions[i].op >= EQU_TYPE && expressions[i].op <= LTE_TYPE) {
+                    preFlag = false;
+                    if (tempRecordData.size() > 1) {
+                        printf("[ERROR] the result of child select contains more than one record.\n");
+                        return -1;
+                    }
+                    if (tempRecordData[0].head->nodeType != curRecordDataNode->nodeType) {
+                        printf("[ERROR] can not compare between different types in child select.\n");
+                        return -1;
+                    }
+                    bool flag = false;
+                    void* childSelectData = nullptr;
+                    switch (tempRecordData[0].head->nodeType) {
+                        case COL_INT: childSelectData = tempRecordData[0].head->content.intContent; break;
+                        case COL_FLOAT: childSelectData = tempRecordData[0].head->content.floatContent; break;
+                        case COL_VARCHAR: childSelectData = tempRecordData[0].head->content.charContent; break;
+                        default: break;
+                    }
+                    switch (expressions[i].op) {
+                        case EQU_TYPE: flag = compare->equ(searchData, childSelectData);  break;
+                        case NEQ_TYPE: flag = !compare->equ(searchData, childSelectData); break;
+                        case GT_TYPE:  flag = compare->gt(searchData, childSelectData);   break;
+                        case GTE_TYPE: flag = compare->gte(searchData, childSelectData);  break;
+                        case LT_TYPE:  flag = compare->lt(searchData, childSelectData);   break;
+                        case LTE_TYPE: flag = compare->lte(searchData, childSelectData);  break;
+                        default: break;
+                    }
+                    if (flag) {
                         res[cur].push_back(curRecordId);
-                        if (tableNum > 0) {
+                        if (tableNum > 1) {
                             res[cur].push_back(res[cur ^ 1][j ^ 1]);
                         }
-                        preFlag = true;
-                        break;
-                    }    
+                        preFlag = flag;
+                    }
+                } else {
+                    fprintf(stderr, "error\n");
+                    return -1;
                 }
             } else if (expressions[i].rType == DB_LIST) {
                 if (equalAsPre && preFlag) {
                     res[cur].push_back(curRecordId);
-                    if (tableNum > 0) {
+                    if (tableNum > 1) {
                         res[cur].push_back(res[cur ^ 1][j ^ 1]);
                     }
                     continue;
@@ -961,7 +1068,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     if (expressions[i].valueListType[k] == (DB_LIST_TYPE)curRecordDataNode->nodeType) {
                         if (compare->equ((*valueList)[k], searchData)) {
                             res[cur].push_back(curRecordId);
-                            if (tableNum > 0) {
+                            if (tableNum > 1) {
                                 res[cur].push_back(res[cur ^ 1][j ^ 1]);
                             }
                             preFlag = true;
@@ -972,22 +1079,22 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
             } else if (expressions[i].rType == DB_NULL) {
                 if (expressions[i].op != IS_TYPE && expressions[i].op != ISN_TYPE) {
                     fprintf(stderr, "Null should have op type IS or IS NOT.\n");
-                    assert(false);
+                    return -1;
                 }
                 if (curRecordDataNode->nodeType == COL_NULL) {
                     res[cur].push_back(curRecordId);
-                    if (tableNum > 0) {
+                    if (tableNum > 1) {
                         res[cur].push_back(res[cur ^ 1][j ^ 1]);
                     }
                 }
             } else { // DB_INT, DB_CHAR, DB_FLOAT
                 if (curRecordDataNode->nodeType != (TB_COL_TYPE)expressions[i].rType) {
-                    printf("[Error] incompatible type for %s.%s and %d.\n", lItem->expTable.c_str(), lItem->expCol.c_str(), expressions[i].rType);
+                    printf("[ERROR] incompatible type for %s.%s and %d.\n", lItem->expTable.c_str(), lItem->expCol.c_str(), expressions[i].rType);
                     return -1;
                 }
                 if (equalAsPre && preFlag) {
                     res[cur].push_back(curRecordId);
-                    if (tableNum > 0) {
+                    if (tableNum > 1) {
                         res[cur].push_back(res[cur ^ 1][j ^ 1]);
                     }
                     continue;
@@ -1027,10 +1134,16 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                         break;
                     case LIKE_TYPE: {
                         if (expressions[i].rType != DB_CHAR) {
-                            printf("[Error] right expression in LIKE must be VARCHAR.\n");
+                            printf("[ERROR] right expression in LIKE must be VARCHAR.\n");
                             return -1;
                         }
                         string regStr = ((char*)expressions[i].rVal);
+                        for (int i = 0; i < regStr.length(); i++) {
+                            if (regStr[i] == '%' && i != 0 && i != regStr.length() - 1) {
+                                printf("[ERROR] wrong format of LIKE string.\n");
+                                return -1;
+                            }
+                        }
                         string::size_type pos(0); 
                         while ((pos = regStr.find("%")) != std::string::npos) {
                             regStr.replace(pos, 1, ".*");
@@ -1041,12 +1154,12 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                         break;
                     }
                     default:
-                        assert(false);
+                        return -1;
                         break;
                 }
                 if (flag) {
                     res[cur].push_back(curRecordId);
-                    if (tableNum > 0) {
+                    if (tableNum > 1) {
                         res[cur].push_back(res[cur ^ 1][j ^ 1]);
                     }
                     preFlag = flag;
@@ -1055,7 +1168,10 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
             preRecordDataNode = curRecordDataNode;
         }
     }
-    resRecordIds = res[cur];
+    for (int i = 0; i < res[cur].size(); i++) {
+        RecordId* resRecordId = new RecordId(res[cur][i]->getPageId(), res[cur][i]->getSlotId());
+        resRecordIds.push_back(resRecordId);
+    }
     for (int i = 0; i < MAX_SELECT_TABLE; i++) {
         for (int j = 0; j < records[i].size(); j++) {
             delete records[i][j];
@@ -1065,16 +1181,20 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
     return 0;
 }
 
-inline void operateData(RecordData& lRecordData, RecordData& rRecordData, DB_SELECT_TYPE op, int colId) {
+inline void operateData(RecordData& lRecordData, RecordData& rRecordData, DB_SELECT_TYPE op, int colId, int recordColId) {
     RecordDataNode* lHead = lRecordData.head;
     RecordDataNode* rHead = rRecordData.head;
-    while (colId && lHead && rHead) {
+    while (colId > 0 && lHead) {
         lHead = lHead->next;
-        rHead = rHead->next;
+        colId--;
     }
-    if (colId || (!lHead || !rHead)) {
+    while (recordColId > 0 && rHead) {
+        rHead = rHead->next;
+        recordColId--;
+    }
+    if (colId > 0 || recordColId > 0 || !lHead || !rHead) {
         fprintf(stderr, "error in operateData\n");
-        assert(false);
+        return;
     }
     bool initialized = true;
     lHead->nodeType = (op == COUNT_TYPE) ? COL_INT : (op == AVERAGE_TYPE ? COL_FLOAT : rHead->nodeType);
@@ -1084,27 +1204,33 @@ inline void operateData(RecordData& lRecordData, RecordData& rRecordData, DB_SEL
     if (lData == nullptr) {
         initialized = false;
         if (op == AVERAGE_TYPE) {
-            lHead->len = 0;
+            lHead->len = 0;  // here len means the number of data calculated
         }
     }
     Compare* compare = nullptr;
     switch (lHead->nodeType) {
         case COL_INT:
             compare = new IntCompare();
-            if (!initialized) lData = new int;
+            if (!initialized) {
+                lData = new int;
+            }
             break;
         case COL_FLOAT:
             compare = new FloatCompare();
-            if (!initialized) lData = new float;
+            if (!initialized) {
+                lData = new float;
+            }
             break;
         case COL_VARCHAR:
             compare = new CharCompare();
-            if (!initialized) lData = new char[lHead->len];
+            if (!initialized) {
+                lData = new char[lHead->len];
+            }
             break;
         default:
             break;
     }
-    int calculataType = (rHead->nodeType == COL_INT) ? 1 : 0;
+    int calculateType = (rHead->nodeType == COL_INT) ? 1 : 0;
     switch (op) {
         case ORD_TYPE: // copy
             memcpy(lData, rData, rHead->len);
@@ -1123,7 +1249,7 @@ inline void operateData(RecordData& lRecordData, RecordData& rRecordData, DB_SEL
             if (!initialized) {
                 memcpy(lData, rData, rHead->len);
             } else {
-                if (calculataType) {
+                if (calculateType) {
                     *(int*)lData += *(int*)rData;
                 } else {
                     *(float*)lData += *(float*)rData;
@@ -1142,14 +1268,15 @@ inline void operateData(RecordData& lRecordData, RecordData& rRecordData, DB_SEL
                 *(float*)lData = 0;
                 memcpy(lData, rData, rHead->len);
             }
-            if (calculataType) {
+            if (calculateType) {
                 *(float*)lData = (*(float*)lData * lHead->len + *(int*)rData) / (lHead->len + 1);
             } else {
                 *(float*)lData = (*(float*)lData * lHead->len + *(float*)rData) / (lHead->len + 1);
             }
-            lHead->len = lHead->len;
+            lHead->len = lHead->len + 1;
             break;
     }
+    writeBackData(lData, lHead);
 }
 
 int getMapIndex(RecordDataNode* cur, void* ma, int &cnt) {
@@ -1173,7 +1300,6 @@ int getMapIndex(RecordDataNode* cur, void* ma, int &cnt) {
             }
             return (*(map<string, int>*)ma)[(string)cur->content.charContent];
     }
-    assert(false);
     return -1;
 }
 
@@ -1181,7 +1307,7 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resReco
     
     int tableSize = dbSelect->selectTables.size();
     if (tableSize > MAX_SELECT_TABLE) {
-        printf("[Error] join selection for more than two tables is not supported.\n");
+        printf("[ERROR] join selection for more than two tables is not supported.\n");
         return -1;
     }
     FileHandler* fileHandlers[MAX_SELECT_TABLE];
@@ -1220,7 +1346,7 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resReco
             DBSelItem tempSelItem = dbSelect->selectItems[i];
             if (tempSelItem.selectType == ORD_TYPE) {
                 if (tempSelItem.item.expTable != dbSelect->groupByCol.expTable || tempSelItem.item.expCol != dbSelect->groupByCol.expCol) {
-                    printf("[Error] cannot select %s.%s when group by %s.%s\n", tempSelItem.item.expTable.c_str(), tempSelItem.item.expCol.c_str(), dbSelect->groupByCol.expTable.c_str(), dbSelect->groupByCol.expCol.c_str());
+                    printf("[ERROR] cannot select %s.%s when group by %s.%s\n", tempSelItem.item.expTable.c_str(), tempSelItem.item.expCol.c_str(), dbSelect->groupByCol.expTable.c_str(), dbSelect->groupByCol.expCol.c_str());
                     return -1;
                 }
             }
@@ -1228,50 +1354,68 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resReco
     }
     for (int i = 0; i < dbSelect->selectItems.size(); i++) {
         DBSelItem tempSelItem = dbSelect->selectItems[i];
+        if (dbSelect->selectItems[i].selectType == ORD_TYPE || dbSelect->selectItems[i].star) {
+            continue;
+        }
         int j;
         for (j = 0; j < dbSelect->selectTables.size(); j++) {
-            if (!strcmp(tempSelItem.item.expTable.c_str(), dbSelect->selectTables[j].c_str())) {
+            if (strcmp(tempSelItem.item.expTable.c_str(), dbSelect->selectTables[j].c_str()) == 0) {
                 break;
             }
         }
         int index = checkColExist(tableHeaders[j], tempSelItem.item.expCol.c_str());
-        TableEntryDescNode* tempTableEntryDescNode = tableHeaders[j]->getTableEntryDesc().getCol(index);
+        /**
+         *  Attention: this cannot be wrote as: TableEntryDescNode* tempTableEntryDescNode = tableHeaders[j]->getTableEntryDesc().getCol(index);
+         *  because the intermediate variable tableHeaders[j]->getTableEntryDesc() will be destroyed, together with tempTableEntryDescNoe
+         */
+        TableEntryDesc tableEntryDesc = tableHeaders[j]->getTableEntryDesc();
+        TableEntryDescNode* tempTableEntryDescNode = tableEntryDesc.getCol(index);
         if (tempTableEntryDescNode->colType == COL_NULL || tempTableEntryDescNode->colType == COL_VARCHAR) {
-            printf("[Error] cannot conduct aggregate selection on column with NULL type of VARCHAR type.\n");
+            printf("[ERROR] cannot conduct aggregate selection on column with NULL type of VARCHAR type.\n");
             return -1;
         }
     }
-
-    assert(dbSelect->limitEn || (!dbSelect->limitEn && !dbSelect->offsetEn));
-    if ((dbSelect->limitEn && dbSelect->limitNum < 0) || (dbSelect->offsetEn && dbSelect->offsetNum < 0)) {
-        printf("[Error] invalid value of limitNum %d or offsetNum %d.\n", dbSelect->limitNum, dbSelect->offsetNum);
+    if (!dbSelect->limitEn && dbSelect->offsetEn) {
+        fprintf(stderr, "can not have offset without limit.\n");
         return -1;
     }
-
+    if ((dbSelect->limitEn && dbSelect->limitNum < 0) || (dbSelect->offsetEn && dbSelect->offsetNum < 0)) {
+        printf("[ERROR] invalid value of limitNum %d or offsetNum %d.\n", dbSelect->limitNum, dbSelect->offsetNum);
+        return -1;
+    }
     vector<RecordId*> resRecordIds;
     if (_iterateWhere(dbSelect->selectTables, dbSelect->expressions, resRecordIds) == -1) {
         return -1;
     }
-
     // build entryNames
     bool hasAggregate = false;
     vector<int> colIds[MAX_SELECT_TABLE];
+    vector<int> recordColIds[MAX_SELECT_TABLE];
     vector<DB_SELECT_TYPE> ops[MAX_SELECT_TABLE];
     for (int i = 0; i < dbSelect->selectItems.size(); i++) {
         if (dbSelect->selectItems[i].selectType != ORD_TYPE) {
             hasAggregate = true;
         }
         char colName[TAB_MAX_NAME_LEN];
-        assert(dbSelect->selectItems[i].star && (dbSelect->selectItems[i].selectType != ORD_TYPE && dbSelect->selectItems[i].selectType != COUNT_TYPE));
+        if (dbSelect->selectItems[i].star && dbSelect->selectItems[i].selectType != ORD_TYPE && dbSelect->selectItems[i].selectType != COUNT_TYPE) {
+            fprintf(stderr, "* type only support ORD and COUNT.\n");
+            return -1;
+        }
         if (dbSelect->selectItems[i].selectType == ORD_TYPE && dbSelect->selectItems[i].star) {
-            assert(i == 0); // can only have one item *
-            for (int j = 0; j < tableNum; j++) {
+            if (i > 0 || dbSelect->selectItems.size() != 1) {
+                fprintf(stderr, "can only have one item *.\n");
+                return -1;
+            }
+            int offset = 0;
+            for (int j = 0; j < tableSize; j++) {
                 for (int k = 0; k < tableHeaders[j]->colNum; k++) {
                     tableHeaders[j]->getCol(k, colName);
                     entryNames.push_back((string)tableHeaders[j]->tableName + "." + (string)colName);
-                    colIds[j].push_back(k);
+                    colIds[j].push_back(offset + k);
+                    recordColIds[j].push_back(k);
                     ops[j].push_back(ORD_TYPE);
                 }
+                offset += tableHeaders[j]->colNum;
             }
             break;
         }
@@ -1296,13 +1440,15 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resReco
                 break;
         }
         entryNames.push_back(tempEntryName);
-        int fileId = dbSelect->selectItems[i].star ? -1 : ((dbSelect->selectTables[0] == dbSelect->selectItems[i].item.expTable) ? 0 : 1);
-        int colId  = dbSelect->selectItems[i].star ? -1 : (tableHeaders[fileId]->getCol(dbSelect->selectItems[i].item.expCol.c_str()));
+        int fileId = dbSelect->selectItems[i].star ? 0 : ((dbSelect->selectTables[0] == dbSelect->selectItems[i].item.expTable) ? 0 : 1);
+        int recordColId  = dbSelect->selectItems[i].star ? -1 : (tableHeaders[fileId]->getCol(dbSelect->selectItems[i].item.expCol.c_str()));
+        int colId = i;
         colIds[fileId].push_back(colId);
+        recordColIds[fileId].push_back(recordColId);
         ops[fileId].push_back(dbSelect->selectItems[i].selectType);
     }
 
-    int selectNum = resRecordIds.size() / tableNum;
+    int selectNum = resRecordIds.size() / tableSize;
     int startNum = 0, endNum = selectNum;
     bool exceedFlag = false;
     if (dbSelect->limitEn) {
@@ -1326,7 +1472,6 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resReco
      * making it impossible to access the individual items within a group in a select clause.
      */
     resRecords.clear();
-    int resCnt;
     if (dbSelect->groupByEn) {
         int groupFileId = dbSelect->groupByCol.expTable == dbSelect->selectTables[0] ? 0 : 1;
         int groupColId  = tableHeaders[groupFileId]->getCol(dbSelect->groupByCol.expCol.c_str());
@@ -1347,7 +1492,7 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resReco
             default:
                 break;
         }
-        for (int i = 0; i < resRecordIds.size(); i += tableNum) {
+        for (int i = 0; i < resRecordIds.size(); i += tableSize) {
             RecordId* groupRecordId = resRecordIds[i + groupFileId];
             Record groupRecord(fileHandlers[groupFileId]->getRecordLen());
             fileHandlers[groupFileId]->getRecord(*groupRecordId, groupRecord);
@@ -1361,7 +1506,7 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resReco
             if (mapIndex >= resRecords.size()) {
                 resRecords.push_back(RecordData(entryNames.size()));
             }
-            for (int j = i; j < i + tableNum; j++) {
+            for (int j = i; j < i + tableSize; j++) {
                 int curFileId = j - i;
                 RecordId* recordId = resRecordIds[j];
                 Record tempRecord(fileHandlers[curFileId]->getRecordLen());
@@ -1370,22 +1515,21 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resReco
                 TableEntryDesc tableEntryDesc = tableHeaders[curFileId]->getTableEntryDesc();
                 tempRecord.deserialize(tempRecordData, tableEntryDesc);
                 for (int k = 0; k < colIds[curFileId].size(); k++) {
-                    operateData(resRecords[mapIndex], tempRecordData, ops[curFileId][k], colIds[curFileId][k]);
+                    operateData(resRecords[mapIndex], tempRecordData, ops[curFileId][k], colIds[curFileId][k], recordColIds[curFileId][k]);
                 }
             }
         }
-        resCnt = (cnt - dbSelect->offsetNum) < 0 ? 0 : (cnt - dbSelect->offsetNum);
     } else {
-        if (hasAggregate) {
+        if (hasAggregate) { // when there is aggregate query, there will be only one result record
             resRecords.push_back(RecordData(entryNames.size()));
-        }
-        for (int i = startNum * tableNum; i < endNum * tableNum; i += tableNum) {
-            int resRecordsIndex = (hasAggregate) ? 0 : ((i / tableNum) - startNum);
-            // when there is aggregate query, there will be only one result record
-            if (!hasAggregate) {
+        } else {
+            for (int i = startNum; i < endNum; i++) {
                 resRecords.push_back(RecordData(entryNames.size()));
             }
-            for (int j = i; j < i + tableNum; j++) {
+        }
+        for (int i = startNum * tableSize; i < endNum * tableSize; i += tableSize) {
+            int resRecordsIndex = (hasAggregate) ? 0 : ((i / tableSize) - startNum);
+            for (int j = i; j < i + tableSize; j++) {
                 int curFileId = j - i;
                 RecordId* recordId = resRecordIds[j];
                 Record tempRecord(fileHandlers[curFileId]->getRecordLen());
@@ -1394,23 +1538,29 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resReco
                 TableEntryDesc tableEntryDesc = tableHeaders[curFileId]->getTableEntryDesc();
                 tempRecord.deserialize(tempRecordData, tableEntryDesc);
                 for (int k = 0; k < colIds[curFileId].size(); k++) {
-                    operateData(resRecords[resRecordsIndex], tempRecordData, ops[curFileId][k], colIds[curFileId][k]);
+                    operateData(resRecords[resRecordsIndex], tempRecordData, ops[curFileId][k], colIds[curFileId][k], recordColIds[curFileId][k]);
                 }
             }
         }
         if (exceedFlag) {
-            printf("[Warning] records starting at %d are fewer than %d.\n", dbSelect->offsetNum, dbSelect->limitNum);
+            printf("[Warning] number of records starting at offset %d is less than %d.\n", dbSelect->offsetNum, dbSelect->limitNum);
         }
-        resCnt = endNum - startNum;
     }
-    return resCnt;
+    for (int i = 0; i < resRecordIds.size(); i++) {
+        delete resRecordIds[i];
+    }
+    return resRecords.size();
 }
 
 int TableManager::selectRecords(DBSelect* dbSelect) {
     vector<RecordData> recordDatas;
     vector<string> colNames;
     int cnt = _selectRecords(dbSelect, recordDatas, colNames);
+    if (cnt < 0) {
+        return -1;
+    }
     // print the records
+    printf("\n----------------\n");
     for (int i = 0; i < colNames.size(); i++) {
         printf("%s ", colNames[i].c_str());
         if (i < colNames.size() - 1) {
@@ -1444,7 +1594,7 @@ int TableManager::selectRecords(DBSelect* dbSelect) {
         }
         printf("\n");
     }
-
+    printf("----------------\n");
     return cnt;
 }
 
@@ -1452,16 +1602,31 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert, DBMeta* db
     if (dbInsert->valueLists.size() == 0) {
         return 0;
     }
+    string path = "database/" + databaseName + '/' + tableName +".db";
+    if(!checkTableExist(path)) {
+        printf("[ERROR] table dose not exist!\n");
+        return -1;
+    }
     FileHandler* insertFileHandler = recordManager->findTable(tableName.c_str());
+    TableHeader* tableHeader = insertFileHandler->getTableHeader();
+    TableEntryDesc tableEntryDesc = tableHeader->getTableEntryDesc();
     int valueSize = dbInsert->valueLists[0].size();
     vector<Record*> records;
     vector<vector<void*>> indexData;
     indexData.resize(valueSize);
-    records.resize(dbInsert->valueLists.size());
+    // records.resize(dbInsert->valueLists.size());
+    for (int i = 0; i < dbInsert->valueLists.size(); i++) {
+        records.push_back(new Record(insertFileHandler->getRecordLen()));
+    }
     for (int i = 0; i < dbInsert->valueLists.size(); i++) {
         RecordData recordData(valueSize);
         RecordDataNode* recordDataNode = recordData.head;
         for (int j = 0; j < valueSize; j++) {
+            TableEntryDescNode* tableEntryDescNode = tableEntryDesc.getCol(j);
+            if (dbInsert->valueListsType[i][j] != tableEntryDescNode->colType) {
+                printf("[Error] column type done't match. Types are %d and %d\n", dbInsert->valueListsType[i][j], tableEntryDesc.getCol(j)->colType);
+                return -1;
+            }
             switch (dbInsert->valueListsType[i][j]) {
                 case DB_LIST_INT:
                     recordDataNode->len = 4;
@@ -1478,7 +1643,7 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert, DBMeta* db
                     indexData[j].push_back((float*)dbInsert->valueLists[i][j]);
                     break;
                 case DB_LIST_CHAR:
-                    recordDataNode->len = strlen((char*)dbInsert->valueLists[i][j]);
+                    recordDataNode->len = tableEntryDescNode->colLen;
                     recordDataNode->nodeType = COL_VARCHAR;
                     recordDataNode->content.charContent = new char[recordDataNode->len];
                     strcpy(recordDataNode->content.charContent, (char*)dbInsert->valueLists[i][j]);
@@ -1489,41 +1654,74 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert, DBMeta* db
                     recordDataNode->nodeType = COL_NULL;
                     indexData[j].push_back(nullptr);
                     fprintf(stderr, "Null type is not supported currently.\n");
-                    assert(false);
+                    return -1;
                     break;
             }
             recordDataNode = recordDataNode->next;
         }
-        if (!_checkConstraintOnInsert(tableName, &recordData, dbMeta)) {
-            return -1;
-        }
         recordData.serialize(*(records[i]));
     }
+
+    char colName[64];
     vector<RecordId> recordIds;
-    vector<int> vals;
-    vector<int> pageIds, slotIds;
+    vector<bool> colHasIndex;
+    bool errorFlag = false;
+    int insertedIndex = -1;
     if (insertFileHandler->insertAllRecords(records, recordIds)) { // succeed
         // insert indexes
-        for (RecordId recordId : recordIds) {
-            pageIds.push_back(recordId.getPageId());
-            slotIds.push_back(recordId.getSlotId());
-        }
-        char colName[64];
-        TableHeader* tableHeader = insertFileHandler->getTableHeader();
         for (int i = 0; i < tableHeader->colNum; i++) {
             tableHeader->getCol(i, colName);
-            if (indexManager->hasIndex(tableName.c_str(), colName)) {
-                vals.clear();
-                indexManager->transform(tableName.c_str(), colName, vals, pageIds, slotIds);
-                indexManager->insert(tableName.c_str(), colName, indexData[i], vals);
+            colHasIndex.push_back(indexManager->hasIndex(tableName.c_str(), colName));
+        }
+
+        for (int k = 0; k < recordIds.size(); k++) {
+            RecordData insertRecordData;
+            records[k]->deserialize(insertRecordData, tableEntryDesc);
+            if (!_checkConstraintOnInsert(tableName, &insertRecordData, dbMeta)) {
+                insertedIndex = k;
+                errorFlag = true;
+                break;
+            }
+            for (int i = 0; i < tableHeader->colNum; i++) {
+                tableHeader->getCol(i, colName);
+                if (colHasIndex[i]) {
+                    int val;
+                    indexManager->transform(tableName.c_str(), colName, val, recordIds[k].getPageId(), recordIds[k].getSlotId());
+                    indexManager->insert(tableName.c_str(), colName, indexData[i][k], val);
+                }
             }
         }
-        return dbInsert->valueLists.size();
+        if (!errorFlag) {
+            return dbInsert->valueLists.size();
+        }
+    }
+    if (errorFlag) {  // restore all inserted data and indexes
+        Record tempRecord(insertFileHandler->getRecordLen());
+        for (int i = 0; i < recordIds.size(); i++) {
+            insertFileHandler->removeRecord(recordIds[i], tempRecord);
+        }
+        for (int k = 0; k < insertedIndex; k++) {
+            RecordData insertRecordData;
+            records[k]->deserialize(insertRecordData, tableEntryDesc);
+            for (int i = 0; i < tableHeader->colNum; i++) {
+                tableHeader->getCol(i, colName);
+                if (colHasIndex[i]) {
+                    int val = -1;
+                    indexManager->transform(tableName.c_str(), colName, val, recordIds[k].getPageId(), recordIds[k].getSlotId());
+                    indexManager->remove(tableName.c_str(), colName, indexData[i][k], val);
+                }
+            }
+        }
     }
     return -1; // failure. Note: when fail, no record will be inserted
 }
 
 int TableManager::dropRecords(string tableName, DBDelete* dbDelete, DBMeta* dbMeta) {
+    string path = "database/" + databaseName + '/' + tableName +".db";
+    if(!checkTableExist(path)) {
+        printf("[ERROR] table dose not exist!\n");
+        return -1;
+    }
     FileHandler* deleteFileHandler = recordManager->findTable(tableName.c_str());
     TableHeader* tableHeader = deleteFileHandler->getTableHeader();
     vector<string> selectTables = {tableName};
@@ -1543,7 +1741,6 @@ int TableManager::dropRecords(string tableName, DBDelete* dbDelete, DBMeta* dbMe
     if (_checkFormat(&deleteFileHandler, &tableHeader, selectTables, waitChecked) == -1) {
         return -1;
     }
-
     if (_iterateWhere(selectTables, dbDelete->expression, recordIds) == -1) {
         return -1;
     }
@@ -1561,15 +1758,22 @@ int TableManager::dropRecords(string tableName, DBDelete* dbDelete, DBMeta* dbMe
 
     vector<vector<void*>> indexDatas;
     indexDatas.resize(tableHeader->colNum);
+    bool errorFlag = false;
 
     for (int i = 0; i < recordIds.size(); i++) {
-        removedRecords.push_back(new Record(deleteFileHandler->getRecordLen()));
-        if (!deleteFileHandler->removeRecord(*recordIds[i], *removedRecords[i])) {
+        Record* removedRecord = new Record(deleteFileHandler->getRecordLen());
+        deleteFileHandler->getRecord(*recordIds[i], *removedRecord);
+        RecordData recordData;
+        removedRecord->deserialize(recordData, tableEntryDesc);
+        if (!_checkConstraintOnDelete(tableName, &recordData, dbMeta)) {
+            errorFlag = true;
             break;
         }
-        RecordData recordData;
-        removedRecords[i]->deserialize(recordData, tableEntryDesc);
-        if (_checkConstraintOnDelete(tableName, &recordData, dbMeta)) {
+        removedRecords.push_back(removedRecord);
+        if (!deleteFileHandler->removeRecord(*recordIds[i], *removedRecords[i])) {
+            delete removedRecords[removedRecords.size() - 1];
+            removedRecords.pop_back();
+            errorFlag = true;
             break;
         }
         RecordDataNode* recordDataNode = recordData.head;
@@ -1591,7 +1795,7 @@ int TableManager::dropRecords(string tableName, DBDelete* dbDelete, DBMeta* dbMe
                     break;
                 default: 
                     fprintf(stderr, "Null type is not supported currently.\n");
-                    assert(false);
+                    return -1;
                     break;
             }
             if (colHasIndex[j]) {
@@ -1603,10 +1807,9 @@ int TableManager::dropRecords(string tableName, DBDelete* dbDelete, DBMeta* dbMe
             recordDataNode = recordDataNode->next;
         }
     }
-    bool errorFlag = false;
-    if (removedRecords.size() < recordIds.size()) { // encouter error when removing records
-        errorFlag = true;
+    if (errorFlag) { // encouter error when removing records
         vector<RecordId> recordIds;
+        recordIds.resize(removedRecords.size());
         deleteFileHandler->insertAllRecords(removedRecords, recordIds); // memcpy method, so Record newed can be safely deleted
         // note: although the records are inserted back, its position may not be the same as before
         
@@ -1627,6 +1830,9 @@ int TableManager::dropRecords(string tableName, DBDelete* dbDelete, DBMeta* dbMe
     for (int i = 0; i < removedRecords.size(); i++) {
         delete removedRecords[i];
     }
+    for (int i = 0; i < recordIds.size(); i++) {
+        delete recordIds[i];
+    }
     for (int i = 0; i < tableHeader->colNum; i++) {
         for (int j = 0; j < indexDatas[i].size(); j++) {
             switch (colTypes[i]) {
@@ -1641,6 +1847,11 @@ int TableManager::dropRecords(string tableName, DBDelete* dbDelete, DBMeta* dbMe
 }
 
 int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* dbMeta) {
+    string path = "database/" + databaseName + '/' + tableName +".db";
+    if(!checkTableExist(path)) {
+        printf("[ERROR] table dose not exist!\n");
+        return -1;
+    }
     FileHandler* updateFileHandler = recordManager->findTable(tableName.c_str());
     TableHeader* tableHeader = updateFileHandler->getTableHeader();
     TableEntryDesc tableEntryDesc = tableHeader->getTableEntryDesc();
@@ -1651,13 +1862,17 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
 
     vector<DBExpItem*> waitChecked;
     for (int i = 0; i < dbUpdate->expItem.size(); i++) {
-        assert(dbUpdate->expItem[i].lType == DB_ITEM);
-        assert(dbUpdate->expItem[i].rType >= DB_NULL && dbUpdate->expItem[i].rType <= DB_CHAR);
-        int colId = tableHeader->getCol((char*)dbUpdate->expItem[i].lVal);
+        int colId = tableHeader->getCol(((DBExpItem*)(dbUpdate->expItem[i].lVal))->expCol.c_str());
+        for (int j = 0; j < colIds.size(); j++) {
+            if (colId == colIds[j]) {
+                printf("[ERROR] can not set a column twice in an update statement.\n");
+                return -1;
+            }
+        }
         colIds.push_back(colId);
         TableEntryDescNode* tableEntryDescNode = tableEntryDesc.getCol(colId);
         if (tableEntryDescNode->colType != dbUpdate->expItem[i].rType) {
-            printf("[Error] incompatible type %d and %d in update set clause.\n", dbUpdate->expItem[i].rType, tableEntryDescNode->colType);
+            printf("[ERROR] incompatible type %d and %d in update set clause.\n", dbUpdate->expItem[i].rType, tableEntryDescNode->colType);
             return -1;
         }
         waitChecked.push_back(((DBExpItem*)dbUpdate->expItem[i].lVal));
@@ -1692,16 +1907,14 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
     vector<vector<void*>> rawIndexDatas;
     updatedIndexDatas.resize(tableHeader->colNum);
     rawIndexDatas.resize(tableHeader->colNum);
+    bool errorFlag = false;
 
     for (int i = 0; i < recordIds.size(); i++) {
         rawRecords.push_back(new Record(updateFileHandler->getRecordLen()));
         updateFileHandler->getRecord(*recordIds[i], *rawRecords[i]);
-        RecordData updatedRecordData;
+        RecordData updatedRecordData, rawRecordData;
         rawRecords[i]->deserialize(updatedRecordData, tableEntryDesc);
-
-        if (!_checkConstraintOnDelete(tableName, &updatedRecordData, dbMeta)) {
-            break;
-        }
+        rawRecords[i]->deserialize(rawRecordData, tableEntryDesc);
 
         for (int j = 0; j < dbUpdate->expItem.size(); j++) {
             RecordDataNode* recordDataNode = updatedRecordData.getData(colIds[j]);
@@ -1733,13 +1946,14 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
             recordDataNode->nodeType = (TB_COL_TYPE)dbUpdate->expItem[j].rType;
         }
 
-        if (_checkConstraintOnInsert(tableName, &updatedRecordData, dbMeta)) {
+        if (!_checkConstraintOnUpdate(tableName, &rawRecordData, dbMeta, dbUpdate->expItem, colIds)) {
+            errorFlag = true;
             break;
         }
 
         Record updatedRecord(updateFileHandler->getRecordLen());
         updatedRecordData.serialize(updatedRecord);
-        if (!updateFileHandler->updateRecord(*recordIds[i], updatedRecord)) {
+        if (updateFileHandler->updateRecord(*recordIds[i], updatedRecord)) {
             RecordData rawRecordData;
             rawRecords[i]->deserialize(rawRecordData, tableEntryDesc);
             RecordDataNode *updatedRecordDataNode = updatedRecordData.head, *rawRecordDataNode = rawRecordData.head;
@@ -1767,10 +1981,17 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
                         break;
                     default:
                         fprintf(stderr, "Null type is not supported currently.\n");
-                        assert(false);
+                        return -1;
                         break;
                 }
-                if (colHasIndex[j]) {
+                bool colHasChanged = false;
+                for (int k = 0; k < colIds.size(); k++) {
+                    if (j == colIds[k]) {
+                        colHasChanged = true;
+                        break;
+                    }
+                }
+                if (colHasIndex[j] && colHasChanged) {
                     int val;
                     indexManager->transform(tableName.c_str(), colName[j], val, recordIds[i]->getPageId(), recordIds[i]->getSlotId());
                     updatedIndexDatas[j].push_back(updatedIndexData);
@@ -1779,14 +2000,14 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
                     indexManager->insert(tableName.c_str(), colName[j], updatedIndexData, val);
                 }
             }
+        } else {
+            errorFlag = true;
             break;
         }
     }
 
-    bool errorFlag = false;
-    if (rawRecords.size() < recordIds.size()) { // restore
-        errorFlag = true;
-        for (int i = 0; i < rawRecords.size(); i++) {
+    if (errorFlag) { // restore
+        for (int i = 0; i < rawRecords.size() - 1; i++) {
             updateFileHandler->updateRecord(*recordIds[i], *rawRecords[i]);
         }
         //restore index
@@ -1799,24 +2020,26 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
             if (colHasIndex[i]) {
                 vector<int> vals;
                 indexManager->transform(tableName.c_str(), colName[i], vals, pageIds, slotIds);
-                for (int j = 0; j < vals.size(); j++) {
+                for (int j = 0; j < updatedIndexDatas[i].size(); j++) {
                     indexManager->remove(tableName.c_str(), colName[i], updatedIndexDatas[i][j], vals[j]);
                     indexManager->insert(tableName.c_str(), colName[i], rawIndexDatas[i][j], vals[j]);
                 }
             }
         }
     }
-
     for (int i = 0; i < rawRecords.size(); i++) {
         delete rawRecords[i];
     }
+    for (int i = 0; i < recordIds.size(); i++) {
+        delete recordIds[i];
+    }
 
     for (int i = 0; i < tableHeader->colNum; i++) {
-        for (int j = 0; j < updatedIndexDatas.size(); j++) {
+        for (int j = 0; j < updatedIndexDatas[i].size(); j++) {
             switch (colTypes[i]) {
-                case COL_INT: delete (int*)updatedIndexDatas[i][j]; delete (int*)rawIndexDatas[i][j]; break;
-                case COL_FLOAT: delete (float*)updatedIndexDatas[i][j]; delete (float*)rawIndexDatas[i][j]; break;
-                case COL_VARCHAR: delete (char*)updatedIndexDatas[i][j]; delete (char*)rawIndexDatas[i][j]; break;
+                case COL_INT: delete (int*)(updatedIndexDatas[i][j]); delete (int*)(rawIndexDatas[i][j]); break;
+                case COL_FLOAT: delete (float*)(updatedIndexDatas[i][j]); delete (float*)(rawIndexDatas[i][j]); break;
+                case COL_VARCHAR: delete (char*)(updatedIndexDatas[i][j]); delete (char*)(rawIndexDatas[i][j]); break;
                 default: break;
             }
         }
@@ -1825,11 +2048,11 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
     return errorFlag ? -1 : recordIds.size();
 }
 
-bool TableManager::_checkConstraintOnInsert(string tableName, RecordData* recordData, DBMeta* dbMeta) {
+bool TableManager::_checkConstraintOnInsert(string tableName, RecordData* recordData, DBMeta* dbMeta, vector<int> noCheckOnColIds) {
     int tableNum = -1;
     for (int i = 0; i < dbMeta->tableNum; i++) {
         if (!strcmp(tableName.c_str(), dbMeta->tableNames[i])) {
-            tableName = i;
+            tableNum = i;
             break;
         }
     }
@@ -1841,6 +2064,16 @@ bool TableManager::_checkConstraintOnInsert(string tableName, RecordData* record
     TableHeader* tableHeader = checkFileHandler->getTableHeader();
     char colName[64];
     for (int i = 0; i < dbMeta->colNum[tableNum]; i++) {
+        bool noCheck = false;
+        for (int j = 0; j < noCheckOnColIds.size(); j++) {
+            if (i == noCheckOnColIds[j]) {
+                noCheck = true;
+                break;
+            }
+        }
+        if (noCheck) {
+            continue;
+        }
         if (dbMeta->isPrimaryKey[tableNum][i] || dbMeta->isUniqueKey[tableNum][i]) {
             RecordDataNode* recordDataNode = recordData->getData(i);
             void* checkData = nullptr;
@@ -1858,17 +2091,27 @@ bool TableManager::_checkConstraintOnInsert(string tableName, RecordData* record
             vector<int> res;
             if (!indexManager->hasIndex(tableName.c_str(), colName)) {
                 fprintf(stderr, "no index on primary key or unique key.\n");
-                assert(false);
+                return false;
             }
             indexManager->search(tableName.c_str(), colName, checkData, res);
             if (res.size() > 0) {
-                printf("[Error] fail in checking primary or unique constraint.\n");
+                printf("[ERROR] fail in checking primary or unique constraint.\n");
                 return false;
             }
         }
     }
     for (int i = 0; i < dbMeta->foreignKeyNum[tableNum]; i++) {
         int col = dbMeta->foreignKeyColumn[tableNum][i];
+        bool noCheck = false;
+        for (int j = 0; j < noCheckOnColIds.size(); j++) {
+            if (col == noCheckOnColIds[j]) {
+                noCheck = true;
+                break;
+            }
+        }
+        if (noCheck) {
+            continue;
+        }
         int refTable = dbMeta->foreignKeyRefTable[tableNum][i];
         int refCol = dbMeta->foreignKeyRefColumn[tableNum][i];
         string refTableName = dbMeta->tableNames[refTable];
@@ -1876,7 +2119,7 @@ bool TableManager::_checkConstraintOnInsert(string tableName, RecordData* record
         foreignFileHandler->getTableHeader()->getCol(refCol, colName);
         if (!indexManager->hasIndex(tableName.c_str(), colName)) {
             fprintf(stderr, "no index on foreign key when insert.\n");
-            assert(false);
+            return -1;
         }
         vector<int> res;
         RecordDataNode* recordDataNode = recordData->getData(col);
@@ -1892,35 +2135,45 @@ bool TableManager::_checkConstraintOnInsert(string tableName, RecordData* record
         }
         indexManager->search(refTableName.c_str(), colName, checkData, res);
         if (res.size() == 0) {
-            printf("[Error] fail to insert/update due to confilct in foreign key constraint.\n");
+            printf("[ERROR] fail to insert/update due to confilct in foreign key constraint.\n");
             return false;
         }
     }
     return true;
 }
 
-bool TableManager::_checkConstraintOnDelete(string tableName, RecordData* recordData, DBMeta* dbMeta) {
+bool TableManager::_checkConstraintOnDelete(string tableName, RecordData* recordData, DBMeta* dbMeta, vector<int> noCheckOnColIds) {
     int tableNum = -1;
     for (int i = 0; i < dbMeta->tableNum; i++) {
         if (!strcmp(tableName.c_str(), dbMeta->tableNames[i])) {
-            tableName = i;
+            tableNum = i;
             break;
         }
     }
     if (tableNum == -1) {
         return false;
     }
-
     FileHandler* checkFileHandler = recordManager->findTable(tableName.c_str());
     TableHeader* tableHeader = checkFileHandler->getTableHeader();
-    char colName[64];
+    char refColName[64], colName[64];
     for (int i = 0; i < dbMeta->refKeyNum[tableNum]; i++) {
         int col = dbMeta->refKeyColumn[tableNum][i];
+        bool noCheck = false;
+        for (int j = 0; j < noCheckOnColIds.size(); j++) {
+            if (col == noCheckOnColIds[j]) {
+                noCheck = true;
+                break;
+            }
+        }
+        if (noCheck) {
+            continue;
+        }
         int refTable = dbMeta->refKeyRefTable[tableNum][i];
         int refCol = dbMeta->refKeyRefColumn[tableNum][i];
         string refTableName = dbMeta->tableNames[refTable];
         FileHandler* foreignFileHandler = recordManager->findTable(refTableName.c_str());
-        foreignFileHandler->getTableHeader()->getCol(refCol, colName);
+        foreignFileHandler->getTableHeader()->getCol(refCol, refColName);
+        tableHeader->getCol(col, colName);
 
         RecordDataNode* recordDataNode = recordData->getData(col);
         void* checkData = nullptr;
@@ -1930,19 +2183,92 @@ bool TableManager::_checkConstraintOnDelete(string tableName, RecordData* record
             case COL_VARCHAR: checkData = recordDataNode->content.charContent; break;
             default: break;
         }
-        if (!indexManager->hasIndex(refTableName.c_str(), colName)) {
+        if (!indexManager->hasIndex(refTableName.c_str(), refColName)) {
             fprintf(stderr, "no index on foreign key when delete.\n");
-            assert(false);
+            return -1;
         }
         /* 
             should foreign key be unique?
+            if not, then we should first check if there are duplicated values of the deleted column
          */
+        if (!indexManager->hasIndex(tableName.c_str(), colName)) {
+            fprintf(stderr, "no index on local key when delete.\n");
+            return -1;
+        }
         vector<int> res;
-        indexManager->search(refTableName.c_str(), colName, checkData, res);
-        if (res.size() > 0) {
-            printf("[Error] fail to delete due to conflict in foreign key constraint.\n");
-            return false;
+        indexManager->search(tableName.c_str(), colName, checkData, res);
+        if (res.size() <= 1) {
+            indexManager->search(refTableName.c_str(), refColName, checkData, res);
+            if (res.size() > 0) {
+                printf("[ERROR] fail to delete/update due to conflict in foreign key constraint.\n");
+                return false;
+            }
         }
     }
     return true;
+}
+
+bool TableManager::_checkConstraintOnUpdate(string tableName, RecordData* recordData, DBMeta* dbMeta, vector<DBExpression> expItems, vector<int> colIds) {
+    int tableNum = -1;
+    for (int i = 0; i < dbMeta->tableNum; i++) {
+        if (!strcmp(tableName.c_str(), dbMeta->tableNames[i])) {
+            tableNum = i;
+            break;
+        }
+    }
+    if (tableNum == -1) {
+        return false;
+    }
+    FileHandler* checkFileHandler = recordManager->findTable(tableName.c_str());
+    TableHeader* tableHeader = checkFileHandler->getTableHeader();
+    RecordData* newRecordData = new RecordData(tableHeader->colNum);
+    vector<int> noCheckOnColIds;
+    for (int i = 0; i < dbMeta->colNum[tableNum]; i++) {
+        bool inColFlag = false;
+        for (int j = 0; j < colIds.size(); j++) {
+            if (i == colIds[j]) {
+                inColFlag = true;
+                RecordDataNode* recordDataNode = recordData->getData(i);
+                RecordDataNode* newRecordDataNode = newRecordData->getData(i);
+                newRecordDataNode->nodeType = recordDataNode->nodeType;
+                newRecordDataNode->len = recordDataNode->len;
+                Compare* compare;
+                void* checkData = nullptr;
+                switch (recordDataNode->nodeType) {
+                    case COL_INT: 
+                        checkData = recordDataNode->content.intContent; 
+                        compare = new IntCompare(); 
+                        newRecordDataNode->content.intContent = new int;
+                        *newRecordDataNode->content.intContent = *(int*)expItems[j].rVal;
+                        break;
+                    case COL_FLOAT: 
+                        checkData = recordDataNode->content.floatContent; 
+                        compare = new FloatCompare(); 
+                        newRecordDataNode->content.floatContent = new float;
+                        *newRecordDataNode->content.floatContent = *(float*)expItems[j].rVal;
+                        break;
+                    case COL_VARCHAR:  
+                        checkData = recordDataNode->content.charContent; 
+                        compare = new CharCompare();
+                        newRecordDataNode->content.charContent = new char[newRecordDataNode->len];
+                        memcpy(newRecordDataNode->content.charContent, expItems[j].rVal, newRecordDataNode->len); 
+                        break;
+                    default: break;
+                }
+                if (compare->equ(checkData, expItems[j].rVal)) { // the new value to be set is the same as the old one, then this column need not to be checked
+                    noCheckOnColIds.push_back(i);
+                }
+                break;
+            }
+        }
+        if (!inColFlag) {
+            noCheckOnColIds.push_back(i);
+        }
+    }
+    bool resFlag = true;
+    if (!_checkConstraintOnDelete(tableName, recordData, dbMeta, noCheckOnColIds) || !_checkConstraintOnInsert(tableName, newRecordData, dbMeta, noCheckOnColIds)) {
+        resFlag = false;
+    }
+    delete newRecordData;
+    return resFlag;
 }

@@ -43,7 +43,27 @@ struct RecordDataNode{
     TB_COL_TYPE nodeType;
     RecordDataNode* next = nullptr;
 
-    ~RecordDataNode() {}
+    ~RecordDataNode() {
+        switch (nodeType) {
+            case COL_INT:
+                if (content.intContent) {
+                    delete content.intContent;
+                }
+                break;
+            case COL_FLOAT:
+                if (content.floatContent) {
+                    delete content.floatContent;
+                }
+                break;
+            case COL_VARCHAR:
+                if (content.charContent) {
+                    delete content.charContent;
+                }
+                break;
+            default:
+                break;
+        }
+    }
 };
 
 class Record;

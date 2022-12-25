@@ -86,7 +86,7 @@ int RecordManager::removeFile(const char* tableName) {
 
 FileHandler* RecordManager::openFile(const char* tableName) {
     if (findTable(tableName) != nullptr) {
-        printf("[Info] this table has already been opened.\n");
+        printf("[INFO] this table has already been opened.\n");
         return fileHandlers[currentIndex];
     }
     int index = findEmptyIndex();
@@ -117,4 +117,13 @@ int RecordManager::closeFile(FileHandler* fileHandler) {
         return 0;
     }
     return -1;
+}
+
+void RecordManager::renameTable(const char* oldName, const char* newName) {
+    for (int i = 0; i < DB_MAX_TABLE_NUM; i++) {
+        if (fileHandlers[i] != nullptr && strcmp(tableNames[i], oldName) == 0) {
+            memcpy(tableNames[i], newName, strlen(newName));
+            break;
+        }
+    }
 }

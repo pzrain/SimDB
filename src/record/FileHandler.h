@@ -78,6 +78,8 @@ public:
 
     TableHeader* getTableHeader();
 
+    void renameTable(const char* newName);
+
 };
 
 

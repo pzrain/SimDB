@@ -56,8 +56,8 @@ typedef enum {
 typedef enum {
     DB_LIST_NULL = 0,
     DB_LIST_INT = 1,
-    DB_LIST_CHAR = 2,
-    DB_LIST_FLOAT = 3
+    DB_LIST_FLOAT = 2,
+    DB_LIST_CHAR = 3
 } DB_LIST_TYPE;
 
 /* End System */
@@ -69,8 +69,8 @@ typedef enum {
 typedef enum {
     COL_NULL = 0,
     COL_INT = 1,
-    COL_VARCHAR = 2,
-    COL_FLOAT = 3
+    COL_FLOAT = 2,
+    COL_VARCHAR = 3
 } TB_COL_TYPE;
 
 typedef enum {

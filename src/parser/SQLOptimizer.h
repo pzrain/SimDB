@@ -6,56 +6,6 @@
 #include <stdio.h>
 #include "../system/DatabaseManager.h"
 
-
-/* 
-    This TestDatabaseManager is for test only.
- */
-class TestDatabaseManager {
-private:
-    int tot;
-    char tableNames[10][TAB_MAX_NAME_LEN];
-    char indexNames[10][TAB_MAX_NAME_LEN];
-    std::string databaseUsedName;
-
-    void addIndex(const char* tableName, const char* indexName) {
-        strcpy(tableNames[tot], tableName);
-        strcpy(indexNames[tot++], indexName);
-    }
-
-public:
-    TestDatabaseManager() {
-        tot = 0;
-        addIndex("table_2", "id");
-        addIndex("table_3", "id");
-        addIndex("table_4", "id");
-        addIndex("table_5", "id");
-        databaseUsedName = "";
-    }
- 
-    bool hasIndex(const char* tableName, const char* indexName);
-    // function from dbms to check if specific column has index
-
-    int switchDatabase(std::string name) {
-        if (name != "") {
-            databaseUsedName = name;
-        }
-        return 1;
-    }
-
-    std::string getDatabaseName() { // function from dbms to get the currently used database name
-        return databaseUsedName == "" ? "mysql" : databaseUsedName;
-    }
-};
-
-bool TestDatabaseManager::hasIndex(const char* tableName, const char* indexName) {
-    for (int i = 0; i < tot; i++) {
-        if (strcmp(tableNames[i], tableName) == 0 && strcmp(indexNames[i], indexName) == 0) {
-            return true;
-        }
-    }
-    return false;
-}
-
 struct SQLOptimizerEdge {
     int x;
     int v;
@@ -269,7 +219,7 @@ void testOptimizer(SQLParser::Where_and_clauseContext* whereAndClause) {
     }
 }
 
-void optimizeWhereClause(SQLParser::Where_and_clauseContext* whereAndClause, TestDatabaseManager* TestdatabaseManager) {
+void optimizeWhereClause(SQLParser::Where_and_clauseContext* whereAndClause, DatabaseManager* TestdatabaseManager) {
     // TODO: optimization when joining multiply tables
     SQLOptimizerGraph graph;
     std::vector<SQLParser::Where_clauseContext*> newWhereClause;
