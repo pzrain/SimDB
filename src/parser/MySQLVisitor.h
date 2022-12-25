@@ -28,41 +28,36 @@ public:
 
     std::any visitCreate_db(SQLParser::Create_dbContext *ctx) override {
         fprintf(stderr, "Visit Create DB.\n");
-        fprintf(stderr, "Database name = %s.\n", ctx->Identifier()->getSymbol()->getText().c_str());
-        databaseManager->createDatabase(ctx->Identifier()->getSymbol()->getText());
-        return visitChildren(ctx);
+        fprintf(stderr, "Database name = %s.\n", ctx->Identifier()->getText().c_str());
+        
+        return databaseManager->createDatabase(ctx->Identifier()->getText());
     }
 
     std::any visitDrop_db(SQLParser::Drop_dbContext *ctx) override {
         fprintf(stderr, "Visit Drop DB.\n");
-        fprintf(stderr, "Database name = %s.\n", ctx->Identifier()->getSymbol()->getText().c_str());
-        databaseManager->dropDatabase(ctx->Identifier()->getSymbol()->getText());
-        return visitChildren(ctx);
+        fprintf(stderr, "Database name = %s.\n", ctx->Identifier()->getText().c_str());
+        
+        return databaseManager->dropDatabase(ctx->Identifier()->getText());
     }
 
     std::any visitShow_dbs(SQLParser::Show_dbsContext *ctx) override {
         fprintf(stderr, "Visit Show DB.\n");
-        databaseManager->showDatabases();
-        return visitChildren(ctx);
+        return databaseManager->showDatabases();
     }
 
     std::any visitUse_db(SQLParser::Use_dbContext *ctx) override {
         fprintf(stderr, "Visit Use DB.\n");
-        databaseManager->switchDatabase(ctx->Identifier()->getText());
-        printf("Database changed\n");
-        return visitChildren(ctx);
+        return databaseManager->switchDatabase(ctx->Identifier()->getText());
     }
 
     std::any visitShow_tables(SQLParser::Show_tablesContext *ctx) override {
         fprintf(stderr, "Visit Show DB tables.\n");
-        databaseManager->listTablesOfDatabase();
-        return visitChildren(ctx);
+        return databaseManager->listTablesOfDatabase();
     }
 
     std::any visitShow_indexes(SQLParser::Show_indexesContext *ctx) override {
         fprintf(stderr, "Visit Show DB indexes.\n");
-        databaseManager->showIndex();
-        return visitChildren(ctx);
+        return databaseManager->showIndex();
     }
 
     std::any visitLoad_data(SQLParser::Load_dataContext *ctx) override {
