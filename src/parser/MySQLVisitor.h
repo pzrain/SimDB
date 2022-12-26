@@ -80,6 +80,7 @@ public:
         std::vector<FieldItem> normalFieldList = std::vector<FieldItem>();
         std::vector<FieldItem> pkFieldList = std::vector<FieldItem>();
         std::vector<FieldItem> fkFieldList = std::vector<FieldItem>();
+        
         fieldList = std::any_cast<std::vector<FieldItem>>(ctx->field_list()->accept(this));
         for(int i = 0; i < fieldList.size(); i++) {
             if(fieldList[i].isNormalField)
@@ -92,35 +93,41 @@ public:
                 printf("report error when telling different fields in visit create table\n");
         }
         databaseManager->createTable(tableName, normalFieldList);
+
         if(pkFieldList.size() > 0) {
             if(pkFieldList.size() > 1)
                 printf("multiple primary key"); // actually report error
             databaseManager->createPrimaryKey(tableName, pkFieldList[0].colNames, pkFieldList[0].colNames.size());
         }
+
         for(int i = 0; i < fkFieldList.size(); i++) {
             databaseManager->createForeignKey(tableName, fkFieldList[i].fkName, fkFieldList[i].colName, \
                                               fkFieldList[i].refTableName, fkFieldList[i].refColName);
         }
+
         return 0;
     }
 
     std::any visitDrop_table(SQLParser::Drop_tableContext *ctx) override {
         fprintf(stderr, "Visit Drop Table.\n");
         fprintf(stderr, "Table name = %s.\n", ctx->Identifier()->getText().c_str());
+        
         databaseManager->dropTable(ctx->Identifier()->getText());
         return visitChildren(ctx);
     }
 
     std::any visitDescribe_table(SQLParser::Describe_tableContext *ctx) override {
         fprintf(stderr, "Visit Describe Table.\n");
+        
         databaseManager->listTableInfo(ctx->Identifier()->getText());
         return visitChildren(ctx);
     }
 
     std::any visitInsert_into_table(SQLParser::Insert_into_tableContext *ctx) override {
         fprintf(stderr, "Visit Insert Into Table.\n");
+        
         DBInsert* dbInsert = new DBInsert;
-        std::vector<std::vector<void*>> valueLists = std::any_cast<std::vector<std::vector<void*>>>(visitValue_lists(ctx->value_lists()));
+        std::vector<std::vector<void*>> valueLists = std::any_cast<std::vector<std::vector<void*>>>(ctx->value_lists()->accept(this));
         dbInsert->valueLists = valueLists;
 
         auto value_lists = ctx->value_lists()->value_list(); // a vector
@@ -150,35 +157,44 @@ public:
                 }
             }
             dbInsert->valueListsType.push_back(listType);
-            
         }
         // TODO segmetation fault here
         databaseManager->insertRecords(ctx->Identifier()->getText(), dbInsert);
+
+        delete dbInsert;
         return 0;
     }
 
     std::any visitDelete_from_table(SQLParser::Delete_from_tableContext *ctx) override {
         fprintf(stderr, "Visit Delete From Table.\n");
+        
         DBDelete* dbDelete = new DBDelete;
-        // maybe optimize before parsing
         std::vector<DBExpression> expression;
-        expression = std::any_cast<std::vector<DBExpression>>(visitWhere_and_clause(ctx->where_and_clause()));
+        expression = std::any_cast<std::vector<DBExpression>>(ctx->where_and_clause()->accept(this));
         dbDelete->expression = expression;
-        return databaseManager->dropRecords(ctx->Identifier()->getText(), dbDelete);
+        databaseManager->dropRecords(ctx->Identifier()->getText(), dbDelete);
+        
+        delete dbDelete;
+        return 0;
     }
 
     std::any visitUpdate_table(SQLParser::Update_tableContext *ctx) override {
         fprintf(stderr, "Visit Update Table.\n");
+
         DBUpdate* dbUpdate = new DBUpdate;
-        std::vector<DBExpression> expItem = std::any_cast<std::vector<DBExpression>>(visitSet_clause(ctx->set_clause()));
-        std::vector<DBExpression> expressions = std::any_cast<std::vector<DBExpression>>(visitWhere_and_clause(ctx->where_and_clause()));
+        std::vector<DBExpression> expItem = std::any_cast<std::vector<DBExpression>>(ctx->set_clause()->accept(this));
+        std::vector<DBExpression> expressions = std::any_cast<std::vector<DBExpression>>(ctx->where_and_clause()->accept(this));
         dbUpdate->expItem = expItem;
         dbUpdate->expressions = expressions;
-        return databaseManager->updateRecords(ctx->Identifier()->getText(), dbUpdate);
+        databaseManager->updateRecords(ctx->Identifier()->getText(), dbUpdate);
+        
+        delete dbUpdate;
+        return 0;
     }
 
     std::any visitSelect_table_(SQLParser::Select_table_Context *ctx) override {
         fprintf(stderr, "Visit Select Table_.\n");
+
         DBSelect* dbSelect;
         dbSelect = std::any_cast<DBSelect*>(ctx->select_table()->accept(this));
         databaseManager->selectRecords(dbSelect);
@@ -189,26 +205,27 @@ public:
     
     std::any visitSelect_table(SQLParser::Select_tableContext *ctx) override {
         fprintf(stderr, "Visit Select Table.\n");
+        
         DBSelect* dbSelect = new DBSelect;
 
         std::vector<DBSelItem> selectItems;
-        selectItems = std::any_cast<std::vector<DBSelItem>>(visitSelectors(ctx->selectors()));
+        selectItems = std::any_cast<std::vector<DBSelItem>>(ctx->selectors()->accept(this));
         dbSelect->selectItems = selectItems;
 
         std::vector<std::string> selectTables;
-        selectTables = std::any_cast<std::vector<std::string>>(visitIdentifiers(ctx->identifiers()));
+        selectTables = std::any_cast<std::vector<std::string>>(ctx->identifiers()->accept(this));
         dbSelect->selectTables = selectTables;
 
         if(ctx->where_and_clause() != nullptr) {
             std::vector<DBExpression> expressions;
-            expressions = std::any_cast<std::vector<DBExpression>>(visitWhere_and_clause(ctx->where_and_clause()));
+            expressions = std::any_cast<std::vector<DBExpression>>(ctx->where_and_clause()->accept(this));
             dbSelect->expressions = expressions;
         }
 
         if(ctx->column() != nullptr) { // 'GROUP' 'BY' column
             dbSelect->groupByEn = true;
             DBExpItem groupByCol;
-            groupByCol = std::any_cast<DBExpItem>(visitColumn(ctx->column()));
+            groupByCol = std::any_cast<DBExpItem>(ctx->column()->accept(this));
             dbSelect->groupByCol = groupByCol;
         }
 
@@ -228,22 +245,28 @@ public:
     }
 
     std::any visitAlter_add_index(SQLParser::Alter_add_indexContext *ctx) override {
+        fprintf(stderr, "Visit Add Index.\n");
+        
         std::string tableName = ctx->Identifier()->getText();
-        std::vector<std::string> colName = std::any_cast<std::vector<std::string>>(visitIdentifiers(ctx->identifiers()));
+        std::vector<std::string> colName = std::any_cast<std::vector<std::string>>(ctx->identifiers()->accept(this));
         for(int i = 0; i < colName.size(); i++)
             databaseManager->createIndex(tableName, colName[i]);
         return 0;
     }
 
     std::any visitAlter_drop_index(SQLParser::Alter_drop_indexContext *ctx) override {
+        fprintf(stderr, "Visit Drop Index.\n");
+        
         std::string tableName = ctx->Identifier()->getText();
-        std::vector<std::string> colName = std::any_cast<std::vector<std::string>>(visitIdentifiers(ctx->identifiers()));
+        std::vector<std::string> colName = std::any_cast<std::vector<std::string>>(ctx->identifiers()->accept(this));
         for(int i = 0; i < colName.size(); i++)
             databaseManager->dropIndex(tableName, colName[i]);
         return 0;
     }
 
     std::any visitAlter_table_drop_pk(SQLParser::Alter_table_drop_pkContext *ctx) override {
+        fprintf(stderr, "Visit Drop Primary Key.\n");
+        
         std::string tableName;
         tableName = ctx->Identifier(0)->getText();
         // size_t identSize = ctx->Identifier().size();
@@ -256,11 +279,13 @@ public:
         // } else {
         //     // error
         // }
-
-        return databaseManager->dropPrimaryKey(tableName);
+        databaseManager->dropPrimaryKey(tableName);
+        return 0;
     }
 
     std::any visitAlter_table_drop_foreign_key(SQLParser::Alter_table_drop_foreign_keyContext *ctx) override {
+        fprintf(stderr, "Visit Drop Foreign Key.\n");
+        
         std::string tableName;
         std::string fkName;
 
@@ -273,10 +298,14 @@ public:
         } else {
             // TODO error
         }
-        return databaseManager->dropForeignKey(tableName, fkName);
+
+        databaseManager->dropForeignKey(tableName, fkName);
+        return 0;
     }
 
     std::any visitAlter_table_add_pk(SQLParser::Alter_table_add_pkContext *ctx) override {
+        fprintf(stderr, "Visit Add Primary Key.\n");
+        
         std::string tableName;
         std::string pkName;
 
@@ -290,11 +319,14 @@ public:
             // TODO error
         }
         std::vector<std::string> colName;
-        colName = std::any_cast<std::vector<std::string>>(visitIdentifiers(ctx->identifiers()));
-        return databaseManager->createPrimaryKey(tableName, colName, colName.size());
+        colName = std::any_cast<std::vector<std::string>>(ctx->identifiers()->accept(this));
+        databaseManager->createPrimaryKey(tableName, colName, colName.size());
+        return 0;
     }
 
     std::any visitAlter_table_add_foreign_key(SQLParser::Alter_table_add_foreign_keyContext *ctx) override {
+        fprintf(stderr, "Visit Add Foreign Key.\n");
+        
         std::string tableName = "";
         std::string fkName = "";
         std::vector<std::string> colNames = std::vector<std::string>();
@@ -314,30 +346,50 @@ public:
         } else {
             // TODO error
         }
-        colNames = std::any_cast<std::vector<std::string>>(visitIdentifiers(ctx->identifiers(0)));
-        refColNames = std::any_cast<std::vector<std::string>>(visitIdentifiers(ctx->identifiers(1)));
+        colNames = std::any_cast<std::vector<std::string>>(ctx->identifiers(0)->accept(this));
+        refColNames = std::any_cast<std::vector<std::string>>(ctx->identifiers(1)->accept(this));
 
         if(colNames.size() != 1 || refColNames.size() != 1) {
             printf("report error when add foreign key because it is not 1 on 1\n");
             exit(0);
         }
-        return databaseManager->createForeignKey(tableName, fkName, colNames[0], refTableName, refColNames[0]);
+
+        databaseManager->createForeignKey(tableName, fkName, colNames[0], refTableName, refColNames[0]);
+        return 0;
     }
 
     std::any visitAlter_table_add_unique(SQLParser::Alter_table_add_uniqueContext *ctx) override {
+        fprintf(stderr, "Visit Add Unique.\n");
+        
         std::string tableName;
         std::vector<std::string> colNames;
         tableName = ctx->Identifier()->getText();
-        colNames = std::any_cast<std::vector<std::string>>(visitIdentifiers(ctx->identifiers()));
-        return databaseManager->createUniqueKey(tableName, colNames, colNames.size());
+        colNames = std::any_cast<std::vector<std::string>>(ctx->identifiers()->accept(this));
+        
+        databaseManager->createUniqueKey(tableName, colNames, colNames.size());
+        return 0;
     }
+
+    /**
+     * for drop unique::
+     * std::any visitAlter_table_drop_unique(SQLParser::Alter_table_drop_uniqueContext *ctx) override {
+     *     fprintf(stderr, "Visit Drop Unique.\n");
+     *     std::string tableName;
+     *     std::vector<std::string> colNames;
+     *     tableName = ctx->Identifier()->getText();
+     *     colNames = std::any_cast<std::vector<std::string>>(ctx->identifiers()->accept(this));
+     * 
+     *     databaseManager->dropUniqueKey(tableName, colNames, colNames.size());
+     *     return 0;
+     * }
+    */
 
     std::any visitField_list(SQLParser::Field_listContext *ctx) override {
         fprintf(stderr, "Visit Field List.\n");
+
         std::vector<FieldItem> fieldList;
         FieldItem item;
         for(int i = 0; i < ctx->field().size(); i++) {
-            // ctx->field(i)->accept(this);
             item = std::any_cast<FieldItem>(ctx->field(i)->accept(this));
             fieldList.push_back(item);
         }
@@ -365,11 +417,11 @@ public:
             }
         }
         return item;
-        // return visitChildren(ctx);
     }
 
     std::any visitPrimary_key_field(SQLParser::Primary_key_fieldContext *ctx) override {
         fprintf(stderr, "Visit Primary Key Field.\n");
+
         FieldItem item;
         item.isPkField = true;
         item.colNames = std::any_cast<std::vector<std::string>>(ctx->identifiers()->accept(this));
@@ -378,6 +430,7 @@ public:
 
     std::any visitForeign_key_field(SQLParser::Foreign_key_fieldContext *ctx) override {
         fprintf(stderr, "Visit Foreign Key Field.\n");
+
         FieldItem item;
         item.isFkField = true;
 
@@ -406,6 +459,7 @@ public:
 
     std::any visitType_(SQLParser::Type_Context *ctx) override {
         fprintf(stderr, "Visit Type.\n");
+
         Type type;
         if(ctx->getStart()->getText() == "INT") {
             type.typeName = COL_INT;
@@ -424,25 +478,27 @@ public:
 
     std::any visitValue_lists(SQLParser::Value_listsContext *ctx) override {
         fprintf(stderr, "Visit Value Lists.\n");
+
         std::vector<std::vector<void*>> valueLists;
         for(int i = 0; i < ctx->value_list().size(); i++) {
-            valueLists.push_back(std::any_cast<std::vector<void*>>( visitValue_list(ctx->value_list(i))));
+            valueLists.push_back(std::any_cast<std::vector<void*>>(ctx->value_list(i)->accept(this)));
         }
         return valueLists;
     }
 
     std::any visitValue_list(SQLParser::Value_listContext *ctx) override {
         fprintf(stderr, "Visit Value List.\n");
+
         std::vector<void*> values;
         for(int i = 0; i < ctx->value().size(); i++) {
             if(ctx->value(i)->Integer() != nullptr) {
-                int intValue = std::any_cast<int>(visitValue(ctx->value(i)));
+                int intValue = std::any_cast<int>(ctx->value(i)->accept(this));
                 values.push_back((void*)&intValue);
             } else if(ctx->value(i)->String() != nullptr) {
-                std::string stringValue = std::any_cast<std::string>(visitValue(ctx->value(i)));
+                std::string stringValue = std::any_cast<std::string>(ctx->value(i)->accept(this));
                 values.push_back((void*)stringValue.c_str());
             } else if(ctx->value(i)->Float() != nullptr) {
-                float floatValue = std::any_cast<float>(visitValue(ctx->value(i)));
+                float floatValue = std::any_cast<float>(ctx->value(i)->accept(this));
                 values.push_back((void*)&floatValue);
             } else if(ctx->value(i)->Null() != nullptr){
                 values.push_back(nullptr);
@@ -455,6 +511,7 @@ public:
 
     std::any visitValue(SQLParser::ValueContext *ctx) override {
         fprintf(stderr, "Visit Value.\n");
+
         if(ctx->Integer() != nullptr)
             return stoi(ctx->Integer()->getText());
         else if(ctx->String() != nullptr)
@@ -471,6 +528,7 @@ public:
     std::any visitWhere_and_clause(SQLParser::Where_and_clauseContext *ctx) override {
         // optimizeWhereClause(ctx, databaseManager);
         fprintf(stderr, "Visit Where And Clause.\n");
+
         std::vector<DBExpression> expressions;
         for(int i = 0; i < ctx->where_clause().size(); i++) {
             DBExpression expr;
@@ -482,24 +540,26 @@ public:
 
     std::any visitWhere_operator_expression(SQLParser::Where_operator_expressionContext *ctx) override {
         fprintf(stderr, "Visit WOE.\n");
+
         DBExpression expr;
-        DBExpItem item1 = std::any_cast<DBExpItem>(visitColumn(ctx->column()));
-        DB_EXP_OP_TYPE op = std::any_cast<DB_EXP_OP_TYPE>(visitOperator_(ctx->operator_()));
+        DBExpItem item1 = std::any_cast<DBExpItem>(ctx->column()->accept(this));
         expr.lVal = &item1;
         expr.lType = DB_ITEM;
+
+        DB_EXP_OP_TYPE op = std::any_cast<DB_EXP_OP_TYPE>(ctx->operator_()->accept(this));
         expr.op = op;
 
         if(ctx->expression()->value() != nullptr) {
             if(ctx->expression()->value()->Integer() != nullptr) {
-                int itemInt = std::any_cast<int>(visitExpression(ctx->expression()));
+                int itemInt = std::any_cast<int>(ctx->expression()->accept(this));
                 expr.rVal = &itemInt;
                 expr.rType = DB_INT;
             } else if(ctx->expression()->value()->String() != nullptr) {
-                std::string itemString = std::any_cast<std::string>(visitExpression(ctx->expression()));
+                std::string itemString = std::any_cast<std::string>(ctx->expression()->accept(this));
                 expr.rVal = &itemString;
                 expr.rType = DB_CHAR;
             } else if(ctx->expression()->value()->Float() != nullptr) {
-                float itemFloat = std::any_cast<float>(visitExpression(ctx->expression()));
+                float itemFloat = std::any_cast<float>(ctx->expression()->accept(this));
                 expr.rVal = &itemFloat;
                 expr.rType = DB_FLOAT;
             } else if(ctx->expression()->value()->Null() != nullptr){
@@ -515,12 +575,13 @@ public:
 
     std::any visitWhere_operator_select(SQLParser::Where_operator_selectContext *ctx) override {
         fprintf(stderr, "Visit WOS.\n");
+
         DBExpression expr;
         DBExpItem item1 = std::any_cast<DBExpItem>(ctx->column()->accept(this));
         expr.lVal = &item1;
         expr.lType = DB_ITEM;
         
-        DB_EXP_OP_TYPE op = std::any_cast<DB_EXP_OP_TYPE>(visitOperator_(ctx->operator_()));
+        DB_EXP_OP_TYPE op = std::any_cast<DB_EXP_OP_TYPE>(ctx->operator_()->accept(this));
         expr.op = op;
 
         DBSelect* dbselect;
@@ -533,10 +594,12 @@ public:
 
     std::any visitWhere_null(SQLParser::Where_nullContext *ctx) override {
         fprintf(stderr, "Visit WN.\n");
+
         DBExpression expr;
-        DBExpItem item1 = std::any_cast<DBExpItem>(visitColumn(ctx->column()));
+        DBExpItem item1 = std::any_cast<DBExpItem>(ctx->column()->accept(this));
         expr.lVal = &item1;
         expr.lType = DB_ITEM;
+
         expr.op = IS_TYPE;
         std::string nullInst = ctx->getText();
         if(nullInst.rfind("NOT") != std::string::npos) {
@@ -547,15 +610,16 @@ public:
 
     std::any visitWhere_in_list(SQLParser::Where_in_listContext *ctx) override {
         fprintf(stderr, "Visit WIL.\n");
+
         DBExpression expr;
-        DBExpItem item1 = std::any_cast<DBExpItem>(visitColumn(ctx->column()));
+        DBExpItem item1 = std::any_cast<DBExpItem>(ctx->column()->accept(this));
         expr.lVal = &item1;
         expr.lType = DB_ITEM;
         expr.op = IN_TYPE;
         
         std::vector<void*> valueList;
         std::vector<DB_LIST_TYPE> valueListType;
-        valueList = std::any_cast<std::vector<void*>>(visitValue_list(ctx->value_list()));
+        valueList = std::any_cast<std::vector<void*>>(ctx->value_list()->accept(this));
         for(int i = 0; i < ctx->value_list()->value().size(); i++) {
             if(ctx->value_list()->value(i)->Integer() != nullptr) {
                 valueListType.push_back(DB_LIST_INT);
@@ -577,6 +641,7 @@ public:
 
     std::any visitWhere_in_select(SQLParser::Where_in_selectContext *ctx) override {
         fprintf(stderr, "Visit WIS.\n");
+
         DBExpression expr;
         DBExpItem item1 = std::any_cast<DBExpItem>(ctx->column()->accept(this));
         expr.lVal = &item1;
@@ -587,14 +652,15 @@ public:
         dbselect = std::any_cast<DBSelect*>(ctx->select_table());
         expr.rVal = dbselect;
         expr.rType = DB_NST;
-        
+
         return expr;
     }
 
     std::any visitWhere_like_string(SQLParser::Where_like_stringContext *ctx) override {
         fprintf(stderr, "Visit WLS.\n");
+
         DBExpression expr;
-        DBExpItem item1 = std::any_cast<DBExpItem>(visitColumn(ctx->column()));
+        DBExpItem item1 = std::any_cast<DBExpItem>(ctx->column()->accept(this));
         expr.lVal = &item1;
         expr.lType = DB_ITEM;
         expr.op = LIKE_TYPE;
@@ -607,19 +673,23 @@ public:
 
     std::any visitColumn(SQLParser::ColumnContext *ctx) override {
         fprintf(stderr, "Visit Column.\n");
+
         if(ctx->Identifier().size() == 1)
             return DBExpItem("", ctx->Identifier(0)->getText());
-        else
+        else if(ctx->Identifier().size() == 2)
             return DBExpItem(ctx->Identifier(0)->getText(), ctx->Identifier(1)->getText());
+        else    // error
+            return 0;
         
     }
 
     std::any visitExpression(SQLParser::ExpressionContext *ctx) override {
         fprintf(stderr, "Visit Expression.\n");
+
         if(ctx->value() != nullptr) {
-            return visitValue(ctx->value());
+            return ctx->value()->accept(this);
         } else if(ctx->column() != nullptr) {
-            return visitColumn(ctx->column());
+            return ctx->column()->accept(this);
         } else {
             return 0;
             // TODO error
@@ -628,6 +698,7 @@ public:
 
     std::any visitSet_clause(SQLParser::Set_clauseContext *ctx) override {
         fprintf(stderr, "Visit Set Clause.\n");
+
         std::vector<DBExpression> expItem;
         DBExpItem item;
         DBExpression expr;
@@ -641,15 +712,15 @@ public:
             std::string stringValue;
             float floatValue;
             if(ctx->value(i)->Integer() != nullptr) {
-                intValue = std::any_cast<int>(visitValue(ctx->value(i)));
+                intValue = std::any_cast<int>(ctx->value(i)->accept(this));
                 expr.rVal = &intValue;
                 expr.rType = DB_INT;
             } else if(ctx->value(i)->String() != nullptr) {
-                stringValue = std::any_cast<std::string>(visitValue(ctx->value(i)));
+                stringValue = std::any_cast<std::string>(ctx->value(i)->accept(this));
                 expr.rVal = &stringValue;
                 expr.rType = DB_CHAR;
             } else if(ctx->value(i)->Float() != nullptr) {
-                floatValue = std::any_cast<float>(visitValue(ctx->value(i)));
+                floatValue = std::any_cast<float>(ctx->value(i)->accept(this));
                 expr.rVal = &floatValue;
                 expr.rType = DB_FLOAT;
             } else if(ctx->value(i)->Null() != nullptr) {
@@ -664,6 +735,8 @@ public:
     }
 
     std::any visitSelectors(SQLParser::SelectorsContext *ctx) override {
+        fprintf(stderr, "Visit Selectors.\n");
+
         std::vector<DBSelItem> selectItems;
         DBSelItem item;
         if(ctx->selector().size() == 0) {
@@ -672,21 +745,23 @@ public:
             selectItems.push_back(item);
         }
         for(int i = 0; i < ctx->selector().size(); i++) {
-            item = std::any_cast<DBSelItem>(visitSelector(ctx->selector(i)));
+            item = std::any_cast<DBSelItem>(ctx->selector(i)->accept(this));
             selectItems.push_back(item);
         }
         return selectItems;
     }
 
     std::any visitSelector(SQLParser::SelectorContext *ctx) override {
+        fprintf(stderr, "Visit Selector.\n");
+
         DBSelItem selItem;
         selItem.star = false;
         if(ctx->column() != nullptr) {
-            selItem.item =  std::any_cast<DBExpItem>(visitColumn(ctx->column()));
+            selItem.item =  std::any_cast<DBExpItem>(ctx->column()->accept(this));
             selItem.selectType = ORD_TYPE;
         } else if(ctx->aggregator() != nullptr) {
-            selItem.item =  std::any_cast<DBExpItem>(visitColumn(ctx->column()));
-            selItem.selectType = std::any_cast<DB_SELECT_TYPE>(visitAggregator(ctx->aggregator()));
+            selItem.item =  std::any_cast<DBExpItem>(ctx->column()->accept(this));
+            selItem.selectType = std::any_cast<DB_SELECT_TYPE>(ctx->aggregator()->accept(this));
         } else if(ctx->Count() != nullptr) { // no star condition in aggregator 
             selItem.star = true;
             selItem.selectType = COUNT_TYPE;
@@ -697,6 +772,8 @@ public:
     }
 
     std::any visitIdentifiers(SQLParser::IdentifiersContext *ctx) override {
+        fprintf(stderr, "Visit Identifiers.\n");
+
         std::vector<std::string> selectTables;
         for(int i = 0; i < ctx->Identifier().size(); i++)
             selectTables.push_back(ctx->Identifier(i)->getText());
@@ -705,6 +782,7 @@ public:
 
     std::any visitOperator_(SQLParser::Operator_Context *ctx) override {
         fprintf(stderr, "Visit Operator.\n");
+
         if(ctx->EqualOrAssign() != nullptr)
             return EQU_TYPE;
         else if(ctx->Less() != nullptr)
@@ -722,6 +800,8 @@ public:
     }
 
     std::any visitAggregator(SQLParser::AggregatorContext *ctx) override {
+        fprintf(stderr, "Visit Aggregator.\n");
+
         DB_SELECT_TYPE type;
         if(ctx->Count() != nullptr) {
             type = COUNT_TYPE;
