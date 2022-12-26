@@ -165,6 +165,28 @@ public:
         end = clock();
         float time = (float)(end - start);
         printf("Insert %d rows in %f seconds\n", ret, time / CLOCKS_PER_SEC);
+
+        for(int i = 0; i < dbInsert->valueLists.size(); i++) {
+            for(int j = 0; j < dbInsert->valueLists[i].size(); j++) {
+                switch(dbInsert->valueListsType[i][j]) {
+                    case DB_LIST_INT : {
+                        delete (int*) dbInsert->valueLists[i][j];
+                        break;
+                    }
+                    case DB_LIST_CHAR : {
+                        delete (char*) dbInsert->valueLists[i][j];
+                        break;
+                    }
+                    case DB_LIST_FLOAT : {
+                        delete (float*) dbInsert->valueLists[i][j];
+                        break;
+                    }
+                    default:
+                        break;
+                }
+
+            }
+        }
         delete dbInsert;
         return 0;
     }
@@ -183,6 +205,7 @@ public:
         end = clock();
         float time = (float)(end - start);
         printf("Delete %d rows in %f seconds\n", ret, time / CLOCKS_PER_SEC);
+        // TODO delete pointer in DBExpression
         delete dbDelete;
         return 0;
     }
@@ -202,6 +225,7 @@ public:
         end = clock();
         float time = (float)(end - start);
         printf("Update %d rows in %f seconds\n", ret, time / CLOCKS_PER_SEC);
+        // TODO delete pointer in DBExpression
         delete dbUpdate;
         return 0;
     }
@@ -217,6 +241,7 @@ public:
         end = clock();
         float time = (float)(end - start);
         printf("Select %d rows in %f seconds\n", ret, time / CLOCKS_PER_SEC);
+        // TODO delete pointer in DBExpression
 
         delete dbSelect;
         return 0;
@@ -228,6 +253,7 @@ public:
         DBSelect* dbSelect = new DBSelect;
 
         std::vector<DBSelItem> selectItems;
+
         selectItems = std::any_cast<std::vector<DBSelItem>>(ctx->selectors()->accept(this));
         dbSelect->selectItems = selectItems;
 
@@ -244,7 +270,7 @@ public:
         if(ctx->column() != nullptr) { // 'GROUP' 'BY' column
             dbSelect->groupByEn = true;
             DBExpItem groupByCol;
-            groupByCol = std::any_cast<DBExpItem>(ctx->column()->accept(this));
+            groupByCol = *std::any_cast<DBExpItem*>(ctx->column()->accept(this));
             dbSelect->groupByCol = groupByCol;
         }
 
@@ -426,11 +452,14 @@ public:
         if(ctx->value() != nullptr) {
             item.hasDefault = true;
             if(ctx->value()->Integer() != nullptr) {
-                item.dValueInt = std::any_cast<int>(ctx->value()->accept(this));
+                int* pInt = std::any_cast<int*>(ctx->value()->accept(this));
+                item.dValueInt = *pInt;
             } else if(ctx->value()->String() != nullptr) {
-                item.dValueString = std::any_cast<string>(ctx->value()->accept(this));
+                char* pChar = std::any_cast<char*>(ctx->value()->accept(this));
+                item.dValueString = std::string(pChar);
             } else if(ctx->value()->Float() != nullptr) {
-                item.dValueFloat = std::any_cast<float>(ctx->value()->accept(this));
+                float* pFloat = std::any_cast<float*>(ctx->value()->accept(this));
+                item.dValueFloat = *pFloat;
             }
         }
         return item;
@@ -553,7 +582,7 @@ public:
     std::any visitWhere_and_clause(SQLParser::Where_and_clauseContext *ctx) override {
         fprintf(stderr, "Visit Where And Clause.\n");
 
-        optimizeWhereClause(ctx, databaseManager);
+        // optimizeWhereClause(ctx, databaseManager);
         std::vector<DBExpression> expressions;
         for(int i = 0; i < ctx->where_clause().size(); i++) {
             DBExpression expr;
@@ -567,8 +596,8 @@ public:
         fprintf(stderr, "Visit WOE.\n");
 
         DBExpression expr;
-        DBExpItem item1 = std::any_cast<DBExpItem>(ctx->column()->accept(this));
-        expr.lVal = &item1;
+        DBExpItem* item1 = std::any_cast<DBExpItem*>(ctx->column()->accept(this));
+        expr.lVal = item1;
         expr.lType = DB_ITEM;
 
         DB_EXP_OP_TYPE op = std::any_cast<DB_EXP_OP_TYPE>(ctx->operator_()->accept(this));
@@ -576,16 +605,16 @@ public:
 
         if(ctx->expression()->value() != nullptr) {
             if(ctx->expression()->value()->Integer() != nullptr) {
-                int itemInt = std::any_cast<int>(ctx->expression()->accept(this));
-                expr.rVal = &itemInt;
+                int* itemInt = std::any_cast<int*>(ctx->expression()->accept(this));
+                expr.rVal = itemInt;
                 expr.rType = DB_INT;
             } else if(ctx->expression()->value()->String() != nullptr) {
-                std::string itemString = std::any_cast<std::string>(ctx->expression()->accept(this));
-                expr.rVal = &itemString;
+                char* itemString = std::any_cast<char*>(ctx->expression()->accept(this));
+                expr.rVal = itemString;
                 expr.rType = DB_CHAR;
             } else if(ctx->expression()->value()->Float() != nullptr) {
-                float itemFloat = std::any_cast<float>(ctx->expression()->accept(this));
-                expr.rVal = &itemFloat;
+                float* itemFloat = std::any_cast<float*>(ctx->expression()->accept(this));
+                expr.rVal = itemFloat;
                 expr.rType = DB_FLOAT;
             } else if(ctx->expression()->value()->Null() != nullptr){
                 expr.rVal = expr.lVal;
@@ -602,15 +631,15 @@ public:
         fprintf(stderr, "Visit WOS.\n");
 
         DBExpression expr;
-        DBExpItem item1 = std::any_cast<DBExpItem>(ctx->column()->accept(this));
-        expr.lVal = &item1;
+        DBExpItem* item1 = std::any_cast<DBExpItem*>(ctx->column()->accept(this));
+        expr.lVal = item1;
         expr.lType = DB_ITEM;
         
         DB_EXP_OP_TYPE op = std::any_cast<DB_EXP_OP_TYPE>(ctx->operator_()->accept(this));
         expr.op = op;
 
         DBSelect* dbselect;
-        dbselect = std::any_cast<DBSelect*>(ctx->select_table());
+        dbselect = std::any_cast<DBSelect*>(ctx->select_table()->accept(this));
         expr.rVal = dbselect;
         expr.rType = DB_NST;
 
@@ -621,8 +650,8 @@ public:
         fprintf(stderr, "Visit WN.\n");
 
         DBExpression expr;
-        DBExpItem item1 = std::any_cast<DBExpItem>(ctx->column()->accept(this));
-        expr.lVal = &item1;
+        DBExpItem* item1 = std::any_cast<DBExpItem*>(ctx->column()->accept(this));
+        expr.lVal = item1;
         expr.lType = DB_ITEM;
 
         expr.op = IS_TYPE;
@@ -637,14 +666,14 @@ public:
         fprintf(stderr, "Visit WIL.\n");
 
         DBExpression expr;
-        DBExpItem item1 = std::any_cast<DBExpItem>(ctx->column()->accept(this));
-        expr.lVal = &item1;
+        DBExpItem* item1 = std::any_cast<DBExpItem*>(ctx->column()->accept(this));
+        expr.lVal = item1;
         expr.lType = DB_ITEM;
         expr.op = IN_TYPE;
         
-        std::vector<void*> valueList;
+        std::vector<void*>* valueList;
         std::vector<DB_LIST_TYPE> valueListType;
-        valueList = std::any_cast<std::vector<void*>>(ctx->value_list()->accept(this));
+        valueList = std::any_cast<std::vector<void*>*>(ctx->value_list()->accept(this));
         for(int i = 0; i < ctx->value_list()->value().size(); i++) {
             if(ctx->value_list()->value(i)->Integer() != nullptr) {
                 valueListType.push_back(DB_LIST_INT);
@@ -658,7 +687,7 @@ public:
                 // TODO error
             }
         }
-        expr.rVal = &valueList;
+        expr.rVal = valueList;
         expr.rType = DB_LIST;
         expr.valueListType = valueListType;
         return expr;
@@ -668,13 +697,13 @@ public:
         fprintf(stderr, "Visit WIS.\n");
 
         DBExpression expr;
-        DBExpItem item1 = std::any_cast<DBExpItem>(ctx->column()->accept(this));
-        expr.lVal = &item1;
+        DBExpItem* item1 = std::any_cast<DBExpItem*>(ctx->column()->accept(this));
+        expr.lVal = item1;
         expr.lType = DB_ITEM;
         expr.op = IN_TYPE;
 
         DBSelect* dbselect;
-        dbselect = std::any_cast<DBSelect*>(ctx->select_table());
+        dbselect = std::any_cast<DBSelect*>(ctx->select_table()->accept(this));
         expr.rVal = dbselect;
         expr.rType = DB_NST;
 
@@ -685,26 +714,30 @@ public:
         fprintf(stderr, "Visit WLS.\n");
 
         DBExpression expr;
-        DBExpItem item1 = std::any_cast<DBExpItem>(ctx->column()->accept(this));
-        expr.lVal = &item1;
+        DBExpItem* item1 = std::any_cast<DBExpItem*>(ctx->column()->accept(this));
+        expr.lVal = item1;
         expr.lType = DB_ITEM;
         expr.op = LIKE_TYPE;
 
-        std::string item2 = ctx->String()->getText();
-        expr.rVal = &item2;
+        std::string* item2 = new std::string(ctx->String()->getText());
+        expr.rVal = item2;
         expr.rType = DB_CHAR;
         return expr;
     }
 
     std::any visitColumn(SQLParser::ColumnContext *ctx) override {
         fprintf(stderr, "Visit Column.\n");
-
-        if(ctx->Identifier().size() == 1)
-            return DBExpItem("", ctx->Identifier(0)->getText());
-        else if(ctx->Identifier().size() == 2)
-            return DBExpItem(ctx->Identifier(0)->getText(), ctx->Identifier(1)->getText());
+        DBExpItem* pItem;
+        if(ctx->Identifier().size() == 1) {
+            pItem = new DBExpItem("", ctx->Identifier(0)->getText());
+            return pItem;
+        }
+        else if(ctx->Identifier().size() == 2) {
+            pItem = new DBExpItem(ctx->Identifier(0)->getText(), ctx->Identifier(1)->getText());
+            return pItem;
+        }
         else    // error
-            return 0;
+            return nullptr;
         
     }
 
@@ -716,7 +749,7 @@ public:
         } else if(ctx->column() != nullptr) {
             return ctx->column()->accept(this);
         } else {
-            return 0;
+            return nullptr;
             // TODO error
         }
     }
@@ -782,10 +815,10 @@ public:
         DBSelItem selItem;
         selItem.star = false;
         if(ctx->column() != nullptr) {
-            selItem.item =  std::any_cast<DBExpItem>(ctx->column()->accept(this));
+            selItem.item =  *std::any_cast<DBExpItem*>(ctx->column()->accept(this));
             selItem.selectType = ORD_TYPE;
         } else if(ctx->aggregator() != nullptr) {
-            selItem.item =  std::any_cast<DBExpItem>(ctx->column()->accept(this));
+            selItem.item =  *std::any_cast<DBExpItem*>(ctx->column()->accept(this));
             selItem.selectType = std::any_cast<DB_SELECT_TYPE>(ctx->aggregator()->accept(this));
         } else if(ctx->Count() != nullptr) { // no star condition in aggregator 
             selItem.star = true;
