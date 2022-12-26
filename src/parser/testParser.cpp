@@ -13,12 +13,4 @@ int main() {
     buffer << input.rdbuf();
     std::string content(buffer.str());
     myParser->parse(content);
-    // std::string instruction;
-    // size_t pos = content.find(";");
-    // while(pos != std::string::npos) {
-    //     instruction = content.substr(0, pos+1);
-    //     myParser->parse(instruction);
-    //     content = content.substr(pos+1);
-    //     pos = content.find(";");
-    // }
 }

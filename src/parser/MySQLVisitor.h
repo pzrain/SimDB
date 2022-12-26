@@ -129,7 +129,6 @@ public:
         DBInsert* dbInsert = new DBInsert;
         std::vector<std::vector<void*>> valueLists = std::any_cast<std::vector<std::vector<void*>>>(ctx->value_lists()->accept(this));
         dbInsert->valueLists = valueLists;
-        printf("str is %d", (*(char*)dbInsert->valueLists[0][2]));
         auto value_lists = ctx->value_lists()->value_list(); // a vector
         for(int i = 0; i < value_lists.size(); i++) {
             // for each value list
