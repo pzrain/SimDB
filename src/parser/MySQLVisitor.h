@@ -129,7 +129,7 @@ public:
         DBInsert* dbInsert = new DBInsert;
         std::vector<std::vector<void*>> valueLists = std::any_cast<std::vector<std::vector<void*>>>(ctx->value_lists()->accept(this));
         dbInsert->valueLists = valueLists;
-
+        printf("str is %s", (*(std::string*)dbInsert->valueLists[0][2]).c_str());
         auto value_lists = ctx->value_lists()->value_list(); // a vector
         for(int i = 0; i < value_lists.size(); i++) {
             // for each value list
@@ -161,6 +161,10 @@ public:
         // TODO segmetation fault here
         databaseManager->insertRecords(ctx->Identifier()->getText(), dbInsert);
 
+        // delete pointer here
+        // for(int i = 0; i < dbInsert->valueLists.size(); i++)
+        //     for(int j = 0; j < dbInsert->valueLists[i].size(); j++)
+        //         delete (dbInsert->valueLists[i][j]);
         delete dbInsert;
         return 0;
     }
@@ -392,7 +396,6 @@ public:
             item = std::any_cast<FieldItem>(ctx->field(i)->accept(this));
             fieldList.push_back(item);
         }
-        printf("here\n");
         return fieldList;
     }
 
@@ -491,14 +494,14 @@ public:
         std::vector<void*> values;
         for(int i = 0; i < ctx->value().size(); i++) {
             if(ctx->value(i)->Integer() != nullptr) {
-                int intValue = std::any_cast<int>(ctx->value(i)->accept(this));
-                values.push_back((void*)&intValue);
+                int* pInt = std::any_cast<int*>(ctx->value(i)->accept(this));
+                values.push_back((void*)pInt);
             } else if(ctx->value(i)->String() != nullptr) {
-                std::string stringValue = std::any_cast<std::string>(ctx->value(i)->accept(this));
-                values.push_back((void*)stringValue.c_str());
+                std::string* pString = std::any_cast<std::string*>(ctx->value(i)->accept(this));
+                values.push_back((void*)pString);
             } else if(ctx->value(i)->Float() != nullptr) {
-                float floatValue = std::any_cast<float>(ctx->value(i)->accept(this));
-                values.push_back((void*)&floatValue);
+                float* pFloat = std::any_cast<float*>(ctx->value(i)->accept(this));
+                values.push_back((void*)pFloat);
             } else if(ctx->value(i)->Null() != nullptr){
                 values.push_back(nullptr);
             } else {
@@ -511,14 +514,21 @@ public:
     std::any visitValue(SQLParser::ValueContext *ctx) override {
         fprintf(stderr, "Visit Value.\n");
 
-        if(ctx->Integer() != nullptr)
-            return stoi(ctx->Integer()->getText());
-        else if(ctx->String() != nullptr)
-            return ctx->String()->getText();
-        else if(ctx->Float() != nullptr)
-            return stof(ctx->Float()->getText());
+        // NOTICE: create pointer here, need to be deleted after using
+        if(ctx->Integer() != nullptr) {
+            int* pInt = new int(stoi(ctx->Integer()->getText()));
+            return pInt;
+        }
+        else if(ctx->String() != nullptr) {
+            std::string* pString = new std::string(ctx->String()->getText());
+            return pString;
+        }
+        else if(ctx->Float() != nullptr) {
+            float* pFloat = new float(stof(ctx->Float()->getText()));
+            return pFloat;
+        }
         else if(ctx->Null() != nullptr)
-            return 0;
+            return nullptr;
         else
             // TODO error
         return 0;

@@ -14,7 +14,7 @@ if [ $# -eq 1 ] && [ $COMPILE_FLAG = '-c' ]; then
 
     echo "Done!"
 fi
-
+rm -r database
 mkdir -p database
-./bin/SimDB 2>msg.debug
+./bin/SimDB 2>msg.debug 1>result.out
 # rm -r database
