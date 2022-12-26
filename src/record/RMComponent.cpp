@@ -189,13 +189,13 @@ void TableHeader::printInfo() {
             case COL_INT:
                 printf("INT");
                 if (entry.hasDefault) {
-                    printf(",          Default value = %d;", entry.defaultVal.defaultValInt);
+                    printf(", Default value = %d;", entry.defaultVal.defaultValInt);
                 } else {
-                    printf(",          Default value = Null;");
+                    printf(", Default value = Null;");
                 }
                 break;
             case COL_VARCHAR:
-                printf("VARCHAR(% 3d)", entry.colLen);
+                printf("VARCHAR(%d)", entry.colLen);
                 if (entry.hasDefault) {
                     printf(", Default value = %s;", entry.defaultVal.defaultValVarchar);
                 } else {
@@ -205,9 +205,9 @@ void TableHeader::printInfo() {
             case COL_FLOAT:
                 printf("FLOAT");
                 if (entry.hasDefault) {
-                    printf(",          Default value = %f;", entry.defaultVal.defaultValFloat);
+                    printf(", Default value = %f;", entry.defaultVal.defaultValFloat);
                 } else {
-                    printf(",          Default value = Null;");
+                    printf(", Default value = Null;");
                 }
                 break;
             case COL_NULL:
