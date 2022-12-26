@@ -356,7 +356,7 @@ int TableManager::createPrimaryKey(string tableName, string colName) {
     return index;
 }
 
-int TableManager::dropPrimaryKey(string tableName, string colName, DBMeta* dbMeta, int& indexDropped) {
+int TableManager::dropPrimaryKey(string tableName, int colId, DBMeta* dbMeta, int& indexDropped, char* pkColName) {
     indexDropped = 0;
     if(!checkTableName(tableName))
         return -1;
@@ -369,10 +369,13 @@ int TableManager::dropPrimaryKey(string tableName, string colName, DBMeta* dbMet
     if(fileHandler == nullptr)
         return -1;
     TableHeader* tableHeader = fileHandler->getTableHeader();
-    int index = checkColExist(tableHeader, colName.c_str());
+    int index = colId;
+    char colName[64];
+    tableHeader->getCol(index, colName);
+    memcpy(pkColName, colName, strlen(colName));
     if (index >= 0) {
         if (tableHeader->entrys[index].primaryKeyConstraint == false) {
-            printf("[INFO] there is no primary key constraint on column %s\n", colName.c_str());
+            printf("[INFO] there is no primary key constraint on column %s\n", colName);
             return -1;
         }
         tableHeader->entrys[index].primaryKeyConstraint = false;
@@ -389,7 +392,7 @@ int TableManager::dropPrimaryKey(string tableName, string colName, DBMeta* dbMet
         }
     }
     for (int i = 0; i < dbMeta->indexNum[tableNum]; i++) {
-        if (strcmp(dbMeta->indexNames[tableNum][i], colName.c_str()) == 0) {
+        if (strcmp(dbMeta->indexNames[tableNum][i], colName) == 0) {
             indexNum = i;
             break;
         }
@@ -401,8 +404,8 @@ int TableManager::dropPrimaryKey(string tableName, string colName, DBMeta* dbMet
      */
     if (!dbMeta->mannuallyCreateIndex[tableNum][indexNum] && !tableHeader->entrys[index].uniqueConstraint && dbMeta->foreignKeyRefColumn[tableNum][index] == 0)  {
         if (dbMeta->foreignKeyOnCol[tableNum][index] == 0) {
-            printf("[INFO] automatically remove Index on %s.%s.\n", tableName.c_str(), colName.c_str());
-            indexManager->removeIndex(tableName.c_str(), colName.c_str());
+            printf("[INFO] automatically remove Index on %s.%s.\n", tableName.c_str(), colName);
+            indexManager->removeIndex(tableName.c_str(), colName);
             indexDropped = 1;
         }
     }

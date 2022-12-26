@@ -438,7 +438,7 @@ int DatabaseManager::createPrimaryKey(string tableName, vector<string> colNames,
     return 0;
 }
 
-int DatabaseManager::dropPrimaryKey(string tableName, vector<string> colNames, int colNum) {
+int DatabaseManager::dropPrimaryKey(string tableName) {
     if(!databaseUsed) {
         printf("[ERROR] use a database first\n");
         return -1;
@@ -454,18 +454,28 @@ int DatabaseManager::dropPrimaryKey(string tableName, vector<string> colNames, i
         fprintf(stderr, "meta data error when drop primary key\n");
         return -1;
     }
-    for(int i = 0; i < colNum; i++) {
-        int indexDropped = -1;
-        int colIndex = tableManager->dropPrimaryKey(tableName, colNames[i], metaData, indexDropped);
-        if(colIndex == -1) {
-            printf("[ERROR] error in dropping %d primary key error.\n", i);
-            return -1;
+    int colIndex = -1;
+    for (int i = 0; i < metaData->colNum[tableNum]; i++) {
+        if (metaData->isPrimaryKey[tableNum][i]) {
+            colIndex = i;
+            break;
         }
-        if (indexDropped == 1) {
-            addOrDropIndex(tableName, colNames[i], metaData, false);
-        }
-        metaData->isPrimaryKey[tableNum][colIndex] = false;
     }
+    if (colIndex == -1) {
+        printf("[ERROR] no primary key on table %s.\n", tableName.c_str());
+        return -1;
+    }
+    int indexDropped = -1;
+    char colName[64];
+    colIndex = tableManager->dropPrimaryKey(tableName, colIndex, metaData, indexDropped, colName);
+    if(colIndex == -1) {
+        printf("[ERROR] error in dropping primary key on table %s error.\n", tableName.c_str());
+        return -1;
+    }
+    if (indexDropped == 1) {
+        addOrDropIndex(tableName, colName, metaData, false);
+    }
+    metaData->isPrimaryKey[tableNum][colIndex] = false;
     return 0;
 }
 
