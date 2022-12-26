@@ -4,6 +4,7 @@
 #include "antlr4/SQLBaseVisitor.h"
 #include "SQLOptimizer.h"
 #include <cstdio>
+#include <time.h>
 
 
 class MySQLVisitor : public SQLBaseVisitor {
@@ -125,7 +126,9 @@ public:
 
     std::any visitInsert_into_table(SQLParser::Insert_into_tableContext *ctx) override {
         fprintf(stderr, "Visit Insert Into Table.\n");
-        
+        clock_t start, end;
+        start = clock();
+
         DBInsert* dbInsert = new DBInsert;
         std::vector<std::vector<void*>> valueLists = std::any_cast<std::vector<std::vector<void*>>>(ctx->value_lists()->accept(this));
         dbInsert->valueLists = valueLists;
@@ -157,50 +160,63 @@ public:
             }
             dbInsert->valueListsType.push_back(listType);
         }
-        // TODO segmetation fault here
-        databaseManager->insertRecords(ctx->Identifier()->getText(), dbInsert);
 
-        // delete pointer here
-        // for(int i = 0; i < dbInsert->valueLists.size(); i++)
-        //     for(int j = 0; j < dbInsert->valueLists[i].size(); j++)
-        //         delete (dbInsert->valueLists[i][j]);
+        int ret = databaseManager->insertRecords(ctx->Identifier()->getText(), dbInsert);
+        end = clock();
+        float time = (float)(end - start);
+        printf("Insert %d rows in %f seconds\n", ret, time / CLOCKS_PER_SEC);
         delete dbInsert;
         return 0;
     }
 
     std::any visitDelete_from_table(SQLParser::Delete_from_tableContext *ctx) override {
         fprintf(stderr, "Visit Delete From Table.\n");
-        
+        clock_t start, end;
+        start = clock();
+
         DBDelete* dbDelete = new DBDelete;
         std::vector<DBExpression> expression;
         expression = std::any_cast<std::vector<DBExpression>>(ctx->where_and_clause()->accept(this));
         dbDelete->expression = expression;
-        databaseManager->dropRecords(ctx->Identifier()->getText(), dbDelete);
+        int ret = databaseManager->dropRecords(ctx->Identifier()->getText(), dbDelete);
         
+        end = clock();
+        float time = (float)(end - start);
+        printf("Delete %d rows in %f seconds\n", ret, time / CLOCKS_PER_SEC);
         delete dbDelete;
         return 0;
     }
 
     std::any visitUpdate_table(SQLParser::Update_tableContext *ctx) override {
         fprintf(stderr, "Visit Update Table.\n");
+        clock_t start, end;
+        start = clock();
 
         DBUpdate* dbUpdate = new DBUpdate;
         std::vector<DBExpression> expItem = std::any_cast<std::vector<DBExpression>>(ctx->set_clause()->accept(this));
         std::vector<DBExpression> expressions = std::any_cast<std::vector<DBExpression>>(ctx->where_and_clause()->accept(this));
         dbUpdate->expItem = expItem;
         dbUpdate->expressions = expressions;
-        databaseManager->updateRecords(ctx->Identifier()->getText(), dbUpdate);
+        int ret = databaseManager->updateRecords(ctx->Identifier()->getText(), dbUpdate);
         
+        end = clock();
+        float time = (float)(end - start);
+        printf("Update %d rows in %f seconds\n", ret, time / CLOCKS_PER_SEC);
         delete dbUpdate;
         return 0;
     }
 
     std::any visitSelect_table_(SQLParser::Select_table_Context *ctx) override {
         fprintf(stderr, "Visit Select Table_.\n");
+        clock_t start, end;
+        start = clock();
 
         DBSelect* dbSelect;
         dbSelect = std::any_cast<DBSelect*>(ctx->select_table()->accept(this));
-        databaseManager->selectRecords(dbSelect);
+        int ret = databaseManager->selectRecords(dbSelect);
+        end = clock();
+        float time = (float)(end - start);
+        printf("Select %d rows in %f seconds\n", ret, time / CLOCKS_PER_SEC);
 
         delete dbSelect;
         return 0;
