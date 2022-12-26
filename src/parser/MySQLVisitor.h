@@ -133,18 +133,14 @@ public:
                 switch (values[j]->getStart()->getType())
                 {
                 case SQLParser::Integer: {
-                    // printf("type is %ld\n", values[j]->getStart()->getType());
                     listType.push_back(DB_LIST_INT);
                     break;
                 }
-
                 case SQLParser::String: {
-                    // printf("type is %ld\n", values[j]->getStart()->getType());
                     listType.push_back(DB_LIST_CHAR);
                     break;
                 }
                 case SQLParser::Float: {
-                    // printf("type is %ld\n", values[j]->getStart()->getType());
                     listType.push_back(DB_LIST_FLOAT);
                     break;
                 }
@@ -156,10 +152,8 @@ public:
             dbInsert->valueListsType.push_back(listType);
             
         }
-        printf("here\n");
         // TODO segmetation fault here
         databaseManager->insertRecords(ctx->Identifier()->getText(), dbInsert);
-        printf("before return\n");
         return 0;
     }
 
@@ -185,7 +179,12 @@ public:
 
     std::any visitSelect_table_(SQLParser::Select_table_Context *ctx) override {
         fprintf(stderr, "Visit Select Table_.\n");
-        return visitSelect_table(ctx->select_table());
+        DBSelect* dbSelect;
+        dbSelect = std::any_cast<DBSelect*>(ctx->select_table()->accept(this));
+        databaseManager->selectRecords(dbSelect);
+
+        delete dbSelect;
+        return 0;
     }
     
     std::any visitSelect_table(SQLParser::Select_tableContext *ctx) override {
@@ -225,8 +224,7 @@ public:
         } else {
             // TODO error
         }
-        
-        return databaseManager->selectRecords(dbSelect);
+        return dbSelect;
     }
 
     std::any visitAlter_add_index(SQLParser::Alter_add_indexContext *ctx) override {
@@ -438,19 +436,15 @@ public:
         std::vector<void*> values;
         for(int i = 0; i < ctx->value().size(); i++) {
             if(ctx->value(i)->Integer() != nullptr) {
-                // printf("is int\n");
                 int intValue = std::any_cast<int>(visitValue(ctx->value(i)));
                 values.push_back((void*)&intValue);
             } else if(ctx->value(i)->String() != nullptr) {
-                // printf("is string\n");
                 std::string stringValue = std::any_cast<std::string>(visitValue(ctx->value(i)));
                 values.push_back((void*)stringValue.c_str());
             } else if(ctx->value(i)->Float() != nullptr) {
-                // printf("is float\n");
                 float floatValue = std::any_cast<float>(visitValue(ctx->value(i)));
                 values.push_back((void*)&floatValue);
             } else if(ctx->value(i)->Null() != nullptr){
-                // printf("is null\n");
                 values.push_back(nullptr);
             } else {
                 // TODO error
@@ -480,42 +474,8 @@ public:
         std::vector<DBExpression> expressions;
         for(int i = 0; i < ctx->where_clause().size(); i++) {
             DBExpression expr;
-            SQLParser::Where_in_listContext* wil = dynamic_cast<SQLParser::Where_in_listContext*>(ctx->where_clause(i));
-            if(wil != NULL) {
-                expr = std::any_cast<DBExpression>(visitWhere_in_list(wil));
-                expressions.push_back(expr);
-                continue;
-            }
-            SQLParser::Where_operator_selectContext* wos = dynamic_cast<SQLParser::Where_operator_selectContext*>(ctx->where_clause(i));
-            if(wos != NULL) {
-                // TODO
-                visitWhere_operator_select(wos);
-                continue;
-            }
-            SQLParser::Where_nullContext* wn = dynamic_cast<SQLParser::Where_nullContext*>(ctx->where_clause(i));
-            if(wn != NULL) {
-                expr = std::any_cast<DBExpression>(visitWhere_null(wn));
-                expressions.push_back(expr);
-                continue;
-            }
-            SQLParser::Where_operator_expressionContext* woe = dynamic_cast<SQLParser::Where_operator_expressionContext*>(ctx->where_clause(i));
-            if(woe != NULL) {
-                expr = std::any_cast<DBExpression>(visitWhere_operator_expression(woe));
-                expressions.push_back(expr);
-                continue;
-            }
-            SQLParser::Where_in_selectContext* wis = dynamic_cast<SQLParser::Where_in_selectContext*>(ctx->where_clause(i));
-            if(wis != NULL) {
-                // TODO
-                visitWhere_in_select(wis);
-                continue;
-            }
-            SQLParser::Where_like_stringContext* wls = dynamic_cast<SQLParser::Where_like_stringContext*>(ctx->where_clause(i));
-            if(wls != NULL) {
-                expr = std::any_cast<DBExpression>(visitWhere_like_string(wls));
-                expressions.push_back(expr);
-                continue;
-            }
+            expr = std::any_cast<DBExpression>(ctx->where_clause(i)->accept(this));
+            expressions.push_back(expr);
         }
         return expressions;
     }
@@ -554,9 +514,21 @@ public:
     }
 
     std::any visitWhere_operator_select(SQLParser::Where_operator_selectContext *ctx) override {
-        // TODO
         fprintf(stderr, "Visit WOS.\n");
-        return visitChildren(ctx);
+        DBExpression expr;
+        DBExpItem item1 = std::any_cast<DBExpItem>(ctx->column()->accept(this));
+        expr.lVal = &item1;
+        expr.lType = DB_ITEM;
+        
+        DB_EXP_OP_TYPE op = std::any_cast<DB_EXP_OP_TYPE>(visitOperator_(ctx->operator_()));
+        expr.op = op;
+
+        DBSelect* dbselect;
+        dbselect = std::any_cast<DBSelect*>(ctx->select_table());
+        expr.rVal = dbselect;
+        expr.rType = DB_NST;
+
+        return expr;
     }
 
     std::any visitWhere_null(SQLParser::Where_nullContext *ctx) override {
@@ -604,9 +576,19 @@ public:
     }
 
     std::any visitWhere_in_select(SQLParser::Where_in_selectContext *ctx) override {
-        // TODO
         fprintf(stderr, "Visit WIS.\n");
-        return visitChildren(ctx);
+        DBExpression expr;
+        DBExpItem item1 = std::any_cast<DBExpItem>(ctx->column()->accept(this));
+        expr.lVal = &item1;
+        expr.lType = DB_ITEM;
+        expr.op = IN_TYPE;
+
+        DBSelect* dbselect;
+        dbselect = std::any_cast<DBSelect*>(ctx->select_table());
+        expr.rVal = dbselect;
+        expr.rType = DB_NST;
+        
+        return expr;
     }
 
     std::any visitWhere_like_string(SQLParser::Where_like_stringContext *ctx) override {
