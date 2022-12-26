@@ -192,5 +192,31 @@ struct DBDelete {
  *  dbSelect->expressions.push_back(exp);
  *  delete dbSelect;
  */
+struct Type {
+    TB_COL_TYPE typeName;
+    size_t len;
+};
+struct FieldItem {
+    // for normal field
+    bool isNormalField = false;
+    std::string fieldName;
+    Type type;
+    bool isNotNull = false;
+    bool hasDefault = false;
+    int dValueInt;
+    float dValueFloat;
+    std::string dValueString;
+
+    // for primary key field
+    bool isPkField = false;
+    std::vector<std::string> colNames;
+
+    // for foreign key field
+    bool isFkField = false;
+    std::string fkName;
+    std::string colName;
+    std::string refTableName;
+    std::string refColName;
+};
 
 #endif

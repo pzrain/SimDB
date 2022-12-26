@@ -29,7 +29,7 @@ SET(HEADERS
 SET(SOURCE
 	${SOURCE}
 	# src/main.cpp
-	# src/parser/testParser.cpp
+	src/parser/testParser.cpp
 )
 
 add_subdirectory(src/record)

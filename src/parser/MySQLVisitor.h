@@ -75,38 +75,40 @@ public:
         fprintf(stderr, "Table name = %s.\n", ctx->Identifier()->getText().c_str());
         fprintf(stderr, "Number of field = %ld.\n", ctx->field_list()->field().size());
 
-        string tableName = ctx->Identifier()->getSymbol()->getText();
-        int colNum = ctx->field_list()->field().size();
-        char (*colName)[COL_MAX_NAME_LEN] = new char[colNum][COL_MAX_NAME_LEN];
-        TB_COL_TYPE* colType = new TB_COL_TYPE[colNum];
-        int *colLen = new int[colNum];
+        std::string tableName = ctx->Identifier()->getText();
+        std::vector<FieldItem> fieldList;
+        fieldList = std::any_cast<std::vector<FieldItem>>(visitField_list(ctx->field_list()));
+        // int colNum = ctx->field_list()->field().size();
+        // char (*colName)[COL_MAX_NAME_LEN] = new char[colNum][COL_MAX_NAME_LEN];
+        // TB_COL_TYPE* colType = new TB_COL_TYPE[colNum];
+        // int *colLen = new int[colNum];
 
-        for(int i = 0; i < colNum; i++) {
-            auto field = ctx->field_list()->field(i);
-            if(field->start->getType() == 64) {
-                // normal field
-                auto normalField = dynamic_cast<SQLParser::Normal_fieldContext*>(field);
-                strcpy(colName[i], normalField->getStart()->getText().c_str());
-                if(normalField->type_()->start->getText() == "INT") {
-                    colType[i] = COL_INT;
-                    colLen[i] = 4;
-                } else if(normalField->type_()->getStart()->getText() == "VARCHAR") {
-                    colType[i] = COL_VARCHAR;
-                    colLen[i] = stoi(normalField->type_()->Integer()->getText());
-                } else if(normalField->type_()->getStart()->getText() == "FLOAT") {
-                    colType[i] = COL_FLOAT;
-                    colLen[i] = 4;
-                } else {
-                    // TODO error
-                }
-            }
-            // TODO PRIMARY KEY & FOREIGN KEY
-        }
-        databaseManager->createTable(tableName, colName, colType, colLen, colNum);
-        delete [] colName;
-        delete [] colType;
-        delete [] colLen;
-        return visitChildren(ctx);
+        // for(int i = 0; i < colNum; i++) {
+        //     auto field = ctx->field_list()->field(i);
+        //     if(field->start->getType() == 64) {
+        //         // normal field
+        //         auto normalField = dynamic_cast<SQLParser::Normal_fieldContext*>(field);
+        //         strcpy(colName[i], normalField->getStart()->getText().c_str());
+        //         if(normalField->type_()->start->getText() == "INT") {
+        //             colType[i] = COL_INT;
+        //             colLen[i] = 4;
+        //         } else if(normalField->type_()->getStart()->getText() == "VARCHAR") {
+        //             colType[i] = COL_VARCHAR;
+        //             colLen[i] = stoi(normalField->type_()->Integer()->getText());
+        //         } else if(normalField->type_()->getStart()->getText() == "FLOAT") {
+        //             colType[i] = COL_FLOAT;
+        //             colLen[i] = 4;
+        //         } else {
+        //             // TODO error
+        //         }
+        //     }
+        //     // TODO PRIMARY KEY & FOREIGN KEY
+        // }
+        // databaseManager->createTable(tableName, colName, colType, colLen, colNum);
+        // delete [] colName;
+        // delete [] colType;
+        // delete [] colLen;
+        // return visitChildren(ctx);
     }
 
     std::any visitDrop_table(SQLParser::Drop_tableContext *ctx) override {
@@ -189,84 +191,250 @@ public:
     }
 
     std::any visitSelect_table_(SQLParser::Select_table_Context *ctx) override {
-        // TODO
-        return visitChildren(ctx);
+        fprintf(stderr, "Visit Select Table_.\n");
+        return visitSelect_table(ctx->select_table());
     }
     
     std::any visitSelect_table(SQLParser::Select_tableContext *ctx) override {
-        // TODO
-        return visitChildren(ctx);
+        fprintf(stderr, "Visit Select Table.\n");
+        DBSelect* dbSelect = new DBSelect;
+
+        std::vector<DBSelItem> selectItems;
+        selectItems = std::any_cast<std::vector<DBSelItem>>(visitSelectors(ctx->selectors()));
+        dbSelect->selectItems = selectItems;
+
+        std::vector<std::string> selectTables;
+        selectTables = std::any_cast<std::vector<std::string>>(visitIdentifiers(ctx->identifiers()));
+        dbSelect->selectTables = selectTables;
+
+        if(ctx->where_and_clause() != nullptr) {
+            std::vector<DBExpression> expressions;
+            expressions = std::any_cast<std::vector<DBExpression>>(visitWhere_and_clause(ctx->where_and_clause()));
+            dbSelect->expressions = expressions;
+        }
+
+        if(ctx->column() != nullptr) { // 'GROUP' 'BY' column
+            dbSelect->groupByEn = true;
+            DBExpItem groupByCol;
+            groupByCol = std::any_cast<DBExpItem>(visitColumn(ctx->column()));
+            dbSelect->groupByCol = groupByCol;
+        }
+
+        size_t intSize = ctx->Integer().size();
+        if(intSize == 1) {
+            dbSelect->limitEn = true;
+            dbSelect->limitNum = stoi(ctx->Integer(0)->getText());
+        } else if(intSize == 2) {
+            dbSelect->limitEn = true;
+            dbSelect->limitNum = stoi(ctx->Integer(0)->getText());
+            dbSelect->offsetEn = true;
+            dbSelect->offsetNum = stoi(ctx->Integer(1)->getText());
+        } else {
+            // TODO error
+        }
+        
+        return databaseManager->selectRecords(dbSelect);
     }
 
     std::any visitAlter_add_index(SQLParser::Alter_add_indexContext *ctx) override {
-        // TODO
-        return visitChildren(ctx);
+        std::string tableName = ctx->Identifier()->getText();
+        std::vector<std::string> colName = std::any_cast<std::vector<std::string>>(visitIdentifiers(ctx->identifiers()));
+        for(int i = 0; i < colName.size(); i++)
+            databaseManager->createIndex(tableName, colName[i]);
+        return 0;
     }
 
     std::any visitAlter_drop_index(SQLParser::Alter_drop_indexContext *ctx) override {
-        // TODO
-        return visitChildren(ctx);
+        std::string tableName = ctx->Identifier()->getText();
+        std::vector<std::string> colName = std::any_cast<std::vector<std::string>>(visitIdentifiers(ctx->identifiers()));
+        for(int i = 0; i < colName.size(); i++)
+            databaseManager->dropIndex(tableName, colName[i]);
+        return 0;
     }
 
     std::any visitAlter_table_drop_pk(SQLParser::Alter_table_drop_pkContext *ctx) override {
-        // TODO
-        return visitChildren(ctx);
+        std::string tableName;
+        size_t identSize = ctx->Identifier().size();
+        std::vector<std::string> colName = std::vector<std::string>();
+        if(identSize == 1) {
+            tableName = ctx->Identifier(0)->getText();
+        } else if(identSize == 2) {
+            tableName = ctx->Identifier(0)->getText();
+            colName.push_back(ctx->Identifier(1)->getText());
+        } else {
+            // TODO error
+        }
+        // TODO drop pk with column name
+        return databaseManager->dropPrimaryKey(tableName, colName, colName.size());
     }
 
     std::any visitAlter_table_drop_foreign_key(SQLParser::Alter_table_drop_foreign_keyContext *ctx) override {
-        // TODO
-        return visitChildren(ctx);
+        std::string tableName;
+        std::string fkName;
+
+        size_t identSize = ctx->Identifier().size();
+        if(identSize == 1) {
+            tableName = ctx->Identifier(0)->getText();
+        } else if(identSize == 2) {
+            tableName = ctx->Identifier(0)->getText();
+            fkName = ctx->Identifier(1)->getText();
+        } else {
+            // TODO error
+        }
+        return databaseManager->dropForeignKey(tableName, fkName);
     }
 
     std::any visitAlter_table_add_pk(SQLParser::Alter_table_add_pkContext *ctx) override {
-        // TODO
-        return visitChildren(ctx);
+        std::string tableName;
+        std::string pkName;
+
+        size_t identSize = ctx->Identifier().size();
+        if(identSize == 1) {
+            tableName = ctx->Identifier(0)->getText();
+        } else if(identSize == 2) {
+            tableName = ctx->Identifier(0)->getText();
+            pkName = ctx->Identifier(1)->getText();
+        } else {
+            // TODO error
+        }
+        std::vector<std::string> colName;
+        colName = std::any_cast<std::vector<std::string>>(visitIdentifiers(ctx->identifiers()));
+        return databaseManager->createPrimaryKey(tableName, colName, colName.size());
     }
 
     std::any visitAlter_table_add_foreign_key(SQLParser::Alter_table_add_foreign_keyContext *ctx) override {
-        // TODO
-        return visitChildren(ctx);
+        std::string tableName = "";
+        std::string fkName = "";
+        std::vector<std::string> colNames = std::vector<std::string>();
+        std::string refTableName = "";
+        std::vector<std::string> refColNames = std::vector<std::string>();
+
+        size_t identSize = ctx->Identifier().size();
+        if(identSize == 1) {
+            tableName = ctx->Identifier(0)->getText();
+        } else if(identSize == 2) {
+            tableName = ctx->Identifier(0)->getText();
+            refTableName = ctx->Identifier(2)->getText();
+        } else if(identSize == 3){
+            tableName = ctx->Identifier(0)->getText();
+            fkName = ctx->Identifier(1)->getText();
+            refTableName = ctx->Identifier(2)->getText();
+        } else {
+            // TODO error
+        }
+        colNames = std::any_cast<std::vector<std::string>>(visitIdentifiers(ctx->identifiers(0)));
+        refColNames = std::any_cast<std::vector<std::string>>(visitIdentifiers(ctx->identifiers(1)));
+
+        if(colNames.size() != 1 || refColNames.size() != 1) {
+            printf("report error when add foreign key because it is not 1 on 1\n");
+            exit(0);
+        }
+        return databaseManager->createForeignKey(tableName, fkName, colNames[0], refTableName, refColNames[0]);
     }
 
     std::any visitAlter_table_add_unique(SQLParser::Alter_table_add_uniqueContext *ctx) override {
-        // TODO
-        return visitChildren(ctx);
+        std::string tableName;
+        std::vector<std::string> colNames;
+        tableName = ctx->Identifier()->getText();
+        colNames = std::any_cast<std::vector<std::string>>(visitIdentifiers(ctx->identifiers()));
+        return databaseManager->createUniqueKey(tableName, colNames, colNames.size());
     }
 
     std::any visitField_list(SQLParser::Field_listContext *ctx) override {
         fprintf(stderr, "Visit Field List.\n");
-        return visitChildren(ctx);
+        std::vector<FieldItem> fieldList;
+        FieldItem item;
+        for(int i = 0; i < ctx->field().size(); i++) {
+            // ctx->field(i)->accept(this);
+            item = std::any_cast<FieldItem>(ctx->field(i)->accept(this));
+            fieldList.push_back(item);
+        }
+        return fieldList;
     }
 
     std::any visitNormal_field(SQLParser::Normal_fieldContext *ctx) override {
         fprintf(stderr, "Visit Normal Field.\n");
-        return visitChildren(ctx);
+        FieldItem item;
+        item.isNormalField = true;
+        item.fieldName = ctx->Identifier()->getText();
+        item.type = std::any_cast<Type>(ctx->type_()->accept(this));
+        if(ctx->Null() != nullptr) {
+            item.isNotNull = true;
+        }
+        if(ctx->value() != nullptr) {
+            item.hasDefault = true;
+            if(ctx->value()->Integer() != nullptr) {
+                item.dValueInt = std::any_cast<int>(ctx->value()->accept(this));
+            } else if(ctx->value()->String() != nullptr) {
+                item.dValueString = std::any_cast<string>(ctx->value()->accept(this));
+            } else if(ctx->value()->Float() != nullptr) {
+                item.dValueFloat = std::any_cast<float>(ctx->value()->accept(this));
+            }
+        }
+        return item;
+        // return visitChildren(ctx);
     }
 
     std::any visitPrimary_key_field(SQLParser::Primary_key_fieldContext *ctx) override {
-        // TODO
-        return visitChildren(ctx);
+        fprintf(stderr, "Visit Primary Key Field.\n");
+        FieldItem item;
+        item.isPkField = true;
+        item.colNames = std::any_cast<std::vector<std::string>>(ctx->identifiers()->accept(this));
+        return item;
     }
 
     std::any visitForeign_key_field(SQLParser::Foreign_key_fieldContext *ctx) override {
-        // TODO
-        return visitChildren(ctx);
+        fprintf(stderr, "Visit Foreign Key Field.\n");
+        FieldItem item;
+        item.isFkField = true;
+
+        size_t identSize = ctx->Identifier().size();
+        if(identSize == 1) {
+            item.refTableName = ctx->Identifier(0)->getText();
+        } else if(identSize == 2) {
+            item.fkName = ctx->Identifier(0)->getText();
+            item.refTableName = ctx->Identifier(1)->getText();
+        } else {
+            // TODO error
+        }
+
+        std::vector<std::string> colNames;
+        std::vector<std::string> refColNames;
+        colNames = std::any_cast<std::vector<std::string>>(ctx->identifiers(0)->accept(this));
+        refColNames = std::any_cast<std::vector<std::string>>(ctx->identifiers(1)->accept(this));
+        if(colNames.size() != 1 || refColNames.size() != 1) {
+            printf("report error when create foreign key field because it is not 1 on 1\n");
+            exit(0);
+        }
+        item.colName = colNames[0];
+        item.refColName = refColNames[0];
+        return item;
     }
 
     std::any visitType_(SQLParser::Type_Context *ctx) override {
         fprintf(stderr, "Visit Type.\n");
-            
-        return visitChildren(ctx);
+        Type type;
+        if(ctx->getStart()->getText() == "INT") {
+            type.typeName = COL_INT;
+            type.len = 4;
+        } else if(ctx->getStart()->getText() == "VARCHAR") {
+            type.typeName = COL_VARCHAR;
+            type.len = stoi(ctx->Integer()->getText());
+        } else if(ctx->getStart()->getText() == "FLOAT") {
+            type.typeName = COL_FLOAT;
+            type.len = 4;
+        } else {
+            // TODO error
+        }
+        return type;
     }
 
     std::any visitValue_lists(SQLParser::Value_listsContext *ctx) override {
         fprintf(stderr, "Visit Value Lists.\n");
         std::vector<std::vector<void*>> valueLists;
-        // printf("list size is %ld\n", ctx->value_list().size());
         for(int i = 0; i < ctx->value_list().size(); i++) {
             valueLists.push_back(std::any_cast<std::vector<void*>>( visitValue_list(ctx->value_list(i))));
         }
-        // printf("size in value lists is %ld\n", valueLists[0].size());
         return valueLists;
     }
 
@@ -519,18 +687,43 @@ public:
     }
 
     std::any visitSelectors(SQLParser::SelectorsContext *ctx) override {
-        // TODO
-        return visitChildren(ctx);
+        std::vector<DBSelItem> selectItems;
+        DBSelItem item;
+        if(ctx->selector().size() == 0) {
+            item.star = true;
+            item.selectType = ORD_TYPE;
+            selectItems.push_back(item);
+        }
+        for(int i = 0; i < ctx->selector().size(); i++) {
+            item = std::any_cast<DBSelItem>(visitSelector(ctx->selector(i)));
+            selectItems.push_back(item);
+        }
+        return selectItems;
     }
 
     std::any visitSelector(SQLParser::SelectorContext *ctx) override {
-        // TODO
-        return visitChildren(ctx);
+        DBSelItem selItem;
+        selItem.star = false;
+        if(ctx->column() != nullptr) {
+            selItem.item =  std::any_cast<DBExpItem>(visitColumn(ctx->column()));
+            selItem.selectType = ORD_TYPE;
+        } else if(ctx->aggregator() != nullptr) {
+            selItem.item =  std::any_cast<DBExpItem>(visitColumn(ctx->column()));
+            selItem.selectType = std::any_cast<DB_SELECT_TYPE>(visitAggregator(ctx->aggregator()));
+        } else if(ctx->Count() != nullptr) { // no star condition in aggregator 
+            selItem.star = true;
+            selItem.selectType = COUNT_TYPE;
+        } else {
+            // TODO error
+        }
+        return selItem;
     }
 
     std::any visitIdentifiers(SQLParser::IdentifiersContext *ctx) override {
-        // TODO
-        return visitChildren(ctx);
+        std::vector<std::string> selectTables;
+        for(int i = 0; i < ctx->Identifier().size(); i++)
+            selectTables.push_back(ctx->Identifier(i)->getText());
+        return selectTables;
     }
 
     std::any visitOperator_(SQLParser::Operator_Context *ctx) override {
@@ -552,8 +745,21 @@ public:
     }
 
     std::any visitAggregator(SQLParser::AggregatorContext *ctx) override {
-        // TODO
-        return visitChildren(ctx);
+        DB_SELECT_TYPE type;
+        if(ctx->Count() != nullptr) {
+            type = COUNT_TYPE;
+        } else if(ctx->Average() != nullptr) {
+            type = AVERAGE_TYPE;
+        } else if(ctx->Max() != nullptr) {
+            type = MAX_TYPE;
+        } else if(ctx->Min() != nullptr) {
+            type = MIN_TYPE;
+        } else if(ctx->Sum() != nullptr) {
+            type = SUM_TYPE;
+        } else {
+            // TODO error
+        }
+        return type;
     }
 
 };
