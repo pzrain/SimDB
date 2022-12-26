@@ -126,7 +126,7 @@ struct TableEntry{
 
     TableEntry();
 
-    TableEntry(char* colName_, uint8_t colType_, bool checkConstraint_ = false, bool primaryKeyConstraint_ = false, \
+    TableEntry(const char* colName_, uint8_t colType_, bool checkConstraint_ = false, bool primaryKeyConstraint_ = false, \
                uint8_t foreignKeyConstraint_ = 0, uint32_t colLen_ = 0, bool hasDefault_ = false, \
                bool notNullConstraint_ = false, bool uniqueConstraint_ = false, bool isNull_ = false);
 

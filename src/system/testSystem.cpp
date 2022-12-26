@@ -49,12 +49,11 @@ void testConstraint(DatabaseManager* databaseManager) {
     databaseManager->switchDatabase(databaseName1);
     databaseManager->createPrimaryKey("table_3", {"colName_1"}, 1);
     databaseManager->createPrimaryKey("table_3", {"colName_2"}, 1);
-    databaseManager->dropPrimaryKey("table_3", {"colName_2"}, 1);
-    databaseManager->dropPrimaryKey("table_3", {"colName_1"}, 1);
+    databaseManager->dropPrimaryKey("table_3");
     databaseManager->createPrimaryKey("table_3", {"colName_2"}, 1);
 
     databaseManager->createUniqueKey("table_3", {"colName_1"}, 1);
-    databaseManager->dropPrimaryKey("table_3", {"colName_2"}, 1);
+    databaseManager->dropPrimaryKey("table_3");
     databaseManager->createUniqueKey("table_3", {"colName_2"}, 1);
 
     databaseManager->createPrimaryKey("table_1", {"colName_2"}, 1);
@@ -398,9 +397,9 @@ int main() {
     DatabaseManager* databaseManager = new DatabaseManager();
     testOperateDB(databaseManager);
     testConstraint(databaseManager);
-    testInsert(databaseManager);
-    // testDrop(databaseManager);
-    testUpdate(databaseManager);
-    testSelect(databaseManager);
+    // testInsert(databaseManager);
+    // // testDrop(databaseManager);
+    // testUpdate(databaseManager);
+    // testSelect(databaseManager);
     delete databaseManager;
 }

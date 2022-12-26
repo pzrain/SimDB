@@ -93,7 +93,7 @@ public:
     */
     int createPrimaryKey(string tableName, string colName);
 
-    int dropPrimaryKey(string tableName, string colName, DBMeta* dbMeta, int& indexDropped);
+    int dropPrimaryKey(string tableName, int colId, DBMeta* dbMeta, int& indexDropped, char* pkColName);
 
     /**
      * @brief add one foreign key, it is stored in the TableEntry. The return value will be store in database meta data.

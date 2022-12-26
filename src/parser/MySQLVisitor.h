@@ -77,38 +77,31 @@ public:
 
         std::string tableName = ctx->Identifier()->getText();
         std::vector<FieldItem> fieldList;
-        fieldList = std::any_cast<std::vector<FieldItem>>(visitField_list(ctx->field_list()));
-        // int colNum = ctx->field_list()->field().size();
-        // char (*colName)[COL_MAX_NAME_LEN] = new char[colNum][COL_MAX_NAME_LEN];
-        // TB_COL_TYPE* colType = new TB_COL_TYPE[colNum];
-        // int *colLen = new int[colNum];
-
-        // for(int i = 0; i < colNum; i++) {
-        //     auto field = ctx->field_list()->field(i);
-        //     if(field->start->getType() == 64) {
-        //         // normal field
-        //         auto normalField = dynamic_cast<SQLParser::Normal_fieldContext*>(field);
-        //         strcpy(colName[i], normalField->getStart()->getText().c_str());
-        //         if(normalField->type_()->start->getText() == "INT") {
-        //             colType[i] = COL_INT;
-        //             colLen[i] = 4;
-        //         } else if(normalField->type_()->getStart()->getText() == "VARCHAR") {
-        //             colType[i] = COL_VARCHAR;
-        //             colLen[i] = stoi(normalField->type_()->Integer()->getText());
-        //         } else if(normalField->type_()->getStart()->getText() == "FLOAT") {
-        //             colType[i] = COL_FLOAT;
-        //             colLen[i] = 4;
-        //         } else {
-        //             // TODO error
-        //         }
-        //     }
-        //     // TODO PRIMARY KEY & FOREIGN KEY
-        // }
-        // databaseManager->createTable(tableName, colName, colType, colLen, colNum);
-        // delete [] colName;
-        // delete [] colType;
-        // delete [] colLen;
-        // return visitChildren(ctx);
+        std::vector<FieldItem> normalFieldList = std::vector<FieldItem>();
+        std::vector<FieldItem> pkFieldList = std::vector<FieldItem>();
+        std::vector<FieldItem> fkFieldList = std::vector<FieldItem>();
+        fieldList = std::any_cast<std::vector<FieldItem>>(ctx->field_list()->accept(this));
+        for(int i = 0; i < fieldList.size(); i++) {
+            if(fieldList[i].isNormalField)
+                normalFieldList.push_back(fieldList[i]);
+            else if(fieldList[i].isPkField)
+                pkFieldList.push_back(fieldList[i]);
+            else if(fieldList[i].isFkField)
+                fkFieldList.push_back(fieldList[i]);
+            else
+                printf("report error when telling different fields in visit create table\n");
+        }
+        databaseManager->createTable(tableName, normalFieldList);
+        if(pkFieldList.size() > 0) {
+            if(pkFieldList.size() > 1)
+                printf("multiple primary key"); // actually report error
+            databaseManager->createPrimaryKey(tableName, pkFieldList[0].colNames, pkFieldList[0].colNames.size());
+        }
+        for(int i = 0; i < fkFieldList.size(); i++) {
+            databaseManager->createForeignKey(tableName, fkFieldList[i].fkName, fkFieldList[i].colName, \
+                                              fkFieldList[i].refTableName, fkFieldList[i].refColName);
+        }
+        return 0;
     }
 
     std::any visitDrop_table(SQLParser::Drop_tableContext *ctx) override {
@@ -254,18 +247,19 @@ public:
 
     std::any visitAlter_table_drop_pk(SQLParser::Alter_table_drop_pkContext *ctx) override {
         std::string tableName;
-        size_t identSize = ctx->Identifier().size();
-        std::vector<std::string> colName = std::vector<std::string>();
-        if(identSize == 1) {
-            tableName = ctx->Identifier(0)->getText();
-        } else if(identSize == 2) {
-            tableName = ctx->Identifier(0)->getText();
-            colName.push_back(ctx->Identifier(1)->getText());
-        } else {
-            // TODO error
-        }
-        // TODO drop pk with column name
-        return databaseManager->dropPrimaryKey(tableName, colName, colName.size());
+        tableName = ctx->Identifier(0)->getText();
+        // size_t identSize = ctx->Identifier().size();
+        // std::vector<std::string> colName = std::vector<std::string>();
+        // if(identSize == 1) {
+        //     tableName = ctx->Identifier(0)->getText();
+        // } else if(identSize == 2) {
+        //     tableName = ctx->Identifier(0)->getText();
+        //     colName.push_back(ctx->Identifier(1)->getText());
+        // } else {
+        //     // error
+        // }
+
+        return databaseManager->dropPrimaryKey(tableName);
     }
 
     std::any visitAlter_table_drop_foreign_key(SQLParser::Alter_table_drop_foreign_keyContext *ctx) override {
@@ -349,6 +343,7 @@ public:
             item = std::any_cast<FieldItem>(ctx->field(i)->accept(this));
             fieldList.push_back(item);
         }
+        printf("here\n");
         return fieldList;
     }
 

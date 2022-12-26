@@ -79,7 +79,7 @@ public:
      *     ...
      * );
     */
-    int createTable(string name, char colName[][COL_MAX_NAME_LEN], TB_COL_TYPE* colType, int* colLen, int colNum);
+    int createTable(string name, vector<FieldItem> normalFieldList);
 
     /**
      * @brief only print all columns' name and data type. 
@@ -127,7 +127,7 @@ public:
     */
     int createPrimaryKey(string tableName, vector<string> colNames, int colNum);
 
-    int dropPrimaryKey(string tableName, vector<string> colNames, int colNum);
+    int dropPrimaryKey(string tableName);
 
     /**
      * @brief Create a Unique Key object. Refer to createPrimaryKey for more information
