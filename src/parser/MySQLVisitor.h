@@ -129,7 +129,7 @@ public:
         DBInsert* dbInsert = new DBInsert;
         std::vector<std::vector<void*>> valueLists = std::any_cast<std::vector<std::vector<void*>>>(ctx->value_lists()->accept(this));
         dbInsert->valueLists = valueLists;
-        printf("str is %s", (*(std::string*)dbInsert->valueLists[0][2]).c_str());
+        printf("str is %d", (*(char*)dbInsert->valueLists[0][2]));
         auto value_lists = ctx->value_lists()->value_list(); // a vector
         for(int i = 0; i < value_lists.size(); i++) {
             // for each value list
@@ -497,7 +497,7 @@ public:
                 int* pInt = std::any_cast<int*>(ctx->value(i)->accept(this));
                 values.push_back((void*)pInt);
             } else if(ctx->value(i)->String() != nullptr) {
-                std::string* pString = std::any_cast<std::string*>(ctx->value(i)->accept(this));
+                char* pString = std::any_cast<char*>(ctx->value(i)->accept(this));
                 values.push_back((void*)pString);
             } else if(ctx->value(i)->Float() != nullptr) {
                 float* pFloat = std::any_cast<float*>(ctx->value(i)->accept(this));
@@ -520,7 +520,8 @@ public:
             return pInt;
         }
         else if(ctx->String() != nullptr) {
-            std::string* pString = new std::string(ctx->String()->getText());
+            char* pString = new char[ctx->String()->getText().length()];
+            strcpy(pString, ctx->String()->getText().c_str());
             return pString;
         }
         else if(ctx->Float() != nullptr) {
