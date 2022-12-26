@@ -1,5 +1,5 @@
 
-// Generated from SQL.g4 by ANTLR 4.11.1
+// Generated from src/parser/antlr4/SQL.g4 by ANTLR 4.11.1
 
 
 #include "SQLVisitor.h"
@@ -71,7 +71,7 @@ void sqlParserInitialize() {
     }
   );
   static const int32_t serializedATNSegment[] = {
-  	4,1,69,406,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,
+  	4,1,69,415,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,
   	7,7,7,2,8,7,8,2,9,7,9,2,10,7,10,2,11,7,11,2,12,7,12,2,13,7,13,2,14,7,
   	14,2,15,7,15,2,16,7,16,2,17,7,17,2,18,7,18,2,19,7,19,2,20,7,20,2,21,7,
   	21,2,22,7,22,1,0,5,0,48,8,0,10,0,12,0,51,9,0,1,0,1,0,1,1,1,1,1,1,1,1,
@@ -85,125 +85,128 @@ void sqlParserInitialize() {
   	6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,3,6,183,8,6,1,6,1,6,1,6,1,6,1,6,
   	1,6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,3,6,198,8,6,1,6,1,6,1,6,1,6,1,6,1,6,1,
   	6,1,6,1,6,1,6,1,6,1,6,3,6,212,8,6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,
-  	1,6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,3,6,234,8,6,1,7,1,7,1,7,5,
-  	7,239,8,7,10,7,12,7,242,9,7,1,8,1,8,1,8,1,8,3,8,248,8,8,1,8,1,8,3,8,252,
-  	8,8,1,8,1,8,1,8,3,8,257,8,8,1,8,1,8,1,8,1,8,1,8,1,8,1,8,3,8,266,8,8,1,
-  	8,1,8,1,8,1,8,1,8,1,8,1,8,1,8,1,8,3,8,277,8,8,1,9,1,9,1,9,1,9,1,9,1,9,
-  	3,9,285,8,9,1,10,1,10,1,10,5,10,290,8,10,10,10,12,10,293,9,10,1,11,1,
-  	11,1,11,1,11,5,11,299,8,11,10,11,12,11,302,9,11,1,11,1,11,1,12,1,12,1,
-  	13,1,13,1,13,5,13,311,8,13,10,13,12,13,314,9,13,1,14,1,14,1,14,1,14,1,
-  	14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,3,14,329,8,14,1,14,1,14,1,
-  	14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,3,
-  	14,347,8,14,1,15,1,15,3,15,351,8,15,1,15,1,15,1,16,1,16,3,16,357,8,16,
-  	1,17,1,17,1,17,1,17,1,17,1,17,1,17,5,17,366,8,17,10,17,12,17,369,9,17,
-  	1,18,1,18,1,18,1,18,5,18,375,8,18,10,18,12,18,378,9,18,3,18,380,8,18,
-  	1,19,1,19,1,19,1,19,1,19,1,19,1,19,1,19,1,19,1,19,3,19,392,8,19,1,20,
-  	1,20,1,20,5,20,397,8,20,10,20,12,20,400,9,20,1,21,1,21,1,22,1,22,1,22,
-  	0,0,23,0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,
-  	0,3,2,0,63,63,65,67,1,0,52,57,1,0,58,62,439,0,49,1,0,0,0,2,70,1,0,0,0,
-  	4,86,1,0,0,0,6,102,1,0,0,0,8,134,1,0,0,0,10,136,1,0,0,0,12,233,1,0,0,
-  	0,14,235,1,0,0,0,16,276,1,0,0,0,18,284,1,0,0,0,20,286,1,0,0,0,22,294,
-  	1,0,0,0,24,305,1,0,0,0,26,307,1,0,0,0,28,346,1,0,0,0,30,350,1,0,0,0,32,
-  	356,1,0,0,0,34,358,1,0,0,0,36,379,1,0,0,0,38,391,1,0,0,0,40,393,1,0,0,
-  	0,42,401,1,0,0,0,44,403,1,0,0,0,46,48,3,2,1,0,47,46,1,0,0,0,48,51,1,0,
-  	0,0,49,47,1,0,0,0,49,50,1,0,0,0,50,52,1,0,0,0,51,49,1,0,0,0,52,53,5,0,
-  	0,1,53,1,1,0,0,0,54,55,3,4,2,0,55,56,5,1,0,0,56,71,1,0,0,0,57,58,3,6,
-  	3,0,58,59,5,1,0,0,59,71,1,0,0,0,60,61,3,8,4,0,61,62,5,1,0,0,62,71,1,0,
-  	0,0,63,64,3,12,6,0,64,65,5,1,0,0,65,71,1,0,0,0,66,67,5,69,0,0,67,71,5,
-  	1,0,0,68,69,5,63,0,0,69,71,5,1,0,0,70,54,1,0,0,0,70,57,1,0,0,0,70,60,
-  	1,0,0,0,70,63,1,0,0,0,70,66,1,0,0,0,70,68,1,0,0,0,71,3,1,0,0,0,72,73,
-  	5,2,0,0,73,74,5,3,0,0,74,87,5,64,0,0,75,76,5,4,0,0,76,77,5,3,0,0,77,87,
-  	5,64,0,0,78,79,5,5,0,0,79,87,5,6,0,0,80,81,5,7,0,0,81,87,5,64,0,0,82,
-  	83,5,5,0,0,83,87,5,8,0,0,84,85,5,5,0,0,85,87,5,9,0,0,86,72,1,0,0,0,86,
-  	75,1,0,0,0,86,78,1,0,0,0,86,80,1,0,0,0,86,82,1,0,0,0,86,84,1,0,0,0,87,
-  	5,1,0,0,0,88,89,5,10,0,0,89,90,5,11,0,0,90,91,5,12,0,0,91,92,5,66,0,0,
-  	92,93,5,13,0,0,93,94,5,14,0,0,94,103,5,64,0,0,95,96,5,15,0,0,96,97,5,
-  	13,0,0,97,98,5,12,0,0,98,99,5,66,0,0,99,100,5,11,0,0,100,101,5,14,0,0,
-  	101,103,5,64,0,0,102,88,1,0,0,0,102,95,1,0,0,0,103,7,1,0,0,0,104,105,
-  	5,2,0,0,105,106,5,14,0,0,106,107,5,64,0,0,107,108,5,16,0,0,108,109,3,
-  	14,7,0,109,110,5,17,0,0,110,135,1,0,0,0,111,112,5,4,0,0,112,113,5,14,
-  	0,0,113,135,5,64,0,0,114,115,5,18,0,0,115,135,5,64,0,0,116,117,5,19,0,
-  	0,117,118,5,20,0,0,118,119,5,64,0,0,119,120,5,21,0,0,120,135,3,20,10,
-  	0,121,122,5,22,0,0,122,123,5,11,0,0,123,124,5,64,0,0,124,125,5,23,0,0,
-  	125,135,3,26,13,0,126,127,5,24,0,0,127,128,5,64,0,0,128,129,5,25,0,0,
-  	129,130,3,34,17,0,130,131,5,23,0,0,131,132,3,26,13,0,132,135,1,0,0,0,
-  	133,135,3,10,5,0,134,104,1,0,0,0,134,111,1,0,0,0,134,114,1,0,0,0,134,
-  	116,1,0,0,0,134,121,1,0,0,0,134,126,1,0,0,0,134,133,1,0,0,0,135,9,1,0,
-  	0,0,136,137,5,26,0,0,137,138,3,36,18,0,138,139,5,11,0,0,139,142,3,40,
-  	20,0,140,141,5,23,0,0,141,143,3,26,13,0,142,140,1,0,0,0,142,143,1,0,0,
-  	0,143,147,1,0,0,0,144,145,5,27,0,0,145,146,5,28,0,0,146,148,3,30,15,0,
-  	147,144,1,0,0,0,147,148,1,0,0,0,148,155,1,0,0,0,149,150,5,29,0,0,150,
-  	153,5,65,0,0,151,152,5,30,0,0,152,154,5,65,0,0,153,151,1,0,0,0,153,154,
-  	1,0,0,0,154,156,1,0,0,0,155,149,1,0,0,0,155,156,1,0,0,0,156,11,1,0,0,
-  	0,157,158,5,31,0,0,158,159,5,14,0,0,159,160,5,64,0,0,160,161,5,32,0,0,
-  	161,162,5,33,0,0,162,163,5,16,0,0,163,164,3,40,20,0,164,165,5,17,0,0,
-  	165,234,1,0,0,0,166,167,5,31,0,0,167,168,5,14,0,0,168,169,5,64,0,0,169,
-  	170,5,4,0,0,170,171,5,33,0,0,171,172,5,16,0,0,172,173,3,40,20,0,173,174,
-  	5,17,0,0,174,234,1,0,0,0,175,176,5,31,0,0,176,177,5,14,0,0,177,178,5,
-  	64,0,0,178,179,5,4,0,0,179,180,5,34,0,0,180,182,5,35,0,0,181,183,5,64,
-  	0,0,182,181,1,0,0,0,182,183,1,0,0,0,183,234,1,0,0,0,184,185,5,31,0,0,
-  	185,186,5,14,0,0,186,187,5,64,0,0,187,188,5,4,0,0,188,189,5,36,0,0,189,
-  	190,5,35,0,0,190,234,5,64,0,0,191,192,5,31,0,0,192,193,5,14,0,0,193,194,
-  	5,64,0,0,194,195,5,32,0,0,195,197,5,37,0,0,196,198,5,64,0,0,197,196,1,
-  	0,0,0,197,198,1,0,0,0,198,199,1,0,0,0,199,200,5,34,0,0,200,201,5,35,0,
-  	0,201,202,5,16,0,0,202,203,3,40,20,0,203,204,5,17,0,0,204,234,1,0,0,0,
-  	205,206,5,31,0,0,206,207,5,14,0,0,207,208,5,64,0,0,208,209,5,32,0,0,209,
-  	211,5,37,0,0,210,212,5,64,0,0,211,210,1,0,0,0,211,212,1,0,0,0,212,213,
-  	1,0,0,0,213,214,5,36,0,0,214,215,5,35,0,0,215,216,5,16,0,0,216,217,3,
-  	40,20,0,217,218,5,17,0,0,218,219,5,38,0,0,219,220,5,64,0,0,220,221,5,
-  	16,0,0,221,222,3,40,20,0,222,223,5,17,0,0,223,234,1,0,0,0,224,225,5,31,
-  	0,0,225,226,5,14,0,0,226,227,5,64,0,0,227,228,5,32,0,0,228,229,5,39,0,
-  	0,229,230,5,16,0,0,230,231,3,40,20,0,231,232,5,17,0,0,232,234,1,0,0,0,
-  	233,157,1,0,0,0,233,166,1,0,0,0,233,175,1,0,0,0,233,184,1,0,0,0,233,191,
-  	1,0,0,0,233,205,1,0,0,0,233,224,1,0,0,0,234,13,1,0,0,0,235,240,3,16,8,
-  	0,236,237,5,40,0,0,237,239,3,16,8,0,238,236,1,0,0,0,239,242,1,0,0,0,240,
-  	238,1,0,0,0,240,241,1,0,0,0,241,15,1,0,0,0,242,240,1,0,0,0,243,244,5,
-  	64,0,0,244,247,3,18,9,0,245,246,5,41,0,0,246,248,5,63,0,0,247,245,1,0,
-  	0,0,247,248,1,0,0,0,248,251,1,0,0,0,249,250,5,42,0,0,250,252,3,24,12,
-  	0,251,249,1,0,0,0,251,252,1,0,0,0,252,277,1,0,0,0,253,254,5,34,0,0,254,
-  	256,5,35,0,0,255,257,5,64,0,0,256,255,1,0,0,0,256,257,1,0,0,0,257,258,
-  	1,0,0,0,258,259,5,16,0,0,259,260,3,40,20,0,260,261,5,17,0,0,261,277,1,
-  	0,0,0,262,263,5,36,0,0,263,265,5,35,0,0,264,266,5,64,0,0,265,264,1,0,
-  	0,0,265,266,1,0,0,0,266,267,1,0,0,0,267,268,5,16,0,0,268,269,3,40,20,
-  	0,269,270,5,17,0,0,270,271,5,38,0,0,271,272,5,64,0,0,272,273,5,16,0,0,
-  	273,274,3,40,20,0,274,275,5,17,0,0,275,277,1,0,0,0,276,243,1,0,0,0,276,
-  	253,1,0,0,0,276,262,1,0,0,0,277,17,1,0,0,0,278,285,5,43,0,0,279,280,5,
-  	44,0,0,280,281,5,16,0,0,281,282,5,65,0,0,282,285,5,17,0,0,283,285,5,45,
-  	0,0,284,278,1,0,0,0,284,279,1,0,0,0,284,283,1,0,0,0,285,19,1,0,0,0,286,
-  	291,3,22,11,0,287,288,5,40,0,0,288,290,3,22,11,0,289,287,1,0,0,0,290,
-  	293,1,0,0,0,291,289,1,0,0,0,291,292,1,0,0,0,292,21,1,0,0,0,293,291,1,
-  	0,0,0,294,295,5,16,0,0,295,300,3,24,12,0,296,297,5,40,0,0,297,299,3,24,
-  	12,0,298,296,1,0,0,0,299,302,1,0,0,0,300,298,1,0,0,0,300,301,1,0,0,0,
-  	301,303,1,0,0,0,302,300,1,0,0,0,303,304,5,17,0,0,304,23,1,0,0,0,305,306,
-  	7,0,0,0,306,25,1,0,0,0,307,312,3,28,14,0,308,309,5,46,0,0,309,311,3,28,
-  	14,0,310,308,1,0,0,0,311,314,1,0,0,0,312,310,1,0,0,0,312,313,1,0,0,0,
-  	313,27,1,0,0,0,314,312,1,0,0,0,315,316,3,30,15,0,316,317,3,42,21,0,317,
-  	318,3,32,16,0,318,347,1,0,0,0,319,320,3,30,15,0,320,321,3,42,21,0,321,
-  	322,5,16,0,0,322,323,3,10,5,0,323,324,5,17,0,0,324,347,1,0,0,0,325,326,
-  	3,30,15,0,326,328,5,47,0,0,327,329,5,41,0,0,328,327,1,0,0,0,328,329,1,
-  	0,0,0,329,330,1,0,0,0,330,331,5,63,0,0,331,347,1,0,0,0,332,333,3,30,15,
-  	0,333,334,5,48,0,0,334,335,3,22,11,0,335,347,1,0,0,0,336,337,3,30,15,
-  	0,337,338,5,48,0,0,338,339,5,16,0,0,339,340,3,10,5,0,340,341,5,17,0,0,
-  	341,347,1,0,0,0,342,343,3,30,15,0,343,344,5,49,0,0,344,345,5,66,0,0,345,
-  	347,1,0,0,0,346,315,1,0,0,0,346,319,1,0,0,0,346,325,1,0,0,0,346,332,1,
-  	0,0,0,346,336,1,0,0,0,346,342,1,0,0,0,347,29,1,0,0,0,348,349,5,64,0,0,
-  	349,351,5,50,0,0,350,348,1,0,0,0,350,351,1,0,0,0,351,352,1,0,0,0,352,
-  	353,5,64,0,0,353,31,1,0,0,0,354,357,3,24,12,0,355,357,3,30,15,0,356,354,
-  	1,0,0,0,356,355,1,0,0,0,357,33,1,0,0,0,358,359,5,64,0,0,359,360,5,52,
-  	0,0,360,367,3,24,12,0,361,362,5,40,0,0,362,363,5,64,0,0,363,364,5,52,
-  	0,0,364,366,3,24,12,0,365,361,1,0,0,0,366,369,1,0,0,0,367,365,1,0,0,0,
-  	367,368,1,0,0,0,368,35,1,0,0,0,369,367,1,0,0,0,370,380,5,51,0,0,371,376,
-  	3,38,19,0,372,373,5,40,0,0,373,375,3,38,19,0,374,372,1,0,0,0,375,378,
-  	1,0,0,0,376,374,1,0,0,0,376,377,1,0,0,0,377,380,1,0,0,0,378,376,1,0,0,
-  	0,379,370,1,0,0,0,379,371,1,0,0,0,380,37,1,0,0,0,381,392,3,30,15,0,382,
-  	383,3,44,22,0,383,384,5,16,0,0,384,385,3,30,15,0,385,386,5,17,0,0,386,
-  	392,1,0,0,0,387,388,5,58,0,0,388,389,5,16,0,0,389,390,5,51,0,0,390,392,
-  	5,17,0,0,391,381,1,0,0,0,391,382,1,0,0,0,391,387,1,0,0,0,392,39,1,0,0,
-  	0,393,398,5,64,0,0,394,395,5,40,0,0,395,397,5,64,0,0,396,394,1,0,0,0,
-  	397,400,1,0,0,0,398,396,1,0,0,0,398,399,1,0,0,0,399,41,1,0,0,0,400,398,
-  	1,0,0,0,401,402,7,1,0,0,402,43,1,0,0,0,403,404,7,2,0,0,404,45,1,0,0,0,
-  	32,49,70,86,102,134,142,147,153,155,182,197,211,233,240,247,251,256,265,
-  	276,284,291,300,312,328,346,350,356,367,376,379,391,398
+  	1,6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,1,
+  	6,1,6,1,6,3,6,243,8,6,1,7,1,7,1,7,5,7,248,8,7,10,7,12,7,251,9,7,1,8,1,
+  	8,1,8,1,8,3,8,257,8,8,1,8,1,8,3,8,261,8,8,1,8,1,8,1,8,3,8,266,8,8,1,8,
+  	1,8,1,8,1,8,1,8,1,8,1,8,3,8,275,8,8,1,8,1,8,1,8,1,8,1,8,1,8,1,8,1,8,1,
+  	8,3,8,286,8,8,1,9,1,9,1,9,1,9,1,9,1,9,3,9,294,8,9,1,10,1,10,1,10,5,10,
+  	299,8,10,10,10,12,10,302,9,10,1,11,1,11,1,11,1,11,5,11,308,8,11,10,11,
+  	12,11,311,9,11,1,11,1,11,1,12,1,12,1,13,1,13,1,13,5,13,320,8,13,10,13,
+  	12,13,323,9,13,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,
+  	1,14,1,14,3,14,338,8,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,1,14,
+  	1,14,1,14,1,14,1,14,1,14,1,14,1,14,3,14,356,8,14,1,15,1,15,3,15,360,8,
+  	15,1,15,1,15,1,16,1,16,3,16,366,8,16,1,17,1,17,1,17,1,17,1,17,1,17,1,
+  	17,5,17,375,8,17,10,17,12,17,378,9,17,1,18,1,18,1,18,1,18,5,18,384,8,
+  	18,10,18,12,18,387,9,18,3,18,389,8,18,1,19,1,19,1,19,1,19,1,19,1,19,1,
+  	19,1,19,1,19,1,19,3,19,401,8,19,1,20,1,20,1,20,5,20,406,8,20,10,20,12,
+  	20,409,9,20,1,21,1,21,1,22,1,22,1,22,0,0,23,0,2,4,6,8,10,12,14,16,18,
+  	20,22,24,26,28,30,32,34,36,38,40,42,44,0,3,2,0,63,63,65,67,1,0,52,57,
+  	1,0,58,62,449,0,49,1,0,0,0,2,70,1,0,0,0,4,86,1,0,0,0,6,102,1,0,0,0,8,
+  	134,1,0,0,0,10,136,1,0,0,0,12,242,1,0,0,0,14,244,1,0,0,0,16,285,1,0,0,
+  	0,18,293,1,0,0,0,20,295,1,0,0,0,22,303,1,0,0,0,24,314,1,0,0,0,26,316,
+  	1,0,0,0,28,355,1,0,0,0,30,359,1,0,0,0,32,365,1,0,0,0,34,367,1,0,0,0,36,
+  	388,1,0,0,0,38,400,1,0,0,0,40,402,1,0,0,0,42,410,1,0,0,0,44,412,1,0,0,
+  	0,46,48,3,2,1,0,47,46,1,0,0,0,48,51,1,0,0,0,49,47,1,0,0,0,49,50,1,0,0,
+  	0,50,52,1,0,0,0,51,49,1,0,0,0,52,53,5,0,0,1,53,1,1,0,0,0,54,55,3,4,2,
+  	0,55,56,5,1,0,0,56,71,1,0,0,0,57,58,3,6,3,0,58,59,5,1,0,0,59,71,1,0,0,
+  	0,60,61,3,8,4,0,61,62,5,1,0,0,62,71,1,0,0,0,63,64,3,12,6,0,64,65,5,1,
+  	0,0,65,71,1,0,0,0,66,67,5,69,0,0,67,71,5,1,0,0,68,69,5,63,0,0,69,71,5,
+  	1,0,0,70,54,1,0,0,0,70,57,1,0,0,0,70,60,1,0,0,0,70,63,1,0,0,0,70,66,1,
+  	0,0,0,70,68,1,0,0,0,71,3,1,0,0,0,72,73,5,2,0,0,73,74,5,3,0,0,74,87,5,
+  	64,0,0,75,76,5,4,0,0,76,77,5,3,0,0,77,87,5,64,0,0,78,79,5,5,0,0,79,87,
+  	5,6,0,0,80,81,5,7,0,0,81,87,5,64,0,0,82,83,5,5,0,0,83,87,5,8,0,0,84,85,
+  	5,5,0,0,85,87,5,9,0,0,86,72,1,0,0,0,86,75,1,0,0,0,86,78,1,0,0,0,86,80,
+  	1,0,0,0,86,82,1,0,0,0,86,84,1,0,0,0,87,5,1,0,0,0,88,89,5,10,0,0,89,90,
+  	5,11,0,0,90,91,5,12,0,0,91,92,5,66,0,0,92,93,5,13,0,0,93,94,5,14,0,0,
+  	94,103,5,64,0,0,95,96,5,15,0,0,96,97,5,13,0,0,97,98,5,12,0,0,98,99,5,
+  	66,0,0,99,100,5,11,0,0,100,101,5,14,0,0,101,103,5,64,0,0,102,88,1,0,0,
+  	0,102,95,1,0,0,0,103,7,1,0,0,0,104,105,5,2,0,0,105,106,5,14,0,0,106,107,
+  	5,64,0,0,107,108,5,16,0,0,108,109,3,14,7,0,109,110,5,17,0,0,110,135,1,
+  	0,0,0,111,112,5,4,0,0,112,113,5,14,0,0,113,135,5,64,0,0,114,115,5,18,
+  	0,0,115,135,5,64,0,0,116,117,5,19,0,0,117,118,5,20,0,0,118,119,5,64,0,
+  	0,119,120,5,21,0,0,120,135,3,20,10,0,121,122,5,22,0,0,122,123,5,11,0,
+  	0,123,124,5,64,0,0,124,125,5,23,0,0,125,135,3,26,13,0,126,127,5,24,0,
+  	0,127,128,5,64,0,0,128,129,5,25,0,0,129,130,3,34,17,0,130,131,5,23,0,
+  	0,131,132,3,26,13,0,132,135,1,0,0,0,133,135,3,10,5,0,134,104,1,0,0,0,
+  	134,111,1,0,0,0,134,114,1,0,0,0,134,116,1,0,0,0,134,121,1,0,0,0,134,126,
+  	1,0,0,0,134,133,1,0,0,0,135,9,1,0,0,0,136,137,5,26,0,0,137,138,3,36,18,
+  	0,138,139,5,11,0,0,139,142,3,40,20,0,140,141,5,23,0,0,141,143,3,26,13,
+  	0,142,140,1,0,0,0,142,143,1,0,0,0,143,147,1,0,0,0,144,145,5,27,0,0,145,
+  	146,5,28,0,0,146,148,3,30,15,0,147,144,1,0,0,0,147,148,1,0,0,0,148,155,
+  	1,0,0,0,149,150,5,29,0,0,150,153,5,65,0,0,151,152,5,30,0,0,152,154,5,
+  	65,0,0,153,151,1,0,0,0,153,154,1,0,0,0,154,156,1,0,0,0,155,149,1,0,0,
+  	0,155,156,1,0,0,0,156,11,1,0,0,0,157,158,5,31,0,0,158,159,5,14,0,0,159,
+  	160,5,64,0,0,160,161,5,32,0,0,161,162,5,33,0,0,162,163,5,16,0,0,163,164,
+  	3,40,20,0,164,165,5,17,0,0,165,243,1,0,0,0,166,167,5,31,0,0,167,168,5,
+  	14,0,0,168,169,5,64,0,0,169,170,5,4,0,0,170,171,5,33,0,0,171,172,5,16,
+  	0,0,172,173,3,40,20,0,173,174,5,17,0,0,174,243,1,0,0,0,175,176,5,31,0,
+  	0,176,177,5,14,0,0,177,178,5,64,0,0,178,179,5,4,0,0,179,180,5,34,0,0,
+  	180,182,5,35,0,0,181,183,5,64,0,0,182,181,1,0,0,0,182,183,1,0,0,0,183,
+  	243,1,0,0,0,184,185,5,31,0,0,185,186,5,14,0,0,186,187,5,64,0,0,187,188,
+  	5,4,0,0,188,189,5,36,0,0,189,190,5,35,0,0,190,243,5,64,0,0,191,192,5,
+  	31,0,0,192,193,5,14,0,0,193,194,5,64,0,0,194,195,5,32,0,0,195,197,5,37,
+  	0,0,196,198,5,64,0,0,197,196,1,0,0,0,197,198,1,0,0,0,198,199,1,0,0,0,
+  	199,200,5,34,0,0,200,201,5,35,0,0,201,202,5,16,0,0,202,203,3,40,20,0,
+  	203,204,5,17,0,0,204,243,1,0,0,0,205,206,5,31,0,0,206,207,5,14,0,0,207,
+  	208,5,64,0,0,208,209,5,32,0,0,209,211,5,37,0,0,210,212,5,64,0,0,211,210,
+  	1,0,0,0,211,212,1,0,0,0,212,213,1,0,0,0,213,214,5,36,0,0,214,215,5,35,
+  	0,0,215,216,5,16,0,0,216,217,3,40,20,0,217,218,5,17,0,0,218,219,5,38,
+  	0,0,219,220,5,64,0,0,220,221,5,16,0,0,221,222,3,40,20,0,222,223,5,17,
+  	0,0,223,243,1,0,0,0,224,225,5,31,0,0,225,226,5,14,0,0,226,227,5,64,0,
+  	0,227,228,5,32,0,0,228,229,5,39,0,0,229,230,5,16,0,0,230,231,3,40,20,
+  	0,231,232,5,17,0,0,232,243,1,0,0,0,233,234,5,31,0,0,234,235,5,14,0,0,
+  	235,236,5,64,0,0,236,237,5,4,0,0,237,238,5,39,0,0,238,239,5,16,0,0,239,
+  	240,3,40,20,0,240,241,5,17,0,0,241,243,1,0,0,0,242,157,1,0,0,0,242,166,
+  	1,0,0,0,242,175,1,0,0,0,242,184,1,0,0,0,242,191,1,0,0,0,242,205,1,0,0,
+  	0,242,224,1,0,0,0,242,233,1,0,0,0,243,13,1,0,0,0,244,249,3,16,8,0,245,
+  	246,5,40,0,0,246,248,3,16,8,0,247,245,1,0,0,0,248,251,1,0,0,0,249,247,
+  	1,0,0,0,249,250,1,0,0,0,250,15,1,0,0,0,251,249,1,0,0,0,252,253,5,64,0,
+  	0,253,256,3,18,9,0,254,255,5,41,0,0,255,257,5,63,0,0,256,254,1,0,0,0,
+  	256,257,1,0,0,0,257,260,1,0,0,0,258,259,5,42,0,0,259,261,3,24,12,0,260,
+  	258,1,0,0,0,260,261,1,0,0,0,261,286,1,0,0,0,262,263,5,34,0,0,263,265,
+  	5,35,0,0,264,266,5,64,0,0,265,264,1,0,0,0,265,266,1,0,0,0,266,267,1,0,
+  	0,0,267,268,5,16,0,0,268,269,3,40,20,0,269,270,5,17,0,0,270,286,1,0,0,
+  	0,271,272,5,36,0,0,272,274,5,35,0,0,273,275,5,64,0,0,274,273,1,0,0,0,
+  	274,275,1,0,0,0,275,276,1,0,0,0,276,277,5,16,0,0,277,278,3,40,20,0,278,
+  	279,5,17,0,0,279,280,5,38,0,0,280,281,5,64,0,0,281,282,5,16,0,0,282,283,
+  	3,40,20,0,283,284,5,17,0,0,284,286,1,0,0,0,285,252,1,0,0,0,285,262,1,
+  	0,0,0,285,271,1,0,0,0,286,17,1,0,0,0,287,294,5,43,0,0,288,289,5,44,0,
+  	0,289,290,5,16,0,0,290,291,5,65,0,0,291,294,5,17,0,0,292,294,5,45,0,0,
+  	293,287,1,0,0,0,293,288,1,0,0,0,293,292,1,0,0,0,294,19,1,0,0,0,295,300,
+  	3,22,11,0,296,297,5,40,0,0,297,299,3,22,11,0,298,296,1,0,0,0,299,302,
+  	1,0,0,0,300,298,1,0,0,0,300,301,1,0,0,0,301,21,1,0,0,0,302,300,1,0,0,
+  	0,303,304,5,16,0,0,304,309,3,24,12,0,305,306,5,40,0,0,306,308,3,24,12,
+  	0,307,305,1,0,0,0,308,311,1,0,0,0,309,307,1,0,0,0,309,310,1,0,0,0,310,
+  	312,1,0,0,0,311,309,1,0,0,0,312,313,5,17,0,0,313,23,1,0,0,0,314,315,7,
+  	0,0,0,315,25,1,0,0,0,316,321,3,28,14,0,317,318,5,46,0,0,318,320,3,28,
+  	14,0,319,317,1,0,0,0,320,323,1,0,0,0,321,319,1,0,0,0,321,322,1,0,0,0,
+  	322,27,1,0,0,0,323,321,1,0,0,0,324,325,3,30,15,0,325,326,3,42,21,0,326,
+  	327,3,32,16,0,327,356,1,0,0,0,328,329,3,30,15,0,329,330,3,42,21,0,330,
+  	331,5,16,0,0,331,332,3,10,5,0,332,333,5,17,0,0,333,356,1,0,0,0,334,335,
+  	3,30,15,0,335,337,5,47,0,0,336,338,5,41,0,0,337,336,1,0,0,0,337,338,1,
+  	0,0,0,338,339,1,0,0,0,339,340,5,63,0,0,340,356,1,0,0,0,341,342,3,30,15,
+  	0,342,343,5,48,0,0,343,344,3,22,11,0,344,356,1,0,0,0,345,346,3,30,15,
+  	0,346,347,5,48,0,0,347,348,5,16,0,0,348,349,3,10,5,0,349,350,5,17,0,0,
+  	350,356,1,0,0,0,351,352,3,30,15,0,352,353,5,49,0,0,353,354,5,66,0,0,354,
+  	356,1,0,0,0,355,324,1,0,0,0,355,328,1,0,0,0,355,334,1,0,0,0,355,341,1,
+  	0,0,0,355,345,1,0,0,0,355,351,1,0,0,0,356,29,1,0,0,0,357,358,5,64,0,0,
+  	358,360,5,50,0,0,359,357,1,0,0,0,359,360,1,0,0,0,360,361,1,0,0,0,361,
+  	362,5,64,0,0,362,31,1,0,0,0,363,366,3,24,12,0,364,366,3,30,15,0,365,363,
+  	1,0,0,0,365,364,1,0,0,0,366,33,1,0,0,0,367,368,5,64,0,0,368,369,5,52,
+  	0,0,369,376,3,24,12,0,370,371,5,40,0,0,371,372,5,64,0,0,372,373,5,52,
+  	0,0,373,375,3,24,12,0,374,370,1,0,0,0,375,378,1,0,0,0,376,374,1,0,0,0,
+  	376,377,1,0,0,0,377,35,1,0,0,0,378,376,1,0,0,0,379,389,5,51,0,0,380,385,
+  	3,38,19,0,381,382,5,40,0,0,382,384,3,38,19,0,383,381,1,0,0,0,384,387,
+  	1,0,0,0,385,383,1,0,0,0,385,386,1,0,0,0,386,389,1,0,0,0,387,385,1,0,0,
+  	0,388,379,1,0,0,0,388,380,1,0,0,0,389,37,1,0,0,0,390,401,3,30,15,0,391,
+  	392,3,44,22,0,392,393,5,16,0,0,393,394,3,30,15,0,394,395,5,17,0,0,395,
+  	401,1,0,0,0,396,397,5,58,0,0,397,398,5,16,0,0,398,399,5,51,0,0,399,401,
+  	5,17,0,0,400,390,1,0,0,0,400,391,1,0,0,0,400,396,1,0,0,0,401,39,1,0,0,
+  	0,402,407,5,64,0,0,403,404,5,40,0,0,404,406,5,64,0,0,405,403,1,0,0,0,
+  	406,409,1,0,0,0,407,405,1,0,0,0,407,408,1,0,0,0,408,41,1,0,0,0,409,407,
+  	1,0,0,0,410,411,7,1,0,0,411,43,1,0,0,0,412,413,7,2,0,0,413,45,1,0,0,0,
+  	32,49,70,86,102,134,142,147,153,155,182,197,211,242,249,256,260,265,274,
+  	285,293,300,309,321,337,355,359,365,376,385,388,400,407
   };
   staticData->serializedATN = antlr4::atn::SerializedATNView(serializedATNSegment, sizeof(serializedATNSegment) / sizeof(serializedATNSegment[0]));
 
@@ -1258,6 +1261,25 @@ std::any SQLParser::Alter_add_indexContext::accept(tree::ParseTreeVisitor *visit
   else
     return visitor->visitChildren(this);
 }
+//----------------- Alter_table_drop_uniqueContext ------------------------------------------------------------------
+
+tree::TerminalNode* SQLParser::Alter_table_drop_uniqueContext::Identifier() {
+  return getToken(SQLParser::Identifier, 0);
+}
+
+SQLParser::IdentifiersContext* SQLParser::Alter_table_drop_uniqueContext::identifiers() {
+  return getRuleContext<SQLParser::IdentifiersContext>(0);
+}
+
+SQLParser::Alter_table_drop_uniqueContext::Alter_table_drop_uniqueContext(Alter_statementContext *ctx) { copyFrom(ctx); }
+
+
+std::any SQLParser::Alter_table_drop_uniqueContext::accept(tree::ParseTreeVisitor *visitor) {
+  if (auto parserVisitor = dynamic_cast<SQLVisitor*>(visitor))
+    return parserVisitor->visitAlter_table_drop_unique(this);
+  else
+    return visitor->visitChildren(this);
+}
 //----------------- Alter_table_drop_foreign_keyContext ------------------------------------------------------------------
 
 std::vector<tree::TerminalNode *> SQLParser::Alter_table_drop_foreign_keyContext::Identifier() {
@@ -1313,7 +1335,7 @@ SQLParser::Alter_statementContext* SQLParser::alter_statement() {
     exitRule();
   });
   try {
-    setState(233);
+    setState(242);
     _errHandler->sync(this);
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 12, _ctx)) {
     case 1: {
@@ -1506,6 +1528,28 @@ SQLParser::Alter_statementContext* SQLParser::alter_statement() {
       break;
     }
 
+    case 8: {
+      _localctx = _tracker.createInstance<SQLParser::Alter_table_drop_uniqueContext>(_localctx);
+      enterOuterAlt(_localctx, 8);
+      setState(233);
+      match(SQLParser::T__30);
+      setState(234);
+      match(SQLParser::T__13);
+      setState(235);
+      match(SQLParser::Identifier);
+      setState(236);
+      match(SQLParser::T__3);
+      setState(237);
+      match(SQLParser::T__38);
+      setState(238);
+      match(SQLParser::T__15);
+      setState(239);
+      identifiers();
+      setState(240);
+      match(SQLParser::T__16);
+      break;
+    }
+
     default:
       break;
     }
@@ -1561,17 +1605,17 @@ SQLParser::Field_listContext* SQLParser::field_list() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(235);
+    setState(244);
     field();
-    setState(240);
+    setState(249);
     _errHandler->sync(this);
     _la = _input->LA(1);
     while (_la == SQLParser::T__39) {
-      setState(236);
+      setState(245);
       match(SQLParser::T__39);
-      setState(237);
+      setState(246);
       field();
-      setState(242);
+      setState(251);
       _errHandler->sync(this);
       _la = _input->LA(1);
     }
@@ -1687,34 +1731,34 @@ SQLParser::FieldContext* SQLParser::field() {
     exitRule();
   });
   try {
-    setState(276);
+    setState(285);
     _errHandler->sync(this);
     switch (_input->LA(1)) {
       case SQLParser::Identifier: {
         _localctx = _tracker.createInstance<SQLParser::Normal_fieldContext>(_localctx);
         enterOuterAlt(_localctx, 1);
-        setState(243);
+        setState(252);
         match(SQLParser::Identifier);
-        setState(244);
+        setState(253);
         type_();
-        setState(247);
+        setState(256);
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == SQLParser::T__40) {
-          setState(245);
+          setState(254);
           match(SQLParser::T__40);
-          setState(246);
+          setState(255);
           match(SQLParser::Null);
         }
-        setState(251);
+        setState(260);
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == SQLParser::T__41) {
-          setState(249);
+          setState(258);
           match(SQLParser::T__41);
-          setState(250);
+          setState(259);
           value();
         }
         break;
@@ -1723,32 +1767,8 @@ SQLParser::FieldContext* SQLParser::field() {
       case SQLParser::T__33: {
         _localctx = _tracker.createInstance<SQLParser::Primary_key_fieldContext>(_localctx);
         enterOuterAlt(_localctx, 2);
-        setState(253);
-        match(SQLParser::T__33);
-        setState(254);
-        match(SQLParser::T__34);
-        setState(256);
-        _errHandler->sync(this);
-
-        _la = _input->LA(1);
-        if (_la == SQLParser::Identifier) {
-          setState(255);
-          match(SQLParser::Identifier);
-        }
-        setState(258);
-        match(SQLParser::T__15);
-        setState(259);
-        identifiers();
-        setState(260);
-        match(SQLParser::T__16);
-        break;
-      }
-
-      case SQLParser::T__35: {
-        _localctx = _tracker.createInstance<SQLParser::Foreign_key_fieldContext>(_localctx);
-        enterOuterAlt(_localctx, 3);
         setState(262);
-        match(SQLParser::T__35);
+        match(SQLParser::T__33);
         setState(263);
         match(SQLParser::T__34);
         setState(265);
@@ -1765,15 +1785,39 @@ SQLParser::FieldContext* SQLParser::field() {
         identifiers();
         setState(269);
         match(SQLParser::T__16);
-        setState(270);
-        match(SQLParser::T__37);
+        break;
+      }
+
+      case SQLParser::T__35: {
+        _localctx = _tracker.createInstance<SQLParser::Foreign_key_fieldContext>(_localctx);
+        enterOuterAlt(_localctx, 3);
         setState(271);
-        match(SQLParser::Identifier);
+        match(SQLParser::T__35);
         setState(272);
-        match(SQLParser::T__15);
-        setState(273);
-        identifiers();
+        match(SQLParser::T__34);
         setState(274);
+        _errHandler->sync(this);
+
+        _la = _input->LA(1);
+        if (_la == SQLParser::Identifier) {
+          setState(273);
+          match(SQLParser::Identifier);
+        }
+        setState(276);
+        match(SQLParser::T__15);
+        setState(277);
+        identifiers();
+        setState(278);
+        match(SQLParser::T__16);
+        setState(279);
+        match(SQLParser::T__37);
+        setState(280);
+        match(SQLParser::Identifier);
+        setState(281);
+        match(SQLParser::T__15);
+        setState(282);
+        identifiers();
+        setState(283);
         match(SQLParser::T__16);
         break;
       }
@@ -1827,32 +1871,32 @@ SQLParser::Type_Context* SQLParser::type_() {
     exitRule();
   });
   try {
-    setState(284);
+    setState(293);
     _errHandler->sync(this);
     switch (_input->LA(1)) {
       case SQLParser::T__42: {
         enterOuterAlt(_localctx, 1);
-        setState(278);
+        setState(287);
         match(SQLParser::T__42);
         break;
       }
 
       case SQLParser::T__43: {
         enterOuterAlt(_localctx, 2);
-        setState(279);
+        setState(288);
         match(SQLParser::T__43);
-        setState(280);
+        setState(289);
         match(SQLParser::T__15);
-        setState(281);
+        setState(290);
         match(SQLParser::Integer);
-        setState(282);
+        setState(291);
         match(SQLParser::T__16);
         break;
       }
 
       case SQLParser::T__44: {
         enterOuterAlt(_localctx, 3);
-        setState(283);
+        setState(292);
         match(SQLParser::T__44);
         break;
       }
@@ -1912,17 +1956,17 @@ SQLParser::Value_listsContext* SQLParser::value_lists() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(286);
+    setState(295);
     value_list();
-    setState(291);
+    setState(300);
     _errHandler->sync(this);
     _la = _input->LA(1);
     while (_la == SQLParser::T__39) {
-      setState(287);
+      setState(296);
       match(SQLParser::T__39);
-      setState(288);
+      setState(297);
       value_list();
-      setState(293);
+      setState(302);
       _errHandler->sync(this);
       _la = _input->LA(1);
     }
@@ -1978,23 +2022,23 @@ SQLParser::Value_listContext* SQLParser::value_list() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(294);
+    setState(303);
     match(SQLParser::T__15);
-    setState(295);
+    setState(304);
     value();
-    setState(300);
+    setState(309);
     _errHandler->sync(this);
     _la = _input->LA(1);
     while (_la == SQLParser::T__39) {
-      setState(296);
+      setState(305);
       match(SQLParser::T__39);
-      setState(297);
+      setState(306);
       value();
-      setState(302);
+      setState(311);
       _errHandler->sync(this);
       _la = _input->LA(1);
     }
-    setState(303);
+    setState(312);
     match(SQLParser::T__16);
    
   }
@@ -2056,7 +2100,7 @@ SQLParser::ValueContext* SQLParser::value() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(305);
+    setState(314);
     _la = _input->LA(1);
     if (!((((_la - 63) & ~ 0x3fULL) == 0) &&
       ((1ULL << (_la - 63)) & 29) != 0)) {
@@ -2118,17 +2162,17 @@ SQLParser::Where_and_clauseContext* SQLParser::where_and_clause() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(307);
+    setState(316);
     where_clause();
-    setState(312);
+    setState(321);
     _errHandler->sync(this);
     _la = _input->LA(1);
     while (_la == SQLParser::T__45) {
-      setState(308);
+      setState(317);
       match(SQLParser::T__45);
-      setState(309);
+      setState(318);
       where_clause();
-      setState(314);
+      setState(323);
       _errHandler->sync(this);
       _la = _input->LA(1);
     }
@@ -2158,15 +2202,11 @@ void SQLParser::Where_clauseContext::copyFrom(Where_clauseContext *ctx) {
   ParserRuleContext::copyFrom(ctx);
 }
 
-SQLParser::ColumnContext* SQLParser::Where_clauseContext::column() {
-  return getRuleContext<SQLParser::ColumnContext>(0);
-}
-
 //----------------- Where_in_listContext ------------------------------------------------------------------
 
-// SQLParser::ColumnContext* SQLParser::Where_in_listContext::column() {
-//   return getRuleContext<SQLParser::ColumnContext>(0);
-// }
+SQLParser::ColumnContext* SQLParser::Where_in_listContext::column() {
+  return getRuleContext<SQLParser::ColumnContext>(0);
+}
 
 SQLParser::Value_listContext* SQLParser::Where_in_listContext::value_list() {
   return getRuleContext<SQLParser::Value_listContext>(0);
@@ -2183,9 +2223,9 @@ std::any SQLParser::Where_in_listContext::accept(tree::ParseTreeVisitor *visitor
 }
 //----------------- Where_operator_selectContext ------------------------------------------------------------------
 
-// SQLParser::ColumnContext* SQLParser::Where_operator_selectContext::column() {
-//   return getRuleContext<SQLParser::ColumnContext>(0);
-// }
+SQLParser::ColumnContext* SQLParser::Where_operator_selectContext::column() {
+  return getRuleContext<SQLParser::ColumnContext>(0);
+}
 
 SQLParser::Operator_Context* SQLParser::Where_operator_selectContext::operator_() {
   return getRuleContext<SQLParser::Operator_Context>(0);
@@ -2206,9 +2246,9 @@ std::any SQLParser::Where_operator_selectContext::accept(tree::ParseTreeVisitor 
 }
 //----------------- Where_nullContext ------------------------------------------------------------------
 
-// SQLParser::ColumnContext* SQLParser::Where_nullContext::column() {
-//   return getRuleContext<SQLParser::ColumnContext>(0);
-// }
+SQLParser::ColumnContext* SQLParser::Where_nullContext::column() {
+  return getRuleContext<SQLParser::ColumnContext>(0);
+}
 
 tree::TerminalNode* SQLParser::Where_nullContext::Null() {
   return getToken(SQLParser::Null, 0);
@@ -2225,9 +2265,9 @@ std::any SQLParser::Where_nullContext::accept(tree::ParseTreeVisitor *visitor) {
 }
 //----------------- Where_operator_expressionContext ------------------------------------------------------------------
 
-// SQLParser::ColumnContext* SQLParser::Where_operator_expressionContext::column() {
-//   return getRuleContext<SQLParser::ColumnContext>(0);
-// }
+SQLParser::ColumnContext* SQLParser::Where_operator_expressionContext::column() {
+  return getRuleContext<SQLParser::ColumnContext>(0);
+}
 
 SQLParser::Operator_Context* SQLParser::Where_operator_expressionContext::operator_() {
   return getRuleContext<SQLParser::Operator_Context>(0);
@@ -2248,9 +2288,9 @@ std::any SQLParser::Where_operator_expressionContext::accept(tree::ParseTreeVisi
 }
 //----------------- Where_in_selectContext ------------------------------------------------------------------
 
-// SQLParser::ColumnContext* SQLParser::Where_in_selectContext::column() {
-//   return getRuleContext<SQLParser::ColumnContext>(0);
-// }
+SQLParser::ColumnContext* SQLParser::Where_in_selectContext::column() {
+  return getRuleContext<SQLParser::ColumnContext>(0);
+}
 
 SQLParser::Select_tableContext* SQLParser::Where_in_selectContext::select_table() {
   return getRuleContext<SQLParser::Select_tableContext>(0);
@@ -2267,9 +2307,9 @@ std::any SQLParser::Where_in_selectContext::accept(tree::ParseTreeVisitor *visit
 }
 //----------------- Where_like_stringContext ------------------------------------------------------------------
 
-// SQLParser::ColumnContext* SQLParser::Where_like_stringContext::column() {
-//   return getRuleContext<SQLParser::ColumnContext>(0);
-// }
+SQLParser::ColumnContext* SQLParser::Where_like_stringContext::column() {
+  return getRuleContext<SQLParser::ColumnContext>(0);
+}
 
 tree::TerminalNode* SQLParser::Where_like_stringContext::String() {
   return getToken(SQLParser::String, 0);
@@ -2297,17 +2337,17 @@ SQLParser::Where_clauseContext* SQLParser::where_clause() {
     exitRule();
   });
   try {
-    setState(346);
+    setState(355);
     _errHandler->sync(this);
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 24, _ctx)) {
     case 1: {
       _localctx = _tracker.createInstance<SQLParser::Where_operator_expressionContext>(_localctx);
       enterOuterAlt(_localctx, 1);
-      setState(315);
+      setState(324);
       column();
-      setState(316);
+      setState(325);
       operator_();
-      setState(317);
+      setState(326);
       expression();
       break;
     }
@@ -2315,15 +2355,15 @@ SQLParser::Where_clauseContext* SQLParser::where_clause() {
     case 2: {
       _localctx = _tracker.createInstance<SQLParser::Where_operator_selectContext>(_localctx);
       enterOuterAlt(_localctx, 2);
-      setState(319);
+      setState(328);
       column();
-      setState(320);
+      setState(329);
       operator_();
-      setState(321);
+      setState(330);
       match(SQLParser::T__15);
-      setState(322);
+      setState(331);
       select_table();
-      setState(323);
+      setState(332);
       match(SQLParser::T__16);
       break;
     }
@@ -2331,19 +2371,19 @@ SQLParser::Where_clauseContext* SQLParser::where_clause() {
     case 3: {
       _localctx = _tracker.createInstance<SQLParser::Where_nullContext>(_localctx);
       enterOuterAlt(_localctx, 3);
-      setState(325);
+      setState(334);
       column();
-      setState(326);
+      setState(335);
       match(SQLParser::T__46);
-      setState(328);
+      setState(337);
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == SQLParser::T__40) {
-        setState(327);
+        setState(336);
         match(SQLParser::T__40);
       }
-      setState(330);
+      setState(339);
       match(SQLParser::Null);
       break;
     }
@@ -2351,11 +2391,11 @@ SQLParser::Where_clauseContext* SQLParser::where_clause() {
     case 4: {
       _localctx = _tracker.createInstance<SQLParser::Where_in_listContext>(_localctx);
       enterOuterAlt(_localctx, 4);
-      setState(332);
+      setState(341);
       column();
-      setState(333);
+      setState(342);
       match(SQLParser::T__47);
-      setState(334);
+      setState(343);
       value_list();
       break;
     }
@@ -2363,15 +2403,15 @@ SQLParser::Where_clauseContext* SQLParser::where_clause() {
     case 5: {
       _localctx = _tracker.createInstance<SQLParser::Where_in_selectContext>(_localctx);
       enterOuterAlt(_localctx, 5);
-      setState(336);
+      setState(345);
       column();
-      setState(337);
+      setState(346);
       match(SQLParser::T__47);
-      setState(338);
+      setState(347);
       match(SQLParser::T__15);
-      setState(339);
+      setState(348);
       select_table();
-      setState(340);
+      setState(349);
       match(SQLParser::T__16);
       break;
     }
@@ -2379,11 +2419,11 @@ SQLParser::Where_clauseContext* SQLParser::where_clause() {
     case 6: {
       _localctx = _tracker.createInstance<SQLParser::Where_like_stringContext>(_localctx);
       enterOuterAlt(_localctx, 6);
-      setState(342);
+      setState(351);
       column();
-      setState(343);
+      setState(352);
       match(SQLParser::T__48);
-      setState(344);
+      setState(353);
       match(SQLParser::String);
       break;
     }
@@ -2442,14 +2482,14 @@ SQLParser::ColumnContext* SQLParser::column() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(350);
+    setState(359);
     _errHandler->sync(this);
 
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 25, _ctx)) {
     case 1: {
-      setState(348);
+      setState(357);
       match(SQLParser::Identifier);
-      setState(349);
+      setState(358);
       match(SQLParser::T__49);
       break;
     }
@@ -2457,7 +2497,7 @@ SQLParser::ColumnContext* SQLParser::column() {
     default:
       break;
     }
-    setState(352);
+    setState(361);
     match(SQLParser::Identifier);
    
   }
@@ -2509,7 +2549,7 @@ SQLParser::ExpressionContext* SQLParser::expression() {
     exitRule();
   });
   try {
-    setState(356);
+    setState(365);
     _errHandler->sync(this);
     switch (_input->LA(1)) {
       case SQLParser::Null:
@@ -2517,14 +2557,14 @@ SQLParser::ExpressionContext* SQLParser::expression() {
       case SQLParser::String:
       case SQLParser::Float: {
         enterOuterAlt(_localctx, 1);
-        setState(354);
+        setState(363);
         value();
         break;
       }
 
       case SQLParser::Identifier: {
         enterOuterAlt(_localctx, 2);
-        setState(355);
+        setState(364);
         column();
         break;
       }
@@ -2600,25 +2640,25 @@ SQLParser::Set_clauseContext* SQLParser::set_clause() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(358);
-    match(SQLParser::Identifier);
-    setState(359);
-    match(SQLParser::EqualOrAssign);
-    setState(360);
-    value();
     setState(367);
+    match(SQLParser::Identifier);
+    setState(368);
+    match(SQLParser::EqualOrAssign);
+    setState(369);
+    value();
+    setState(376);
     _errHandler->sync(this);
     _la = _input->LA(1);
     while (_la == SQLParser::T__39) {
-      setState(361);
+      setState(370);
       match(SQLParser::T__39);
-      setState(362);
+      setState(371);
       match(SQLParser::Identifier);
-      setState(363);
+      setState(372);
       match(SQLParser::EqualOrAssign);
-      setState(364);
+      setState(373);
       value();
-      setState(369);
+      setState(378);
       _errHandler->sync(this);
       _la = _input->LA(1);
     }
@@ -2673,12 +2713,12 @@ SQLParser::SelectorsContext* SQLParser::selectors() {
     exitRule();
   });
   try {
-    setState(379);
+    setState(388);
     _errHandler->sync(this);
     switch (_input->LA(1)) {
       case SQLParser::T__50: {
         enterOuterAlt(_localctx, 1);
-        setState(370);
+        setState(379);
         match(SQLParser::T__50);
         break;
       }
@@ -2690,17 +2730,17 @@ SQLParser::SelectorsContext* SQLParser::selectors() {
       case SQLParser::Sum:
       case SQLParser::Identifier: {
         enterOuterAlt(_localctx, 2);
-        setState(371);
+        setState(380);
         selector();
-        setState(376);
+        setState(385);
         _errHandler->sync(this);
         _la = _input->LA(1);
         while (_la == SQLParser::T__39) {
-          setState(372);
+          setState(381);
           match(SQLParser::T__39);
-          setState(373);
+          setState(382);
           selector();
-          setState(378);
+          setState(387);
           _errHandler->sync(this);
           _la = _input->LA(1);
         }
@@ -2764,38 +2804,38 @@ SQLParser::SelectorContext* SQLParser::selector() {
     exitRule();
   });
   try {
-    setState(391);
+    setState(400);
     _errHandler->sync(this);
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 30, _ctx)) {
     case 1: {
       enterOuterAlt(_localctx, 1);
-      setState(381);
+      setState(390);
       column();
       break;
     }
 
     case 2: {
       enterOuterAlt(_localctx, 2);
-      setState(382);
+      setState(391);
       aggregator();
-      setState(383);
+      setState(392);
       match(SQLParser::T__15);
-      setState(384);
+      setState(393);
       column();
-      setState(385);
+      setState(394);
       match(SQLParser::T__16);
       break;
     }
 
     case 3: {
       enterOuterAlt(_localctx, 3);
-      setState(387);
+      setState(396);
       match(SQLParser::Count);
-      setState(388);
+      setState(397);
       match(SQLParser::T__15);
-      setState(389);
+      setState(398);
       match(SQLParser::T__50);
-      setState(390);
+      setState(399);
       match(SQLParser::T__16);
       break;
     }
@@ -2855,17 +2895,17 @@ SQLParser::IdentifiersContext* SQLParser::identifiers() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(393);
+    setState(402);
     match(SQLParser::Identifier);
-    setState(398);
+    setState(407);
     _errHandler->sync(this);
     _la = _input->LA(1);
     while (_la == SQLParser::T__39) {
-      setState(394);
+      setState(403);
       match(SQLParser::T__39);
-      setState(395);
+      setState(404);
       match(SQLParser::Identifier);
-      setState(400);
+      setState(409);
       _errHandler->sync(this);
       _la = _input->LA(1);
     }
@@ -2937,7 +2977,7 @@ SQLParser::Operator_Context* SQLParser::operator_() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(401);
+    setState(410);
     _la = _input->LA(1);
     if (!(((_la & ~ 0x3fULL) == 0) &&
       ((1ULL << _la) & 283726776524341248) != 0)) {
@@ -3011,7 +3051,7 @@ SQLParser::AggregatorContext* SQLParser::aggregator() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(403);
+    setState(412);
     _la = _input->LA(1);
     if (!(((_la & ~ 0x3fULL) == 0) &&
       ((1ULL << _la) & 8935141660703064064) != 0)) {

@@ -370,19 +370,18 @@ public:
         return 0;
     }
 
-    /**
-     * for drop unique::
-     * std::any visitAlter_table_drop_unique(SQLParser::Alter_table_drop_uniqueContext *ctx) override {
-     *     fprintf(stderr, "Visit Drop Unique.\n");
-     *     std::string tableName;
-     *     std::vector<std::string> colNames;
-     *     tableName = ctx->Identifier()->getText();
-     *     colNames = std::any_cast<std::vector<std::string>>(ctx->identifiers()->accept(this));
-     * 
-     *     databaseManager->dropUniqueKey(tableName, colNames, colNames.size());
-     *     return 0;
-     * }
-    */
+    // for drop unique::
+    std::any visitAlter_table_drop_unique(SQLParser::Alter_table_drop_uniqueContext *ctx) override {
+        fprintf(stderr, "Visit Drop Unique.\n");
+        std::string tableName;
+        std::vector<std::string> colNames;
+        tableName = ctx->Identifier()->getText();
+        colNames = std::any_cast<std::vector<std::string>>(ctx->identifiers()->accept(this));
+    
+        databaseManager->dropUniqueKey(tableName, colNames, colNames.size());
+        return 0;
+    }
+   
 
     std::any visitField_list(SQLParser::Field_listContext *ctx) override {
         fprintf(stderr, "Visit Field List.\n");
