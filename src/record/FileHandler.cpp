@@ -403,7 +403,9 @@ bool FileHandler::insertAllRecords(const std::vector<Record*>& records, std::vec
             pageHeader->maximumSlot = -1;
         }
         int num = tableHeader->recordSize - pageHeader->totalSlot;
+        bool fullFlag = true;
         if (num > total - done) {
+            fullFlag = false;
             num = total - done;
         }
         while (num--) {
@@ -426,6 +428,10 @@ bool FileHandler::insertAllRecords(const std::vector<Record*>& records, std::vec
             if (slotId > pageHeader->maximumSlot) {
                 pageHeader->maximumSlot = slotId;
             }
+        }
+        if (fullFlag) {
+            tableHeader->firstNotFullPage = pageHeader->nextFreePage;
+            pageHeader->nextFreePage = -1;
         }
     }
     tableHeader->recordNum += total;
