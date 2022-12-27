@@ -612,6 +612,10 @@ public:
             } else {
                 // TODO error
             }
+        } else if(ctx->expression()->column() != nullptr) {
+            DBExpItem* pItem = std::any_cast<DBExpItem*>(ctx->expression()->accept(this));
+            expr.rVal = pItem;
+            expr.rType = DB_ITEM;
         }
         
         return expr;
@@ -721,6 +725,7 @@ public:
 
     std::any visitColumn(SQLParser::ColumnContext *ctx) override {
         fprintf(stderr, "Visit Column.\n");
+
         DBExpItem* pItem;
         if(ctx->Identifier().size() == 1) {
             pItem = new DBExpItem("", ctx->Identifier(0)->getText());
