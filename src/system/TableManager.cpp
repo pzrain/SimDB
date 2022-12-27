@@ -254,7 +254,7 @@ int TableManager::createIndex(string tableName, string colName) {
 
     if (indexManager->hasIndex(tableName.c_str(), colName.c_str())) {
         printf("[INFO] the index has already been created.\n");
-        return -1;
+        return 0;
     }
 
     int res = _createAndAddIndex(tableName, colName, indexLen, colType, index);
@@ -337,6 +337,7 @@ int TableManager::createPrimaryKey(string tableName, string colName) {
     uint8_t colType;
     if (index >= 0) {
         tableHeader->entrys[index].primaryKeyConstraint = true;
+        fileHandler->saveTableHeader();
         // tableHeader->entrys[index].uniqueConstraint = false; // make sure primaryKeyConstraint and uniqueConstrain don't co-exist
         indexLen = tableHeader->entrys[index].colLen;
         colType = tableHeader->entrys[index].colType;
@@ -379,6 +380,7 @@ int TableManager::dropPrimaryKey(string tableName, int colId, DBMeta* dbMeta, in
             return -1;
         }
         tableHeader->entrys[index].primaryKeyConstraint = false;
+        fileHandler->saveTableHeader();
     } else {
         printf("[ERROR] specified column does not exist.\n");
         return -1;
@@ -472,6 +474,7 @@ int TableManager::createForeignKey(string tableName, string foreignKeyName, stri
         strcpy(tableHeader->entrys[index].foreignKeyTableName[tableHeader->entrys[index].foreignKeyConstraint], refTableName.c_str());
         strcpy(tableHeader->entrys[index].foreignKeyColName[tableHeader->entrys[index].foreignKeyConstraint], refTableCol.c_str());
         tableHeader->entrys[index].foreignKeyConstraint++;
+        fileHandler->saveTableHeader();
     } else {
         printf("[ERROR] specified column does not exist.\n");
         return -1;
@@ -560,6 +563,7 @@ int TableManager::dropForeignKey(string tableName, uint8_t colIndex, DBMeta* dbM
     strcpy(tableHeader->entrys[colIndex].foreignKeyTableName[foreignKeyIndex], tableHeader->entrys[colIndex].foreignKeyTableName[tableHeader->entrys[colIndex].foreignKeyConstraint-1]);
     strcpy(tableHeader->entrys[colIndex].foreignKeyColName[foreignKeyIndex], tableHeader->entrys[colIndex].foreignKeyColName[tableHeader->entrys[colIndex].foreignKeyConstraint-1]);
     tableHeader->entrys[colIndex].foreignKeyConstraint--;
+    fileHandler->saveTableHeader();
     return 0;
 }
 
@@ -578,6 +582,7 @@ int TableManager::createUniqueKey(string tableName, string colName) {
             return -1;
         } */
         tableHeader->entrys[index].uniqueConstraint = true;
+        fileHandler->saveTableHeader();
         return index;
     }
     return res;
@@ -603,6 +608,7 @@ int TableManager::dropUniqueKey(string tableName, string colName, DBMeta* dbMeta
             return -1;
         }
         tableHeader->entrys[index].uniqueConstraint = false;
+        fileHandler->saveTableHeader();
     } else {
         printf("[ERROR] specified column does not exist.\n");
         return -1;
