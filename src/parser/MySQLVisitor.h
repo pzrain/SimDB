@@ -164,7 +164,8 @@ public:
         int ret = databaseManager->insertRecords(ctx->Identifier()->getText(), dbInsert);
         end = clock();
         float time = (float)(end - start);
-        printf("Insert %d rows in %f seconds\n", ret, time / CLOCKS_PER_SEC);
+        if(ret != -1)
+            printf("Insert %d rows in %f seconds\n", ret, time / CLOCKS_PER_SEC);
 
         // delete pointer with struct destructor
         delete dbInsert;
@@ -184,7 +185,8 @@ public:
         
         end = clock();
         float time = (float)(end - start);
-        printf("Delete %d rows in %f seconds\n", ret, time / CLOCKS_PER_SEC);
+        if(ret != -1)
+            printf("Delete %d rows in %f seconds\n", ret, time / CLOCKS_PER_SEC);
         // delete pointer in DBExpression using struct destructor
         delete dbDelete;
         return 0;
@@ -200,11 +202,16 @@ public:
         std::vector<DBExpression> expressions = std::any_cast<std::vector<DBExpression>>(ctx->where_and_clause()->accept(this));
         dbUpdate->expItem = expItem;
         dbUpdate->expressions = expressions;
+        // printf("ltype and rtype is: %d, %d\n", expItem[0].lType, expItem[0].rType);
+        // printf("rvalue is: %d\n", *(int*)expItem[0].rVal);
+        // printf("ltype and rtype is: %d, %d\n", expItem[1].lType, expItem[1].rType);
+        // printf("rvalue is: %f\n", *(float*)expItem[1].rVal);
         int ret = databaseManager->updateRecords(ctx->Identifier()->getText(), dbUpdate);
         
         end = clock();
         float time = (float)(end - start);
-        printf("Update %d rows in %f seconds\n", ret, time / CLOCKS_PER_SEC);
+        if(ret != -1)
+            printf("Update %d rows in %f seconds\n", ret, time / CLOCKS_PER_SEC);
         // delete pointer in DBExpression using struct destructor
         delete dbUpdate;
         return 0;
@@ -220,7 +227,8 @@ public:
         int ret = databaseManager->selectRecords(dbSelect);
         end = clock();
         float time = (float)(end - start);
-        printf("Select %d rows in %f seconds\n", ret, time / CLOCKS_PER_SEC);
+        if(ret != -1)
+            printf("Select %d rows in %f seconds\n", ret, time / CLOCKS_PER_SEC);
         // delete pointer in DBExpression with struct destructor
         delete dbSelect;
         return 0;
@@ -637,8 +645,12 @@ public:
         expr.op = IS_TYPE;
         std::string nullInst = ctx->getText();
         if(nullInst.rfind("NOT") != std::string::npos) {
+            printf("\nis not type\n");
             expr.op = ISN_TYPE;
         }
+
+        expr.rVal = nullptr;
+        expr.rType = DB_NULL;
         return expr;
     }
 
@@ -738,28 +750,30 @@ public:
         fprintf(stderr, "Visit Set Clause.\n");
 
         std::vector<DBExpression> expItem;
-        DBExpItem item;
+        DBExpItem *item = new DBExpItem;
         DBExpression expr;
         for(int i = 0; i < ctx->Identifier().size(); i++) {
-            item.expCol = ctx->Identifier(i)->getText();
-            expr.lVal = &item;
+            item->expCol = ctx->Identifier(i)->getText();
+            // printf("%s\n", item->expCol.c_str());
+            expr.lVal = item;
             expr.lType = DB_ITEM;
             expr.op = EQU_TYPE;
 
-            int intValue;
-            std::string stringValue;
-            float floatValue;
+            int* intValue;
+            char* stringValue;
+            float* floatValue;
             if(ctx->value(i)->Integer() != nullptr) {
-                intValue = std::any_cast<int>(ctx->value(i)->accept(this));
-                expr.rVal = &intValue;
+                intValue = std::any_cast<int*>(ctx->value(i)->accept(this));
+                // printf("%d\n", *intValue);
+                expr.rVal = intValue;
                 expr.rType = DB_INT;
             } else if(ctx->value(i)->String() != nullptr) {
-                stringValue = std::any_cast<std::string>(ctx->value(i)->accept(this));
-                expr.rVal = &stringValue;
+                stringValue = std::any_cast<char*>(ctx->value(i)->accept(this));
+                expr.rVal = stringValue;
                 expr.rType = DB_CHAR;
             } else if(ctx->value(i)->Float() != nullptr) {
-                floatValue = std::any_cast<float>(ctx->value(i)->accept(this));
-                expr.rVal = &floatValue;
+                floatValue = std::any_cast<float*>(ctx->value(i)->accept(this));
+                expr.rVal = floatValue;
                 expr.rType = DB_FLOAT;
             } else if(ctx->value(i)->Null() != nullptr) {
                 expr.rVal = nullptr;
