@@ -357,7 +357,7 @@ int DatabaseManager::dropIndex(string tableName, string colName) {
         printf("[ERROR] use a database first\n");
         return -1;
     }
-    int res = tableManager->dropIndex(tableName, colName);
+    int res = tableManager->dropIndex(tableName, colName, metaData);
     if (res > -1) {
         int tableNum = -1;
         for(int i = 0; i < metaData->tableNum; i++) {

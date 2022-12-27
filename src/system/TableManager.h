@@ -81,7 +81,7 @@ public:
 
     int createIndex(string tableName, string colName);
 
-    int dropIndex(string tableName, string colName);
+    int dropIndex(string tableName, string colName, DBMeta* dbMeta);
 
     bool hasIndex(string tableName, string colName);
 
