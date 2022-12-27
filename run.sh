@@ -25,5 +25,5 @@ if [ $# -ge 1 ] && [ $FLAG_1 = '-batch' ]; then
     ./bin/SimDB 2>msg.debug 1>$OUT_FILE $IN_FILE
 else
     echo "cli mode"
-    ./bin/SimDB 2>/dev/null
+    ./bin/SimDB 2>msg.debug
 fi

@@ -1307,7 +1307,7 @@ int getMapIndex(RecordDataNode* cur, void* ma, int &cnt) {
 }
 
 int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resRecords, vector<string>& entryNames) {
-    
+
     int tableSize = dbSelect->selectTables.size();
     if (tableSize > MAX_SELECT_TABLE) {
         printf("[ERROR] join selection for more than two tables is not supported.\n");
@@ -1317,6 +1317,10 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resReco
     TableHeader* tableHeaders[MAX_SELECT_TABLE];
     for (int i = 0; i < tableSize; i++) {
         fileHandlers[i] = recordManager->findTable(dbSelect->selectTables[i].c_str());
+        if (fileHandlers[i] == nullptr) {
+            printf("[Error] table %s does not exit.\n", dbSelect->selectTables[i].c_str());
+            return -1;
+        }
         tableHeaders[i] = fileHandlers[i]->getTableHeader();
     }
 
@@ -1425,7 +1429,7 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resReco
         string tempEntryName = dbSelect->selectItems[i].star ? "*" : (dbSelect->selectItems[i].item.expTable + "." + dbSelect->selectItems[i].item.expCol);
         switch (dbSelect->selectItems[i].selectType) {
             case (MAX_TYPE):
-                tempEntryName = "SUM(" + tempEntryName + ")";
+                tempEntryName = "MAX(" + tempEntryName + ")";
                 break;
             case (MIN_TYPE):
                 tempEntryName = "MIN(" + tempEntryName + ")";
@@ -1650,6 +1654,7 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert, DBMeta* db
                     recordDataNode->nodeType = COL_VARCHAR;
                     recordDataNode->content.charContent = new char[recordDataNode->len];
                     strcpy(recordDataNode->content.charContent, (char*)dbInsert->valueLists[i][j]);
+                    *(recordDataNode->content.charContent + recordDataNode->len - 1) = '\0';
                     indexData[j].push_back((char*)dbInsert->valueLists[i][j]);
                     break;
                 case DB_LIST_NULL:
@@ -1942,6 +1947,7 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
                         recordDataNode->content.charContent = new char[recordDataNode->len];
                     }
                     strcpy(recordDataNode->content.charContent, (char*)dbUpdate->expItem[j].rVal);
+                    *(recordDataNode->content.charContent + recordDataNode->len - 1) = '\0';
                     break;
                 default:
                     break;
