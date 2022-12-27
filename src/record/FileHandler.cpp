@@ -454,3 +454,7 @@ void FileHandler::renameTable(const char* newName) {
     memcpy(tableHeader->tableName, newName, strlen(newName));
     writeTableHeader(bufPageManager, fileId, tableHeader);
 }
+
+void FileHandler::saveTableHeader() {
+    writeTableHeader(bufPageManager, fileId, tableHeader);
+}

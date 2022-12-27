@@ -80,6 +80,8 @@ public:
 
     void renameTable(const char* newName);
 
+    void saveTableHeader();
+
 };
 
 
