@@ -166,27 +166,7 @@ public:
         float time = (float)(end - start);
         printf("Insert %d rows in %f seconds\n", ret, time / CLOCKS_PER_SEC);
 
-        for(int i = 0; i < dbInsert->valueLists.size(); i++) {
-            for(int j = 0; j < dbInsert->valueLists[i].size(); j++) {
-                switch(dbInsert->valueListsType[i][j]) {
-                    case DB_LIST_INT : {
-                        delete (int*) dbInsert->valueLists[i][j];
-                        break;
-                    }
-                    case DB_LIST_CHAR : {
-                        delete (char*) dbInsert->valueLists[i][j];
-                        break;
-                    }
-                    case DB_LIST_FLOAT : {
-                        delete (float*) dbInsert->valueLists[i][j];
-                        break;
-                    }
-                    default:
-                        break;
-                }
-
-            }
-        }
+        // delete pointer with struct destructor
         delete dbInsert;
         return 0;
     }
@@ -205,7 +185,7 @@ public:
         end = clock();
         float time = (float)(end - start);
         printf("Delete %d rows in %f seconds\n", ret, time / CLOCKS_PER_SEC);
-        // TODO delete pointer in DBExpression
+        // delete pointer in DBExpression using struct destructor
         delete dbDelete;
         return 0;
     }
@@ -225,7 +205,7 @@ public:
         end = clock();
         float time = (float)(end - start);
         printf("Update %d rows in %f seconds\n", ret, time / CLOCKS_PER_SEC);
-        // TODO delete pointer in DBExpression
+        // delete pointer in DBExpression using struct destructor
         delete dbUpdate;
         return 0;
     }
@@ -241,8 +221,7 @@ public:
         end = clock();
         float time = (float)(end - start);
         printf("Select %d rows in %f seconds\n", ret, time / CLOCKS_PER_SEC);
-        // TODO delete pointer in DBExpression
-
+        // delete pointer in DBExpression with struct destructor
         delete dbSelect;
         return 0;
     }
@@ -269,9 +248,10 @@ public:
 
         if(ctx->column() != nullptr) { // 'GROUP' 'BY' column
             dbSelect->groupByEn = true;
-            DBExpItem groupByCol;
-            groupByCol = *std::any_cast<DBExpItem*>(ctx->column()->accept(this));
-            dbSelect->groupByCol = groupByCol;
+            DBExpItem* groupByCol;
+            groupByCol = std::any_cast<DBExpItem*>(ctx->column()->accept(this));
+            dbSelect->groupByCol = *groupByCol;
+            delete groupByCol;
         }
 
         size_t intSize = ctx->Integer().size();
@@ -815,11 +795,15 @@ public:
         DBSelItem selItem;
         selItem.star = false;
         if(ctx->column() != nullptr) {
-            selItem.item =  *std::any_cast<DBExpItem*>(ctx->column()->accept(this));
+            DBExpItem* pItem = std::any_cast<DBExpItem*>(ctx->column()->accept(this));
+            selItem.item =  *pItem;
             selItem.selectType = ORD_TYPE;
+            delete pItem;
         } else if(ctx->aggregator() != nullptr) {
-            selItem.item =  *std::any_cast<DBExpItem*>(ctx->column()->accept(this));
+            DBExpItem* pItem = std::any_cast<DBExpItem*>(ctx->column()->accept(this));
+            selItem.item = *pItem;
             selItem.selectType = std::any_cast<DB_SELECT_TYPE>(ctx->aggregator()->accept(this));
+            delete pItem;
         } else if(ctx->Count() != nullptr) { // no star condition in aggregator 
             selItem.star = true;
             selItem.selectType = COUNT_TYPE;
