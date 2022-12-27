@@ -131,6 +131,7 @@ public:
 
         DBInsert* dbInsert = new DBInsert;
         std::vector<std::vector<void*>> valueLists = std::any_cast<std::vector<std::vector<void*>>>(ctx->value_lists()->accept(this));
+        // printf("str is %s\n", (char*)valueLists[0][2]);
         dbInsert->valueLists = valueLists;
         auto value_lists = ctx->value_lists()->value_list(); // a vector
         for(int i = 0; i < value_lists.size(); i++) {
@@ -549,8 +550,12 @@ public:
             return pInt;
         }
         else if(ctx->String() != nullptr) {
-            char* pString = new char[ctx->String()->getText().length()];
-            strcpy(pString, ctx->String()->getText().c_str());
+            std::string subString = ctx->String()->getText();
+            size_t startPos = subString.find("'");
+            size_t endPos   = subString.rfind("'");
+            subString = subString.substr(startPos+1, endPos-startPos-1);
+            char* pString = new char[subString.length()];
+            strcpy(pString, subString.c_str());
             return pString;
         }
         else if(ctx->Float() != nullptr) {
