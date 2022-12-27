@@ -10,7 +10,12 @@ DESC test_table;
 INSERT INTO test_table 
 VALUES (3, 3.33, 'test'), (7, 6.23, 'new'), (527, 8.7861, 'old');
 
-UPDATE test_table
-SET test_int = 777, test_float = 3.14159
-WHERE test_str = 'test';
+
+
+SELECT * FROM test_table;
+
+SELECT MAX(test_int) FROM test_table;
+-- SELECT MIN(test_int) FROM test_table;
+-- SELECT SUM(test_int) FROM test_table;
+-- SELECT AVG(test_int) FROM test_table;
 

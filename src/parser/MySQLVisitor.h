@@ -239,6 +239,7 @@ public:
 
         selectItems = std::any_cast<std::vector<DBSelItem>>(ctx->selectors()->accept(this));
         dbSelect->selectItems = selectItems;
+        // printf("column name is: %s, select type is: %d\n", selectItems[0].item.expCol.c_str() , selectItems[0].selectType);
 
         std::vector<std::string> selectTables;
         selectTables = std::any_cast<std::vector<std::string>>(ctx->identifiers()->accept(this));
@@ -793,6 +794,7 @@ public:
         }
         for(int i = 0; i < ctx->selector().size(); i++) {
             item = std::any_cast<DBSelItem>(ctx->selector(i)->accept(this));
+            // printf("in selectors column name is: %s, select type is: %d\n", item.item.expCol.c_str() , item.selectType);
             selectItems.push_back(item);
         }
         return selectItems;
@@ -803,15 +805,15 @@ public:
 
         DBSelItem selItem;
         selItem.star = false;
-        if(ctx->column() != nullptr) {
-            DBExpItem* pItem = std::any_cast<DBExpItem*>(ctx->column()->accept(this));
-            selItem.item =  *pItem;
-            selItem.selectType = ORD_TYPE;
-            delete pItem;
-        } else if(ctx->aggregator() != nullptr) {
+         if(ctx->aggregator() != nullptr) {
             DBExpItem* pItem = std::any_cast<DBExpItem*>(ctx->column()->accept(this));
             selItem.item = *pItem;
             selItem.selectType = std::any_cast<DB_SELECT_TYPE>(ctx->aggregator()->accept(this));
+            delete pItem;
+        } else if(ctx->column() != nullptr) {
+            DBExpItem* pItem = std::any_cast<DBExpItem*>(ctx->column()->accept(this));
+            selItem.item =  *pItem;
+            selItem.selectType = ORD_TYPE;
             delete pItem;
         } else if(ctx->Count() != nullptr) { // no star condition in aggregator 
             selItem.star = true;
