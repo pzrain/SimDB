@@ -202,10 +202,6 @@ public:
         std::vector<DBExpression> expressions = std::any_cast<std::vector<DBExpression>>(ctx->where_and_clause()->accept(this));
         dbUpdate->expItem = expItem;
         dbUpdate->expressions = expressions;
-        // printf("ltype and rtype is: %d, %d\n", expItem[0].lType, expItem[0].rType);
-        // printf("rvalue is: %d\n", *(int*)expItem[0].rVal);
-        // printf("ltype and rtype is: %d, %d\n", expItem[1].lType, expItem[1].rType);
-        // printf("rvalue is: %f\n", *(float*)expItem[1].rVal);
         int ret = databaseManager->updateRecords(ctx->Identifier()->getText(), dbUpdate);
         
         end = clock();
@@ -570,7 +566,7 @@ public:
     std::any visitWhere_and_clause(SQLParser::Where_and_clauseContext *ctx) override {
         fprintf(stderr, "Visit Where And Clause.\n");
 
-        optimizeWhereClause(ctx, databaseManager);
+        // optimizeWhereClause(ctx, databaseManager);
         std::vector<DBExpression> expressions;
         for(int i = 0; i < ctx->where_clause().size(); i++) {
             DBExpression expr;
@@ -750,11 +746,10 @@ public:
         fprintf(stderr, "Visit Set Clause.\n");
 
         std::vector<DBExpression> expItem;
-        DBExpItem *item = new DBExpItem;
         DBExpression expr;
         for(int i = 0; i < ctx->Identifier().size(); i++) {
+            DBExpItem *item = new DBExpItem;
             item->expCol = ctx->Identifier(i)->getText();
-            // printf("%s\n", item->expCol.c_str());
             expr.lVal = item;
             expr.lType = DB_ITEM;
             expr.op = EQU_TYPE;

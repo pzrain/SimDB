@@ -14,39 +14,3 @@ UPDATE test_table
 SET test_int = 777, test_float = 3.14159
 WHERE test_str = 'test';
 
-SELECT * FROM test_table;
-
-SELECT test_int, test_str FROM test_table;
-
-
-
-SELECT * FROM test_table 
-WHERE test_table.test_float > 3.33;
-
-SELECT * FROM test_table 
-WHERE test_table.test_float < 7.33;
-
-SELECT * FROM test_table 
-WHERE test_table.test_str = 'test';
-
-SELECT * FROM test_table 
-WHERE test_table.test_float <= 6.33;
-
-SELECT * FROM test_table 
-WHERE test_table.test_int >= 7;
-
-SELECT * FROM test_table 
-WHERE test_table.test_float <> 3.33;
-
-
-
-SELECT test_int FROM test_table
-WHERE test_int = 527;
-
-SELECT * FROM test_table
-WHERE test_table.test_int = (
-    SELECT test_int FROM test_table
-    WHERE test_int = 527
-);
-
-
