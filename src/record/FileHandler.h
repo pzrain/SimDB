@@ -82,6 +82,14 @@ public:
 
     void saveTableHeader();
 
+    void transform(int& val, int pageId, int slotId);
+
+    void transform(std::vector<int>& vals, std::vector<int> pageIds, std::vector<int> slotIds);
+
+    void transformR(int val, int& pageId, int& slotId);
+
+    void transformR(std::vector<int> vals, std::vector<int>& pageIds, std::vector<int>& slotIds);
+
 };
 
 
