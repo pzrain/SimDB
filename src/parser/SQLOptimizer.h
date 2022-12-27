@@ -207,7 +207,13 @@ void testOptimizer(SQLParser::Where_and_clauseContext* whereAndClause) {
             fprintf(stderr, "expression[%d]'s operator is %s\n", i, childWhereClause->operator_()->getText().c_str());
             auto exp = childWhereClause->expression();
             if (exp->value() != nullptr) {
-                fprintf(stderr, "expression[%d]'s right value = %s\n", i, exp->value()->Integer()->getText().c_str());
+                if (exp->value()->Integer() != nullptr) {
+                    fprintf(stderr, "expression[%d]'s right value = %s\n", i, exp->value()->Integer()->getText().c_str());
+                } else if (exp->value()->Float() != nullptr) {
+                    fprintf(stderr, "expression[%d]'s right value = %s\n", i, exp->value()->Float()->getText().c_str());
+                } else if (exp->value()->String() != nullptr) {
+                    fprintf(stderr, "expression[%d]'s right value = %s\n", i, exp->value()->String()->getText().c_str());
+                }
             }
             if (exp->column() != nullptr) {
                 for (int j = 0; j < exp->column()->Identifier().size(); j++) {
@@ -219,7 +225,7 @@ void testOptimizer(SQLParser::Where_and_clauseContext* whereAndClause) {
     }
 }
 
-void optimizeWhereClause(SQLParser::Where_and_clauseContext* whereAndClause, DatabaseManager* TestdatabaseManager) {
+void optimizeWhereClause(SQLParser::Where_and_clauseContext* whereAndClause, DatabaseManager* databaseManager) {
     // TODO: optimization when joining multiply tables
     SQLOptimizerGraph graph;
     std::vector<SQLParser::Where_clauseContext*> newWhereClause;
@@ -240,8 +246,8 @@ void optimizeWhereClause(SQLParser::Where_and_clauseContext* whereAndClause, Dat
                     const char* indexName1 = childWhereClause->column()->Identifier(1)->getText().c_str();
                     const char* tableName2 = exp->column()->Identifier(0)->getText().c_str();
                     const char* indexName2 = exp->column()->Identifier(1)->getText().c_str();
-                    bool isTerminal1 = !TestdatabaseManager->hasIndex(tableName1, indexName1);
-                    bool isTerminal2 = !TestdatabaseManager->hasIndex(tableName2, indexName2);
+                    bool isTerminal1 = !databaseManager->hasIndex(tableName1, indexName1);
+                    bool isTerminal2 = !databaseManager->hasIndex(tableName2, indexName2);
                     int index1 = graph.addNode(tableName1, indexName1, isTerminal1);
                     int index2 = graph.addNode(tableName2, indexName2, isTerminal2);
                     // fprintf(stderr, "%s %s %d %s %s %d\n", tableName1, indexName1, isTerminal1, tableName2, indexName2, isTerminal2);
