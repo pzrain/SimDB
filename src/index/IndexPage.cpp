@@ -23,7 +23,7 @@ inline uint16_t IndexPageHeader::getTotalLen() {
 IndexPage::IndexPage(uint8_t* pageData, uint16_t indexLen, uint8_t colType, uint16_t pageId_) {
     data = pageData;
     indexPageHeader = (IndexPageHeader*)data;
-    if (indexPageHeader->isInitialized == 0) { // uninitialized but not zero?
+    if (indexPageHeader->isInitialized != 1) { // uninitialized but not zero?
         indexPageHeader->initialize(indexLen, colType);
     }
     capacity = ((PAGE_SIZE - sizeof(IndexPageHeader)) / indexPageHeader->getTotalLen()) - 2;
@@ -52,6 +52,7 @@ IndexPage::~IndexPage() {
 
 void IndexPage::initialize(uint16_t indexLen_, uint8_t colType_) {
     indexPageHeader->initialize(indexLen_, colType_);
+    capacity = ((PAGE_SIZE - sizeof(IndexPageHeader)) / indexPageHeader->getTotalLen()) - 2;
 }
 
 void IndexPage::clear() {

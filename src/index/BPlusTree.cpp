@@ -5,7 +5,7 @@ BPlusTree::BPlusTree(int fileId_, BufPageManager* bufPageManager_, uint16_t inde
     fileId = fileId_;
     bufPageManager = bufPageManager_;
     indexHeader = new IndexHeader((uint8_t*)bufPageManager->getPage(fileId, 0, tableIndex));
-    if (indexHeader->valid == 0) {
+    if (indexHeader->valid != 1) {
         assert(indexLen_ >= 0 && colType_ >= 0);
         indexHeader->init(indexLen_, colType_);
         writeIndexTable();
