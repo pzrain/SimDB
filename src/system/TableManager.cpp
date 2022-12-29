@@ -832,7 +832,6 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
             continue;
         }
         bool preFlag = false; // flag indicating the previous item has been successfully selected
-        std::vector<RecordId*> preRes;
         cur ^= 1;
         res[cur].clear();
         if (expressions[i].lType != DB_ITEM) { // in SQL.g4, the left must be an item;
@@ -927,19 +926,20 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                             break;
                     }
                     if (flag) {
-                        res[cur].push_back(curRecordId);
-                        if (tableNum > 1) {
+                        if (fileId == 0) {
+                            res[cur].push_back(curRecordId);
+                            if (tableNum > 1) {
+                                res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                            }
+                        } else {
                             res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                            res[cur].push_back(curRecordId);
                         }
                     }
                     continue;
                 }
                 // rFileId != fileId, different table
                 if (equalAsPre) {
-                    // for (int k = 0; k < preRes.size(); k++) {
-                    //     res[cur].push_back(curRecordId);
-                    //     res[cur].push_back(preRes[k]);
-                    // }
                     continue;
                 } else {
                     if (hasIndex(rItem->expTable, rItem->expCol)) { // search using indexManager
@@ -975,29 +975,30 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                         for (int k = 0; k < indexRes.size(); k++) {
                             ma[indexRes[k]] = true;
                         }
-                        preRes.clear();
-                        for (int k = rFileId; k < res[cur ^ 1].size(); k += tableNum) {
-                            if (tableNum > 1 && res[cur ^ 1][k ^ 1] != curRecordId) {
-                                continue;
+                        for (int k = j ^ 1; k < res[cur ^ 1].size(); k += tableNum) {
+                            if (res[cur ^ 1][k ^ 1]->getPageId() != curRecordId->getPageId() || res[cur ^ 1][k ^ 1]->getSlotId() != curRecordId->getSlotId()) {
+                                break;
                             }
                             int val;
                             RecordId* rRecordId = res[cur ^ 1][k];
                             fileHandlers[rFileId]->transform(val, rRecordId->getPageId(), rRecordId->getSlotId());
                             if (ma.count(val) > 0) {
-                                res[cur].push_back(curRecordId);
-                                preRes.push_back(rRecordId);
-                                res[cur].push_back(rRecordId);
+                                if (fileId == 0) {
+                                    res[cur].push_back(curRecordId);
+                                    res[cur].push_back(rRecordId);
+                                } else {
+                                    res[cur].push_back(rRecordId);
+                                    res[cur].push_back(curRecordId);
+                                }
                             }
                         }
 
                     } else { // search using recordManager
                         RecordData searchRecordData;
                         RecordDataNode* searchRecordDataNode;
-                        preRes.clear();
-                        for (int k = rFileId; k < res[cur ^ 1].size(); k += tableNum) {
-                            if (tableNum > 1 && (res[cur ^ 1][k ^ 1]->getPageId() != curRecordId->getPageId() || res[cur ^ 1][k ^ 1]->getSlotId() != curRecordId->getSlotId())) {
-                                // only choose those satisfy previous conditions;
-                                continue;
+                        for (int k = j ^ 1; k < res[cur ^ 1].size(); k += tableNum) {
+                            if (res[cur ^ 1][k ^ 1]->getPageId() != curRecordId->getPageId() || res[cur ^ 1][k ^ 1]->getSlotId() != curRecordId->getSlotId()) {
+                                break;
                             }
                             RecordId* rRecordId = res[cur ^ 1][k];
                             Record searchRecord(fileHandlers[rFileId]->getRecordLen());
@@ -1043,9 +1044,13 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                                     break;
                             }
                             if (flag) {
-                                res[cur].push_back(curRecordId);
-                                preRes.push_back(rRecordId);
-                                res[cur].push_back(rRecordId);
+                                if (fileId == 0) {
+                                    res[cur].push_back(curRecordId);
+                                    res[cur].push_back(rRecordId);
+                                } else {
+                                    res[cur].push_back(rRecordId);
+                                    res[cur].push_back(curRecordId);
+                                }
                             }
                         }
                     }
@@ -1116,9 +1121,14 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                         default: break;
                     }
                     if (flag) {
-                        res[cur].push_back(curRecordId);
-                        if (tableNum > 1) {
+                        if (fileId == 0) {
+                            res[cur].push_back(curRecordId);
+                            if (tableNum > 1) {
+                                res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                            }
+                        } else {
                             res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                            res[cur].push_back(curRecordId);
                         }
                         preFlag = flag;
                     }
@@ -1128,9 +1138,14 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                 }
             } else if (expressions[i].rType == DB_LIST) {
                 if (equalAsPre && preFlag) {
-                    res[cur].push_back(curRecordId);
-                    if (tableNum > 1) {
+                    if (fileId == 0) {
+                        res[cur].push_back(curRecordId);
+                        if (tableNum > 1) {
+                            res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                        }
+                    } else {
                         res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                        res[cur].push_back(curRecordId);
                     }
                     continue;
                 }
@@ -1139,9 +1154,14 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                 for (int k = 0; k < expressions[i].valueListType.size(); k++) {
                     if (expressions[i].valueListType[k] == (DB_LIST_TYPE)curRecordDataNode->nodeType) {
                         if (compare->equ((*valueList)[k], searchData)) {
-                            res[cur].push_back(curRecordId);
-                            if (tableNum > 1) {
+                            if (fileId == 0) {
+                                res[cur].push_back(curRecordId);
+                                if (tableNum > 1) {
+                                    res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                                }
+                            } else {
                                 res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                                res[cur].push_back(curRecordId);
                             }
                             preFlag = true;
                             break;
@@ -1154,9 +1174,14 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     return -1;
                 }
                 if (curRecordDataNode->nodeType == COL_NULL) {
-                    res[cur].push_back(curRecordId);
-                    if (tableNum > 1) {
+                    if (fileId == 0) {
+                        res[cur].push_back(curRecordId);
+                        if (tableNum > 1) {
+                            res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                        }
+                    } else {
                         res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                        res[cur].push_back(curRecordId);
                     }
                 }
             } else { // DB_INT, DB_CHAR, DB_FLOAT
@@ -1165,9 +1190,14 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     return -1;
                 }
                 if (equalAsPre && preFlag) {
-                    res[cur].push_back(curRecordId);
-                    if (tableNum > 1) {
+                    if (fileId == 0) {
+                        res[cur].push_back(curRecordId);
+                        if (tableNum > 1) {
+                            res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                        }
+                    } else {
                         res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                        res[cur].push_back(curRecordId);
                     }
                     continue;
                 }
@@ -1230,9 +1260,14 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                         break;
                 }
                 if (flag) {
-                    res[cur].push_back(curRecordId);
-                    if (tableNum > 1) {
+                    if (fileId == 0) {
+                        res[cur].push_back(curRecordId);
+                        if (tableNum > 1) {
+                            res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                        }
+                    } else {
                         res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                        res[cur].push_back(curRecordId);
                     }
                     preFlag = flag;
                 }
