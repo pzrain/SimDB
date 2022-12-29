@@ -3,7 +3,7 @@ IN_FILE=$2
 OUT_FILE=$3
 FLAG_4=$4
 
-if ([ $# -eq 1 ] && [ $FLAG_1 = '-c' ]) || ([ $# -eq 4 ] && [ $FLAG_4 = '-c' ]); then
+if ([ $# -eq 1 ] && ([ $FLAG_1 = '-c' ] || [ $FLAG_1 = '-onlyc' ])) || ([ $# -eq 4 ] && [ $FLAG_4 = '-c' ]); then
     if [[ ! -d build ]]; then
         echo "good"
     else
@@ -23,6 +23,8 @@ mkdir -p database
 if [ $# -ge 1 ] && [ $FLAG_1 = '-batch' ]; then
     echo "batch mode"
     ./bin/SimDB 2>msg.debug 1>$OUT_FILE $IN_FILE
+elif [ $# -ge 1 ] && [ $FLAG_1 = '-onlyc' ]; then
+    echo "only compile"
 else
     echo "cli mode"
     ./bin/SimDB 2>msg.debug
