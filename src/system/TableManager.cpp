@@ -887,7 +887,8 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                 }
                 std::vector<int> indexRes, indexResTemp;
                 if (rFileId == fileId) { // the same table
-                    void* rData = curRecordData.getData(rColId);
+                    RecordDataNode* rDataNode = curRecordData.getData(rColId);
+                    void* rData = transformType(rDataNode);
                     bool flag = false;
                     switch (expressions[i].op) {
                         case EQU_TYPE:

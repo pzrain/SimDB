@@ -7,10 +7,10 @@ id = 0
 with open(ARG.file, 'w') as f:
     f.write("CREATE DATABASE testMoreIndex;\n")
     f.write("USE testMoreIndex;\n")
-    f.write("CREATE TABLE test (id INT);\n")
+    f.write("CREATE TABLE test (id INT, cid INT);\n")
     com = "INSERT INTO test VALUES"
-    for id in range(50000):
-        com += " (%d)," % (id)
+    for id in range(1000):
+        com += " (%d, %d)," % (id, id)
     com = com[:-1]
     com += ";\n"
     f.write(com)
