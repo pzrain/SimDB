@@ -11,4 +11,4 @@ SimDB
 *.synctex.gz
 *.toc
 _minted-report
-ans
+out
