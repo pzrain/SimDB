@@ -1723,6 +1723,10 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert, DBMeta* db
     TableHeader* tableHeader = insertFileHandler->getTableHeader();
     TableEntryDesc tableEntryDesc = tableHeader->getTableEntryDesc();
     int valueSize = dbInsert->valueLists[0].size();
+    if (valueSize != tableHeader->colNum) {
+        printf("[ERROR] column size does not match!\n");
+        return -1;
+    }
     vector<Record*> records;
     vector<vector<void*>> indexData;
     indexData.resize(valueSize);

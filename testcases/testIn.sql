@@ -1,0 +1,6 @@
+CREATE DATABASE testIn;
+USE testIn;
+CREATE TABLE test (id INT);
+INSERT INTO test VALUES (3), (4), (5);
+SELECT * FROM test WHERE id IN (SELECT * FROM test WHERE id<4);
+SELECT * FROM test WHERE id IN (4, 5, 6);
