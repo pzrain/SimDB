@@ -569,7 +569,7 @@ public:
     std::any visitWhere_and_clause(SQLParser::Where_and_clauseContext *ctx) override {
         fprintf(stderr, "Visit Where And Clause.\n");
 
-        // optimizeWhereClause(ctx, databaseManager);
+        optimizeWhereClause(ctx, databaseManager);
         std::vector<DBExpression> expressions;
         for(int i = 0; i < ctx->where_clause().size(); i++) {
             DBExpression expr;
@@ -842,17 +842,17 @@ public:
 
     std::any visitOperator_(SQLParser::Operator_Context *ctx) override {
         fprintf(stderr, "Visit Operator.\n");
-
+        bool flag = ctx->children.size() == 1;
         if(ctx->EqualOrAssign() != nullptr)
             return EQU_TYPE;
         else if(ctx->Less() != nullptr)
-            return LT_TYPE;
+            return flag ? LT_TYPE : GT_TYPE;
         else if(ctx->LessEqual() != nullptr)
-            return LTE_TYPE;
+            return flag ? LTE_TYPE : GTE_TYPE;
         else if(ctx->Greater() != nullptr)
-            return GT_TYPE;
+            return flag ? GT_TYPE : LT_TYPE;
         else if(ctx->GreaterEqual() != nullptr)
-            return GTE_TYPE;
+            return flag ? GTE_TYPE: LTE_TYPE;
         else if(ctx->NotEqual() != nullptr)
             return NEQ_TYPE;
         else
