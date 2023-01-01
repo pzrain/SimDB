@@ -56,9 +56,9 @@ if ARG.test is not None:
         res = checkFile("out/%s.out" % fileName[:-4], "ans/%s.ans" % fileName[:-4])
         elapsedTime = time.time() - startTime
         if res == -2:
-            print("Pass %s elapased %.2lfs" % (fileName, elapsedTime))
+            print("\033[32mPass\033[0m %s elapased %.2lfs" % (fileName, elapsedTime))
         elif res >= -1:
-            print("Fail on Line %d, %s elapased %.2lfs" % (res + 1, fileName, elapsedTime))
+            print("\033[31mFail on Line\033[0m %d, %s elapased %.2lfs" % (res + 1, fileName, elapsedTime))
         elif res == -3:
             print("No check on %s elapased %.2lfs" % (fileName, elapsedTime))
 else:

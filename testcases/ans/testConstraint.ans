@@ -34,11 +34,11 @@ FOREIGN KEY fpk_1 (colName_2) REFERENCE table_1.colName_2;
 INDEX(colName_2);
 INDEX(colName_1);
 ==========   End  Table Info  ==========
-Insert 2 rows in 0.000074 seconds
-Insert 1 rows in 0.000033 seconds
-Insert 1 rows in 0.000015 seconds
-Delete 1 rows in 0.000033 seconds
-Update 1 rows in 0.000027 seconds
+Insert 2 rows in 0.000083 seconds
+Insert 1 rows in 0.000055 seconds
+Insert 1 rows in 0.000022 seconds
+Delete 1 rows in 0.000048 seconds
+Update 1 rows in 0.000048 seconds
 
 ----------------
 table_1.colName_1 | table_1.colName_2 | table_1.colName_3 
@@ -46,28 +46,28 @@ table_1.colName_1 | table_1.colName_2 | table_1.colName_3
 col1 | 1 | 9 
 col2 | 2 | 129 
 ----------------
-Select 2 rows in 0.000021 seconds
+Select 2 rows in 0.000031 seconds
 
 ----------------
 SUM(table_1.colName_2) 
 ----------------
 3 
 ----------------
-Select 1 rows in 0.000010 seconds
+Select 1 rows in 0.000013 seconds
 
 ----------------
 MAX(table_1.colName_2) 
 ----------------
 2 
 ----------------
-Select 1 rows in 0.000009 seconds
+Select 1 rows in 0.000010 seconds
 
 ----------------
-table_1.colName_1 | table_1.colName_2 | table_1.colName_3 | table_3.colName_1 | table_3.colName_2 | table_3.colName_3 
+table_3.colName_1 | table_3.colName_2 | table_3.colName_3 | table_1.colName_1 | table_1.colName_2 | table_1.colName_3 
 ----------------
-col2 | 2 | 129 | col1 | 1 | 9 
+col1 | 1 | 9 | col2 | 2 | 129 
 ----------------
-Select 1 rows in 0.000030 seconds
+Select 1 rows in 0.000071 seconds
 
 ----------------
 COUNT(*) | table_1.colName_3 
@@ -75,4 +75,4 @@ COUNT(*) | table_1.colName_3
 1 | 9 
 1 | 129 
 ----------------
-Select 2 rows in 0.000020 seconds
+Select 2 rows in 0.000032 seconds
