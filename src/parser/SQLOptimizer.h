@@ -59,6 +59,12 @@ private:
         whereClause->column()->children[2] = RIdentifier[1];
         whereClause->expression()->column()->children[0] = LIdentifier[0];
         whereClause->expression()->column()->children[2] = LIdentifier[1];
+        if (whereClause->operator_() != nullptr) {
+            std::string oper = whereClause->operator_()->getText();
+            if (oper == ">" || oper == "<" || oper == ">=" || oper == "<=") {
+                whereClause->operator_()->children.resize(2);
+            }
+        }
     }
 
 public:
@@ -128,7 +134,7 @@ public:
                         auto whereClause = omitVec[mapping[edgeNum]];
                         auto identifiers = whereClause->column()->Identifier();
                         // fprintf(stderr, "%s %s\n", tableNames[last], tableNames[now]);
-                        if (strcmp(identifiers[0]->getText().c_str(), tableNames[last]) != 0) {
+                        if (strcmp(identifiers[0]->getText().c_str(), tableNames[last]) != 0 || strcmp(identifiers[1]->getText().c_str(), indexNames[last]) != 0) {
                             swap(whereClause);
                         }
                         vec.push_back(whereClause);
@@ -162,7 +168,7 @@ public:
                     visitEdge(edgeNum);
                     auto whereClause = omitVec[mapping[edgeNum]];
                     auto identifiers = whereClause->column()->Identifier();
-                    if (strcmp(identifiers[0]->getText().c_str(), tableNames[y]) != 0) {
+                    if (strcmp(identifiers[0]->getText().c_str(), tableNames[y]) != 0 || strcmp(identifiers[1]->getText().c_str(), indexNames[y]) != 0) {
                         swap(whereClause);
                     }
                     vec.push_back(whereClause);
@@ -226,7 +232,6 @@ void testOptimizer(SQLParser::Where_and_clauseContext* whereAndClause) {
 }
 
 void optimizeWhereClause(SQLParser::Where_and_clauseContext* whereAndClause, DatabaseManager* databaseManager) {
-    // TODO: optimization when joining multiply tables
     SQLOptimizerGraph graph;
     std::vector<SQLParser::Where_clauseContext*> newWhereClause;
     std::vector<SQLParser::Where_operator_expressionContext*> omitWhereClause;
@@ -242,15 +247,16 @@ void optimizeWhereClause(SQLParser::Where_and_clauseContext* whereAndClause, Dat
             if (exp->column() != nullptr) {
                 if (childWhereClause->column()->Identifier().size() == 2 && exp->column()->Identifier().size() == 2) {
                     // table1.index1 = table2.index2
-                    const char* tableName1 = childWhereClause->column()->Identifier(0)->getText().c_str();
-                    const char* indexName1 = childWhereClause->column()->Identifier(1)->getText().c_str();
-                    const char* tableName2 = exp->column()->Identifier(0)->getText().c_str();
-                    const char* indexName2 = exp->column()->Identifier(1)->getText().c_str();
+                    std::string tableName1 = childWhereClause->column()->Identifier(0)->getText();
+                    std::string indexName1 = childWhereClause->column()->Identifier(1)->getText();
+                    std::string tableName2 = exp->column()->Identifier(0)->getText();
+                    std::string indexName2 = exp->column()->Identifier(1)->getText();
+                    // fprintf(stderr, "%s %s %d\n", tableName1.c_str(), indexName1.c_str(), databaseManager->hasIndex(tableName1, indexName1));
                     bool isTerminal1 = !databaseManager->hasIndex(tableName1, indexName1);
                     bool isTerminal2 = !databaseManager->hasIndex(tableName2, indexName2);
-                    int index1 = graph.addNode(tableName1, indexName1, isTerminal1);
-                    int index2 = graph.addNode(tableName2, indexName2, isTerminal2);
-                    // fprintf(stderr, "%s %s %d %s %s %d\n", tableName1, indexName1, isTerminal1, tableName2, indexName2, isTerminal2);
+                    int index1 = graph.addNode(tableName1.c_str(), indexName1.c_str(), isTerminal1);
+                    int index2 = graph.addNode(tableName2.c_str(), indexName2.c_str(), isTerminal2);
+                    // fprintf(stderr, "%s %s %d %s %s %d\n", tableName1.c_str(), indexName1.c_str(), isTerminal1, tableName2.c_str(), indexName2.c_str(), isTerminal2);
                     // fprintf(stderr, "index = %d, %d\n", index1, index2);
                     if (!graph.existEdge(index1, index2)) {
                         if (graph.addEdge(index1, index2, omitWhereClause.size()) != -1) {
@@ -270,7 +276,6 @@ void optimizeWhereClause(SQLParser::Where_and_clauseContext* whereAndClause, Dat
         }
     }
     graph.calc(newWhereClause, omitWhereClause);
-    // may still nead some transform to correspond with DBMS  (TODO)
     whereAndClause->children.clear();
     for (auto whereClause : newWhereClause) {
         whereAndClause->children.push_back(whereClause);

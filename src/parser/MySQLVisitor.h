@@ -4,7 +4,8 @@
 #include "antlr4/SQLBaseVisitor.h"
 #include "SQLOptimizer.h"
 #include <cstdio>
-#include <time.h>
+#include <chrono>
+#include <ctime>
 
 
 class MySQLVisitor : public SQLBaseVisitor {
@@ -126,8 +127,6 @@ public:
 
     std::any visitInsert_into_table(SQLParser::Insert_into_tableContext *ctx) override {
         fprintf(stderr, "Visit Insert Into Table.\n");
-        clock_t start, end;
-        start = clock();
 
         DBInsert* dbInsert = new DBInsert;
         std::vector<std::vector<void*>> valueLists = std::any_cast<std::vector<std::vector<void*>>>(ctx->value_lists()->accept(this));
@@ -161,12 +160,12 @@ public:
             }
             dbInsert->valueListsType.push_back(listType);
         }
-
+        chrono::high_resolution_clock::time_point t1 = chrono::high_resolution_clock::now();
         int ret = databaseManager->insertRecords(ctx->Identifier()->getText(), dbInsert);
-        end = clock();
-        float time = (float)(end - start);
+        chrono::high_resolution_clock::time_point t2 = chrono::high_resolution_clock::now();
+        chrono::duration<double> time_span = chrono::duration_cast<chrono::duration<double>>(t2 - t1);
         if(ret != -1)
-            printf("Insert %d rows in %f seconds\n", ret, time / CLOCKS_PER_SEC);
+            printf("Insert %d rows in %f seconds\n", ret, time_span.count());
 
         // delete pointer with struct destructor
         delete dbInsert;
@@ -175,19 +174,18 @@ public:
 
     std::any visitDelete_from_table(SQLParser::Delete_from_tableContext *ctx) override {
         fprintf(stderr, "Visit Delete From Table.\n");
-        clock_t start, end;
-        start = clock();
 
         DBDelete* dbDelete = new DBDelete;
         std::vector<DBExpression> expression;
         expression = std::any_cast<std::vector<DBExpression>>(ctx->where_and_clause()->accept(this));
         dbDelete->expression = expression;
+        chrono::high_resolution_clock::time_point t1 = chrono::high_resolution_clock::now();
         int ret = databaseManager->dropRecords(ctx->Identifier()->getText(), dbDelete);
         
-        end = clock();
-        float time = (float)(end - start);
+        chrono::high_resolution_clock::time_point t2 = chrono::high_resolution_clock::now();
+        chrono::duration<double> time_span = chrono::duration_cast<chrono::duration<double>>(t2 - t1);
         if(ret != -1)
-            printf("Delete %d rows in %f seconds\n", ret, time / CLOCKS_PER_SEC);
+            printf("Delete %d rows in %f seconds\n", ret, time_span.count());
         // delete pointer in DBExpression using struct destructor
         delete dbDelete;
         return 0;
@@ -195,20 +193,19 @@ public:
 
     std::any visitUpdate_table(SQLParser::Update_tableContext *ctx) override {
         fprintf(stderr, "Visit Update Table.\n");
-        clock_t start, end;
-        start = clock();
 
         DBUpdate* dbUpdate = new DBUpdate;
         std::vector<DBExpression> expItem = std::any_cast<std::vector<DBExpression>>(ctx->set_clause()->accept(this));
         std::vector<DBExpression> expressions = std::any_cast<std::vector<DBExpression>>(ctx->where_and_clause()->accept(this));
         dbUpdate->expItem = expItem;
         dbUpdate->expressions = expressions;
+        chrono::high_resolution_clock::time_point t1 = chrono::high_resolution_clock::now();
         int ret = databaseManager->updateRecords(ctx->Identifier()->getText(), dbUpdate);
         
-        end = clock();
-        float time = (float)(end - start);
+        chrono::high_resolution_clock::time_point t2 = chrono::high_resolution_clock::now();
+        chrono::duration<double> time_span = chrono::duration_cast<chrono::duration<double>>(t2 - t1);
         if(ret != -1)
-            printf("Update %d rows in %f seconds\n", ret, time / CLOCKS_PER_SEC);
+            printf("Update %d rows in %f seconds\n", ret, time_span.count());
         // delete pointer in DBExpression using struct destructor
         delete dbUpdate;
         return 0;
@@ -216,16 +213,15 @@ public:
 
     std::any visitSelect_table_(SQLParser::Select_table_Context *ctx) override {
         fprintf(stderr, "Visit Select Table_.\n");
-        clock_t start, end;
-        start = clock();
 
         DBSelect* dbSelect;
         dbSelect = std::any_cast<DBSelect*>(ctx->select_table()->accept(this));
+        chrono::high_resolution_clock::time_point t1 = chrono::high_resolution_clock::now();
         int ret = databaseManager->selectRecords(dbSelect);
-        end = clock();
-        float time = (float)(end - start);
+        chrono::high_resolution_clock::time_point t2 = chrono::high_resolution_clock::now();
+        chrono::duration<double> time_span = chrono::duration_cast<chrono::duration<double>>(t2 - t1);
         if(ret != -1)
-            printf("Select %d rows in %f seconds\n", ret, time / CLOCKS_PER_SEC);
+            printf("Select %d rows in %f seconds\n", ret, time_span.count());
         // delete pointer in DBExpression with struct destructor
         delete dbSelect;
         return 0;
@@ -572,7 +568,7 @@ public:
     std::any visitWhere_and_clause(SQLParser::Where_and_clauseContext *ctx) override {
         fprintf(stderr, "Visit Where And Clause.\n");
 
-        // optimizeWhereClause(ctx, databaseManager);
+        optimizeWhereClause(ctx, databaseManager);
         std::vector<DBExpression> expressions;
         for(int i = 0; i < ctx->where_clause().size(); i++) {
             DBExpression expr;
@@ -669,9 +665,10 @@ public:
         expr.lType = DB_ITEM;
         expr.op = IN_TYPE;
         
-        std::vector<void*>* valueList;
+        std::vector<void*> valueList;
         std::vector<DB_LIST_TYPE> valueListType;
-        valueList = std::any_cast<std::vector<void*>*>(ctx->value_list()->accept(this));
+        valueList = std::any_cast<std::vector<void*>>(ctx->value_list()->accept(this));
+        std::vector<void*>* pList = new std::vector<void*>(valueList);
         for(int i = 0; i < ctx->value_list()->value().size(); i++) {
             if(ctx->value_list()->value(i)->Integer() != nullptr) {
                 valueListType.push_back(DB_LIST_INT);
@@ -685,7 +682,7 @@ public:
                 // it will never use this branch in normal
             }
         }
-        expr.rVal = valueList;
+        expr.rVal = pList;
         expr.rType = DB_LIST;
         expr.valueListType = valueListType;
         return expr;
@@ -717,8 +714,14 @@ public:
         expr.lType = DB_ITEM;
         expr.op = LIKE_TYPE;
 
-        std::string* item2 = new std::string(ctx->String()->getText());
-        expr.rVal = item2;
+        // std::string* item2 = new std::string(ctx->String()->getText());
+        std::string subString = ctx->String()->getText();
+        size_t startPos = subString.find("'");
+        size_t endPos   = subString.rfind("'");
+        subString = subString.substr(startPos+1, endPos-startPos-1);
+        char* pchar = new char[subString.length()];
+        strcpy(pchar, subString.c_str());
+        expr.rVal = pchar;
         expr.rType = DB_CHAR;
         return expr;
     }
@@ -845,17 +848,17 @@ public:
 
     std::any visitOperator_(SQLParser::Operator_Context *ctx) override {
         fprintf(stderr, "Visit Operator.\n");
-
+        bool flag = ctx->children.size() == 1;
         if(ctx->EqualOrAssign() != nullptr)
             return EQU_TYPE;
         else if(ctx->Less() != nullptr)
-            return LT_TYPE;
+            return flag ? LT_TYPE : GT_TYPE;
         else if(ctx->LessEqual() != nullptr)
-            return LTE_TYPE;
+            return flag ? LTE_TYPE : GTE_TYPE;
         else if(ctx->Greater() != nullptr)
-            return GT_TYPE;
+            return flag ? GT_TYPE : LT_TYPE;
         else if(ctx->GreaterEqual() != nullptr)
-            return GTE_TYPE;
+            return flag ? GTE_TYPE: LTE_TYPE;
         else if(ctx->NotEqual() != nullptr)
             return NEQ_TYPE;
         else

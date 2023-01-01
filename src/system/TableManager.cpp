@@ -261,7 +261,7 @@ int TableManager::createIndex(string tableName, string colName) {
     return res;    
 }
 
-int TableManager::dropIndex(string tableName, string colName) {
+int TableManager::dropIndex(string tableName, string colName, DBMeta* dbMeta) {
     if(!checkTableName(tableName))
         return -1;
     string path = "database/" + databaseName + '/' + tableName +".db";
@@ -274,7 +274,15 @@ int TableManager::dropIndex(string tableName, string colName) {
         printf("[INFO] No index on %s.%s\n", tableName.c_str(), colName.c_str());
         return -1;
     }
-
+    fileHandler = recordManager->findTable(tableName.c_str());
+    if(fileHandler == nullptr)
+        return -1;
+    TableHeader* tableHeader = fileHandler->getTableHeader();
+    int index = checkColExist(tableHeader, colName.c_str());
+    if (tableHeader->entrys[index].uniqueConstraint || tableHeader->entrys[index].primaryKeyConstraint || dbMeta->foreignKeyOnCol[tableNum][index] > 0) {
+        printf("[ERROR] can not drop this index due to constraints.\n");
+        return -1;
+    }
     return indexManager->removeIndex(tableName.c_str(), colName.c_str());
 }
 
@@ -299,12 +307,12 @@ int TableManager::_createAndAddIndex(string tableName, string colName, uint16_t 
     std::vector<int> insertVals;
     std::vector<int> pageIds, slotIds;
     for (int i = 0; i < records.size(); i++) {
-        insertDatas.push_back((void*)(records[i]->data));
+        insertDatas.push_back((void*)(((uint8_t*)records[i]->data) + sizeof(int16_t)));
         pageIds.push_back(recordIds[i]->getPageId());
         slotIds.push_back(recordIds[i]->getSlotId());
     }
     insertVals.resize(records.size());
-    indexManager->transform(tableName.c_str(), colName.c_str(), insertVals, pageIds, slotIds);
+    fileHandler->transform(insertVals, pageIds, slotIds);
     indexManager->insert(tableName.c_str(), colName.c_str(), insertDatas, insertVals);
     for (int i = 0; i < records.size(); i++) {
         delete records[i];
@@ -402,12 +410,10 @@ int TableManager::dropPrimaryKey(string tableName, int colId, DBMeta* dbMeta, in
         if the index has been mannually set up, then it should not be removed
         when the primary key is dropped
      */
-    if (!dbMeta->mannuallyCreateIndex[tableNum][indexNum] && !tableHeader->entrys[index].uniqueConstraint && dbMeta->foreignKeyRefColumn[tableNum][index] == 0)  {
-        if (dbMeta->foreignKeyOnCol[tableNum][index] == 0) {
-            printf("[INFO] automatically remove Index on %s.%s.\n", tableName.c_str(), colName);
-            indexManager->removeIndex(tableName.c_str(), colName);
-            indexDropped = 1;
-        }
+    if (!dbMeta->mannuallyCreateIndex[tableNum][indexNum] && !tableHeader->entrys[index].uniqueConstraint && dbMeta->foreignKeyOnCol[tableNum][index] == 0)  {
+        printf("[INFO] automatically remove Index on %s.%s.\n", tableName.c_str(), colName);
+        indexManager->removeIndex(tableName.c_str(), colName);
+        indexDropped = 1;
     }
 
     return index;
@@ -628,11 +634,9 @@ int TableManager::dropUniqueKey(string tableName, string colName, DBMeta* dbMeta
     }
 
     if (!dbMeta->mannuallyCreateIndex[tableNum][indexNum] && !tableHeader->entrys[index].primaryKeyConstraint && dbMeta->foreignKeyOnCol[tableNum][index] == 0) {
-        if (dbMeta->foreignKeyOnCol[tableNum][index] == 0) { // no foreign key linked to this column
-            printf("[INFO] automatically remove Index on %s.%s.\n", tableName.c_str(), colName.c_str());
-            indexManager->removeIndex(tableName.c_str(), colName.c_str());
-            indexDropped = 1;
-        }
+        printf("[INFO] automatically remove Index on %s.%s.\n", tableName.c_str(), colName.c_str());
+        indexManager->removeIndex(tableName.c_str(), colName.c_str());
+        indexDropped = 1;
     }
     return index;
 }
@@ -682,18 +686,18 @@ inline bool compareEqual(RecordDataNode* cur, RecordDataNode* pre) {
     }
     switch (cur->nodeType)
     {
-    case COL_INT:
-        return *(int*)(cur->content.intContent) == *(int*)(pre->content.intContent);
-        break;
-    case COL_FLOAT:
-        return *(float*)(cur->content.floatContent) == *(int*)(pre->content.floatContent);
-        break;
-    case COL_VARCHAR:
-        return (strcmp((char*)(cur->content.charContent), (char*)(pre->content.charContent)) == 0);
-        break;
-    default:
-        return true;
-        break;
+        case COL_INT:
+            return *(int*)(cur->content.intContent) == *(int*)(pre->content.intContent);
+            break;
+        case COL_FLOAT:
+            return *(float*)(cur->content.floatContent) == *(float*)(pre->content.floatContent);
+            break;
+        case COL_VARCHAR:
+            return (strcmp((char*)(cur->content.charContent), (char*)(pre->content.charContent)) == 0);
+            break;
+        default:
+            return true;
+            break;
     }
     return false;
 }
@@ -746,25 +750,88 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
         tableHeaders[i] = fileHandlers[i]->getTableHeader();
         fileHandlers[i]->getAllRecords(records[i], recordIds[i]);
     }
-    if (tableNum == 1) {
-        for (auto recordId : recordIds[0]) {
-            res[cur].push_back(recordId);
-        }
-    } else if (tableNum == 2) {
-        for (auto recordIdI : recordIds[0]) {
-            for (auto recordIdJ : recordIds[1]) {
-                res[cur].push_back(recordIdI);
-                res[cur].push_back(recordIdJ);
+    bool initialOptimize = false;
+    if (expressions.size() > 0 && expressions[0].op >= EQU_TYPE && expressions[0].op <= LTE_TYPE && expressions[0].rType >= DB_INT && expressions[0].rType <= DB_CHAR) {
+        DBExpItem* lItem = (DBExpItem*)expressions[0].lVal;
+        if (hasIndex(lItem->expTable, lItem->expCol)) {
+            int fileId = (lItem->expTable == selectTables[0]) ? 0 : 1;
+            int colId = tableHeaders[fileId]->getCol(lItem->expCol.c_str());
+            TableEntryDesc tableEntryDesc = tableHeaders[fileId]->getTableEntryDesc();
+            TableEntryDescNode* tableEntryDescNode = tableEntryDesc.getCol(colId);
+            if (tableEntryDescNode->colType != expressions[0].rType) {
+                printf("[ERROR] incompatible type for %s.%s and %d.\n", lItem->expTable.c_str(), lItem->expCol.c_str(), expressions[0].rType);
+                return -1;
             }
+            std::vector<int> val, tempRes;
+            switch (expressions[0].op) {
+                case EQU_TYPE:
+                    indexManager->search(lItem->expTable.c_str(), lItem->expCol.c_str(), expressions[0].rVal, val);
+                    break;
+                case NEQ_TYPE:
+                    indexManager->searchBetween(lItem->expTable.c_str(), lItem->expCol.c_str(), nullptr, expressions[0].rVal, tempRes, true, false);
+                    indexManager->searchBetween(lItem->expTable.c_str(), lItem->expCol.c_str(), expressions[0].rVal, nullptr, val, false, true);
+                    for (int k = 0; k < tempRes.size(); k++) {
+                        val.push_back(tempRes[k]);
+                    }
+                    break;
+                case LT_TYPE:
+                    indexManager->searchBetween(lItem->expTable.c_str(), lItem->expCol.c_str(), nullptr, expressions[0].rVal, val, true, false);
+                    break;
+                case LTE_TYPE:
+                    indexManager->searchBetween(lItem->expTable.c_str(), lItem->expCol.c_str(), nullptr, expressions[0].rVal, val, true, true);
+                    break;
+                case GT_TYPE:
+                    indexManager->searchBetween(lItem->expTable.c_str(), lItem->expCol.c_str(), expressions[0].rVal, nullptr, val, false, true);
+                    break;
+                case GTE_TYPE:
+                    indexManager->searchBetween(lItem->expTable.c_str(), lItem->expCol.c_str(), expressions[0].rVal, nullptr, val, true, true);
+                    break;
+                default:
+                    fprintf(stderr, "encouter error op type %d in search.\n", expressions[0].op);
+                    return -1;
+                    break;
+            }
+            for (int i = 0; i < val.size(); i++) {
+                int pageId, slotId;
+                fileHandlers[fileId]->transformR(val[i], pageId, slotId);
+                RecordId* recordId = new RecordId(pageId, slotId);
+                if (tableNum == 1) {
+                    res[cur].push_back(recordId);
+                } else if (tableNum == 2) {
+                    for (auto recordIdJ : recordIds[fileId ^ 1]) {
+                        res[cur].push_back(recordId);
+                        res[cur].push_back(recordIdJ);
+                    }
+                } else {
+                    return -1;
+                }
+            }
+            initialOptimize = true;
         }
-    } else {
-        // tableNum > 2
-        // should not be here
-        return -1;
+    }
+    if (!initialOptimize) {
+        if (tableNum == 1) {
+            for (auto recordId : recordIds[0]) {
+                res[cur].push_back(recordId);
+            }
+        } else if (tableNum == 2) {
+            for (auto recordIdI : recordIds[0]) {
+                for (auto recordIdJ : recordIds[1]) {
+                    res[cur].push_back(recordIdI);
+                    res[cur].push_back(recordIdJ);
+                }
+            }
+        } else {
+            // tableNum > 2
+            // should not be here
+            return -1;
+        }
     }
     for (int i = 0; i < expressions.size(); i++) {
+        if (i == 0 && initialOptimize) {
+            continue;
+        }
         bool preFlag = false; // flag indicating the previous item has been successfully selected
-        std::vector<RecordId*> preRes;
         cur ^= 1;
         res[cur].clear();
         if (expressions[i].lType != DB_ITEM) { // in SQL.g4, the left must be an item;
@@ -820,7 +887,8 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                 }
                 std::vector<int> indexRes, indexResTemp;
                 if (rFileId == fileId) { // the same table
-                    void* rData = curRecordData.getData(rColId);
+                    RecordDataNode* rDataNode = curRecordData.getData(rColId);
+                    void* rData = transformType(rDataNode);
                     bool flag = false;
                     switch (expressions[i].op) {
                         case EQU_TYPE:
@@ -859,19 +927,21 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                             break;
                     }
                     if (flag) {
-                        res[cur].push_back(curRecordId);
-                        if (tableNum > 1) {
+                        if (fileId == 0) {
+                            res[cur].push_back(curRecordId);
+                            if (tableNum > 1) {
+                                res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                            }
+                        } else {
                             res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                            res[cur].push_back(curRecordId);
                         }
                     }
                     continue;
                 }
                 // rFileId != fileId, different table
                 if (equalAsPre) {
-                    for (int k = 0; k < preRes.size(); k++) {
-                        res[cur].push_back(curRecordId);
-                        res[cur].push_back(preRes[k]);
-                    }
+                    continue;
                 } else {
                     if (hasIndex(rItem->expTable, rItem->expCol)) { // search using indexManager
                         switch (expressions[i].op) {
@@ -906,29 +976,30 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                         for (int k = 0; k < indexRes.size(); k++) {
                             ma[indexRes[k]] = true;
                         }
-                        preRes.clear();
-                        for (int k = rFileId; k < res[cur ^ 1].size(); k += tableNum) {
-                            if (tableNum > 1 && res[cur ^ 1][k ^ 1] != curRecordId) {
-                                continue;
+                        for (int k = j ^ 1; k < res[cur ^ 1].size(); k += tableNum) {
+                            if (res[cur ^ 1][k ^ 1]->getPageId() != curRecordId->getPageId() || res[cur ^ 1][k ^ 1]->getSlotId() != curRecordId->getSlotId()) {
+                                break;
                             }
                             int val;
                             RecordId* rRecordId = res[cur ^ 1][k];
-                            indexManager->transform(rItem->expTable.c_str(), rItem->expCol.c_str(), val, rRecordId->getPageId(), rRecordId->getSlotId());
+                            fileHandlers[rFileId]->transform(val, rRecordId->getPageId(), rRecordId->getSlotId());
                             if (ma.count(val) > 0) {
-                                res[cur].push_back(curRecordId);
-                                preRes.push_back(rRecordId);
-                                res[cur].push_back(rRecordId);
+                                if (fileId == 0) {
+                                    res[cur].push_back(curRecordId);
+                                    res[cur].push_back(rRecordId);
+                                } else {
+                                    res[cur].push_back(rRecordId);
+                                    res[cur].push_back(curRecordId);
+                                }
                             }
                         }
 
                     } else { // search using recordManager
                         RecordData searchRecordData;
                         RecordDataNode* searchRecordDataNode;
-                        preRes.clear();
-                        for (int k = rFileId; k < res[cur ^ 1].size(); k += tableNum) {
-                            if (tableNum > 1 && (res[cur ^ 1][k ^ 1]->getPageId() != curRecordId->getPageId() || res[cur ^ 1][k ^ 1]->getSlotId() != curRecordId->getSlotId())) {
-                                // only choose those satisfy previous conditions;
-                                continue;
+                        for (int k = j ^ 1; k < res[cur ^ 1].size(); k += tableNum) {
+                            if (res[cur ^ 1][k ^ 1]->getPageId() != curRecordId->getPageId() || res[cur ^ 1][k ^ 1]->getSlotId() != curRecordId->getSlotId()) {
+                                break;
                             }
                             RecordId* rRecordId = res[cur ^ 1][k];
                             Record searchRecord(fileHandlers[rFileId]->getRecordLen());
@@ -974,9 +1045,13 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                                     break;
                             }
                             if (flag) {
-                                res[cur].push_back(curRecordId);
-                                preRes.push_back(rRecordId);
-                                res[cur].push_back(rRecordId);
+                                if (fileId == 0) {
+                                    res[cur].push_back(curRecordId);
+                                    res[cur].push_back(rRecordId);
+                                } else {
+                                    res[cur].push_back(rRecordId);
+                                    res[cur].push_back(curRecordId);
+                                }
                             }
                         }
                     }
@@ -1047,9 +1122,14 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                         default: break;
                     }
                     if (flag) {
-                        res[cur].push_back(curRecordId);
-                        if (tableNum > 1) {
+                        if (fileId == 0) {
+                            res[cur].push_back(curRecordId);
+                            if (tableNum > 1) {
+                                res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                            }
+                        } else {
                             res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                            res[cur].push_back(curRecordId);
                         }
                         preFlag = flag;
                     }
@@ -1059,9 +1139,14 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                 }
             } else if (expressions[i].rType == DB_LIST) {
                 if (equalAsPre && preFlag) {
-                    res[cur].push_back(curRecordId);
-                    if (tableNum > 1) {
+                    if (fileId == 0) {
+                        res[cur].push_back(curRecordId);
+                        if (tableNum > 1) {
+                            res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                        }
+                    } else {
                         res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                        res[cur].push_back(curRecordId);
                     }
                     continue;
                 }
@@ -1070,9 +1155,14 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                 for (int k = 0; k < expressions[i].valueListType.size(); k++) {
                     if (expressions[i].valueListType[k] == (DB_LIST_TYPE)curRecordDataNode->nodeType) {
                         if (compare->equ((*valueList)[k], searchData)) {
-                            res[cur].push_back(curRecordId);
-                            if (tableNum > 1) {
+                            if (fileId == 0) {
+                                res[cur].push_back(curRecordId);
+                                if (tableNum > 1) {
+                                    res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                                }
+                            } else {
                                 res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                                res[cur].push_back(curRecordId);
                             }
                             preFlag = true;
                             break;
@@ -1085,9 +1175,14 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     return -1;
                 }
                 if (curRecordDataNode->nodeType == COL_NULL) {
-                    res[cur].push_back(curRecordId);
-                    if (tableNum > 1) {
+                    if (fileId == 0) {
+                        res[cur].push_back(curRecordId);
+                        if (tableNum > 1) {
+                            res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                        }
+                    } else {
                         res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                        res[cur].push_back(curRecordId);
                     }
                 }
             } else { // DB_INT, DB_CHAR, DB_FLOAT
@@ -1096,9 +1191,14 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     return -1;
                 }
                 if (equalAsPre && preFlag) {
-                    res[cur].push_back(curRecordId);
-                    if (tableNum > 1) {
+                    if (fileId == 0) {
+                        res[cur].push_back(curRecordId);
+                        if (tableNum > 1) {
+                            res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                        }
+                    } else {
                         res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                        res[cur].push_back(curRecordId);
                     }
                     continue;
                 }
@@ -1161,9 +1261,14 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                         break;
                 }
                 if (flag) {
-                    res[cur].push_back(curRecordId);
-                    if (tableNum > 1) {
+                    if (fileId == 0) {
+                        res[cur].push_back(curRecordId);
+                        if (tableNum > 1) {
+                            res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                        }
+                    } else {
                         res[cur].push_back(res[cur ^ 1][j ^ 1]);
+                        res[cur].push_back(curRecordId);
                     }
                     preFlag = flag;
                 }
@@ -1307,7 +1412,7 @@ int getMapIndex(RecordDataNode* cur, void* ma, int &cnt) {
 }
 
 int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resRecords, vector<string>& entryNames) {
-    
+
     int tableSize = dbSelect->selectTables.size();
     if (tableSize > MAX_SELECT_TABLE) {
         printf("[ERROR] join selection for more than two tables is not supported.\n");
@@ -1317,6 +1422,10 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resReco
     TableHeader* tableHeaders[MAX_SELECT_TABLE];
     for (int i = 0; i < tableSize; i++) {
         fileHandlers[i] = recordManager->findTable(dbSelect->selectTables[i].c_str());
+        if (fileHandlers[i] == nullptr) {
+            printf("[Error] table %s does not exit.\n", dbSelect->selectTables[i].c_str());
+            return -1;
+        }
         tableHeaders[i] = fileHandlers[i]->getTableHeader();
     }
 
@@ -1425,7 +1534,7 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resReco
         string tempEntryName = dbSelect->selectItems[i].star ? "*" : (dbSelect->selectItems[i].item.expTable + "." + dbSelect->selectItems[i].item.expCol);
         switch (dbSelect->selectItems[i].selectType) {
             case (MAX_TYPE):
-                tempEntryName = "SUM(" + tempEntryName + ")";
+                tempEntryName = "MAX(" + tempEntryName + ")";
                 break;
             case (MIN_TYPE):
                 tempEntryName = "MIN(" + tempEntryName + ")";
@@ -1614,6 +1723,10 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert, DBMeta* db
     TableHeader* tableHeader = insertFileHandler->getTableHeader();
     TableEntryDesc tableEntryDesc = tableHeader->getTableEntryDesc();
     int valueSize = dbInsert->valueLists[0].size();
+    if (valueSize != tableHeader->colNum) {
+        printf("[ERROR] column size does not match!\n");
+        return -1;
+    }
     vector<Record*> records;
     vector<vector<void*>> indexData;
     indexData.resize(valueSize);
@@ -1650,6 +1763,7 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert, DBMeta* db
                     recordDataNode->nodeType = COL_VARCHAR;
                     recordDataNode->content.charContent = new char[recordDataNode->len];
                     strcpy(recordDataNode->content.charContent, (char*)dbInsert->valueLists[i][j]);
+                    *(recordDataNode->content.charContent + recordDataNode->len - 1) = '\0';
                     indexData[j].push_back((char*)dbInsert->valueLists[i][j]);
                     break;
                 case DB_LIST_NULL:
@@ -1689,7 +1803,7 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert, DBMeta* db
                 tableHeader->getCol(i, colName);
                 if (colHasIndex[i]) {
                     int val;
-                    indexManager->transform(tableName.c_str(), colName, val, recordIds[k].getPageId(), recordIds[k].getSlotId());
+                    insertFileHandler->transform(val, recordIds[k].getPageId(), recordIds[k].getSlotId());
                     indexManager->insert(tableName.c_str(), colName, indexData[i][k], val);
                 }
             }
@@ -1710,7 +1824,7 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert, DBMeta* db
                 tableHeader->getCol(i, colName);
                 if (colHasIndex[i]) {
                     int val = -1;
-                    indexManager->transform(tableName.c_str(), colName, val, recordIds[k].getPageId(), recordIds[k].getSlotId());
+                    insertFileHandler->transform(val, recordIds[k].getPageId(), recordIds[k].getSlotId());
                     indexManager->remove(tableName.c_str(), colName, indexData[i][k], val);
                 }
             }
@@ -1803,7 +1917,7 @@ int TableManager::dropRecords(string tableName, DBDelete* dbDelete, DBMeta* dbMe
             }
             if (colHasIndex[j]) {
                 int val;
-                indexManager->transform(tableName.c_str(), colName[j], val, recordIds[i]->getPageId(), recordIds[i]->getSlotId());
+                deleteFileHandler->transform(val, recordIds[i]->getPageId(), recordIds[i]->getSlotId());
                 indexDatas[j].push_back(indexData);
                 indexManager->remove(tableName.c_str(), colName[j], indexData, val);
             }
@@ -1825,7 +1939,7 @@ int TableManager::dropRecords(string tableName, DBDelete* dbDelete, DBMeta* dbMe
         for (int i = 0; i < tableHeader->colNum; i++) {
             if (colHasIndex[i]) {
                 vector<int> vals;
-                indexManager->transform(tableName.c_str(), colName[i], vals, pageIds, slotIds);
+                deleteFileHandler->transform(vals, pageIds, slotIds);
                 indexManager->insert(tableName.c_str(), colName[i], indexDatas[i], vals);
             }
         }
@@ -1942,6 +2056,7 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
                         recordDataNode->content.charContent = new char[recordDataNode->len];
                     }
                     strcpy(recordDataNode->content.charContent, (char*)dbUpdate->expItem[j].rVal);
+                    *(recordDataNode->content.charContent + recordDataNode->len - 1) = '\0';
                     break;
                 default:
                     break;
@@ -1996,7 +2111,7 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
                 }
                 if (colHasIndex[j] && colHasChanged) {
                     int val;
-                    indexManager->transform(tableName.c_str(), colName[j], val, recordIds[i]->getPageId(), recordIds[i]->getSlotId());
+                    updateFileHandler->transform(val, recordIds[i]->getPageId(), recordIds[i]->getSlotId());
                     updatedIndexDatas[j].push_back(updatedIndexData);
                     rawIndexDatas[j].push_back(rawIndexData);
                     indexManager->remove(tableName.c_str(), colName[j], rawIndexData, val);
@@ -2022,7 +2137,7 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
         for (int i = 0; i < tableHeader->colNum; i++) {
             if (colHasIndex[i]) {
                 vector<int> vals;
-                indexManager->transform(tableName.c_str(), colName[i], vals, pageIds, slotIds);
+                updateFileHandler->transform(vals, pageIds, slotIds);
                 for (int j = 0; j < updatedIndexDatas[i].size(); j++) {
                     indexManager->remove(tableName.c_str(), colName[i], updatedIndexDatas[i][j], vals[j]);
                     indexManager->insert(tableName.c_str(), colName[i], rawIndexDatas[i][j], vals[j]);

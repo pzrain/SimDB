@@ -241,7 +241,6 @@ int DatabaseManager::createTable(string name, vector<FieldItem> normalFieldList)
         }
     }
     if(tableManager->creatTable(name, tableEntrys, colNum) != 0) {
-        printf("report error when create table in database manager\n");
         return -1;
     }
     
@@ -357,7 +356,7 @@ int DatabaseManager::dropIndex(string tableName, string colName) {
         printf("[ERROR] use a database first\n");
         return -1;
     }
-    int res = tableManager->dropIndex(tableName, colName);
+    int res = tableManager->dropIndex(tableName, colName, metaData);
     if (res > -1) {
         int tableNum = -1;
         for(int i = 0; i < metaData->tableNum; i++) {

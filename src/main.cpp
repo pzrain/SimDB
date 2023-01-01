@@ -4,6 +4,7 @@
 #include <fstream>
 
 int main(int argc, char** argv) {
+    MyBitMap::initConst();
     DatabaseManager* databaseManager = new DatabaseManager(); // maybe updated when DBMS is completed
     MyParser* myParser = new MyParser(databaseManager);
     if (argc <= 1) {

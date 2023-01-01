@@ -403,7 +403,9 @@ bool FileHandler::insertAllRecords(const std::vector<Record*>& records, std::vec
             pageHeader->maximumSlot = -1;
         }
         int num = tableHeader->recordSize - pageHeader->totalSlot;
+        bool fullFlag = true;
         if (num > total - done) {
+            fullFlag = false;
             num = total - done;
         }
         while (num--) {
@@ -426,6 +428,10 @@ bool FileHandler::insertAllRecords(const std::vector<Record*>& records, std::vec
             if (slotId > pageHeader->maximumSlot) {
                 pageHeader->maximumSlot = slotId;
             }
+        }
+        if (fullFlag) {
+            tableHeader->firstNotFullPage = pageHeader->nextFreePage;
+            pageHeader->nextFreePage = -1;
         }
     }
     tableHeader->recordNum += total;
@@ -457,4 +463,32 @@ void FileHandler::renameTable(const char* newName) {
 
 void FileHandler::saveTableHeader() {
     writeTableHeader(bufPageManager, fileId, tableHeader);
+}
+
+void FileHandler::transform(int& val, int pageId, int slotId) {
+    val = pageId * tableHeader->recordSize + slotId;
+}
+
+void FileHandler::transform(std::vector<int>& vals, std::vector<int> pageIds, std::vector<int> slotIds) {
+    vals.clear();
+    for (int i = 0; i < pageIds.size(); i++) {
+        int val = pageIds[i] * tableHeader->recordSize + slotIds[i];
+        vals.push_back(val);
+    }
+}
+
+void FileHandler::transformR(int val, int& pageId, int& slotId) {
+    pageId = val / (tableHeader->recordSize);
+    slotId = val % tableHeader->recordSize;
+}
+
+void FileHandler::transformR(std::vector<int> vals, std::vector<int>& pageIds, std::vector<int>& slotIds) {
+    pageIds.clear();
+    slotIds.clear();
+    for (int i = 0; i < vals.size(); i++) {
+        int pageId = vals[i] / (tableHeader->recordSize);
+        int slotId = vals[i] % tableHeader->recordSize;
+        pageIds.push_back(pageId);
+        slotIds.push_back(slotId);
+    }
 }
