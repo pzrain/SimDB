@@ -14,4 +14,4 @@ with open(ARG.file, 'w') as f:
     com = com[:-1]
     com += ";\n"
     f.write(com)
-    # f.write("ALTER TABLE test ADD INDEX (id);\n")
+    f.write("ALTER TABLE test ADD INDEX (id);\n")

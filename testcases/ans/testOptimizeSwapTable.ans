@@ -1,0 +1,27 @@
+Database changed.
+Insert 1000 rows in xxx seconds
+Insert 18 rows in xxx seconds
+
+----------------
+table_2.id | test.id | test.cid 
+----------------
+1 | 1 | 1 
+1 | 1 | 1 
+2 | 2 | 2 
+2 | 2 | 2 
+3 | 3 | 3 
+3 | 3 | 3 
+4 | 4 | 4 
+4 | 4 | 4 
+5 | 5 | 5 
+5 | 5 | 5 
+6 | 6 | 6 
+6 | 6 | 6 
+7 | 7 | 7 
+7 | 7 | 7 
+8 | 8 | 8 
+8 | 8 | 8 
+9 | 9 | 9 
+9 | 9 | 9 
+----------------
+Select 18 rows in xxx seconds
