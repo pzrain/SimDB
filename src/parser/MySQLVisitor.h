@@ -270,7 +270,7 @@ public:
             dbSelect->offsetEn = true;
             dbSelect->offsetNum = stoi(ctx->Integer(1)->getText());
         } else {
-            // TODO error
+            // it will never use this branch in normal
         }
         return dbSelect;
     }
@@ -327,7 +327,7 @@ public:
             tableName = ctx->Identifier(0)->getText();
             fkName = ctx->Identifier(1)->getText();
         } else {
-            // TODO error
+            // it will never use this branch in normal
         }
 
         databaseManager->dropForeignKey(tableName, fkName);
@@ -347,7 +347,7 @@ public:
             tableName = ctx->Identifier(0)->getText();
             pkName = ctx->Identifier(1)->getText();
         } else {
-            // TODO error
+            // it will never use this branch in normal
         }
         std::vector<std::string> colName;
         colName = std::any_cast<std::vector<std::string>>(ctx->identifiers()->accept(this));
@@ -375,7 +375,7 @@ public:
             fkName = ctx->Identifier(1)->getText();
             refTableName = ctx->Identifier(2)->getText();
         } else {
-            // TODO error
+            // it will never use this branch in normal
         }
         colNames = std::any_cast<std::vector<std::string>>(ctx->identifiers(0)->accept(this));
         refColNames = std::any_cast<std::vector<std::string>>(ctx->identifiers(1)->accept(this));
@@ -473,7 +473,7 @@ public:
             item.fkName = ctx->Identifier(0)->getText();
             item.refTableName = ctx->Identifier(1)->getText();
         } else {
-            // TODO error
+            // it will never use this branch in normal
         }
 
         std::vector<std::string> colNames;
@@ -503,7 +503,7 @@ public:
             type.typeName = COL_FLOAT;
             type.len = 4;
         } else {
-            // TODO error
+            // it will never use this branch in normal
         }
         return type;
     }
@@ -535,7 +535,7 @@ public:
             } else if(ctx->value(i)->Null() != nullptr){
                 values.push_back(nullptr);
             } else {
-                // TODO error
+                // it will never use this branch in normal
             }
         }
         return values;
@@ -565,7 +565,7 @@ public:
         else if(ctx->Null() != nullptr)
             return nullptr;
         else
-            // TODO error
+            // it will never use this branch in normal
         return 0;
     }
     
@@ -610,7 +610,7 @@ public:
                 expr.rVal = expr.lVal;
                 expr.rType = DB_NULL;
             } else {
-                // TODO error
+                // it will never use this branch in normal
             }
         } else if(ctx->expression()->column() != nullptr) {
             DBExpItem* pItem = std::any_cast<DBExpItem*>(ctx->expression()->accept(this));
@@ -682,7 +682,7 @@ public:
             } else if(ctx->value_list()->value(i)->Null() != nullptr){
                 valueListType.push_back(DB_LIST_NULL);
             } else {
-                // TODO error
+                // it will never use this branch in normal
             }
         }
         expr.rVal = valueList;
@@ -749,7 +749,7 @@ public:
             return ctx->column()->accept(this);
         } else {
             return nullptr;
-            // TODO error
+            // it will never use this branch in normal
         }
     }
 
@@ -829,7 +829,7 @@ public:
             selItem.star = true;
             selItem.selectType = COUNT_TYPE;
         } else {
-            // TODO error
+            // it will never use this branch in normal
         }
         return selItem;
     }
@@ -859,7 +859,7 @@ public:
         else if(ctx->NotEqual() != nullptr)
             return NEQ_TYPE;
         else
-            return 0;// TODO error
+            return 0;// it will never use this branch in normal
     }
 
     std::any visitAggregator(SQLParser::AggregatorContext *ctx) override {
@@ -877,7 +877,7 @@ public:
         } else if(ctx->Sum() != nullptr) {
             type = SUM_TYPE;
         } else {
-            // TODO error
+            // it will never use this branch in normal
         }
         return type;
     }
