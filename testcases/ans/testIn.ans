@@ -1,0 +1,17 @@
+Database changed.
+Insert 3 rows in 0.000047 seconds
+
+----------------
+test.id 
+----------------
+3 
+----------------
+Select 1 rows in 0.000052 seconds
+
+----------------
+test.id 
+----------------
+4
+5
+----------------
+Select 1 rows in 0.000052 seconds

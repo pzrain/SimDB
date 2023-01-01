@@ -8,17 +8,17 @@ ARG = ARG.parse_args()
 
 def checkFile(outFile, ansFile):
     if not os.path.exists(ansFile):
-        return -2
+        return -3
     with open(outFile) as f:
         outLines = f.readlines()
     with open(ansFile) as f:
         ansLines = f.readlines()
     if len(outLines) != len(ansLines):
-        return 0
+        return -1
     for i in range(len(outLines)):
-        outLine = outLines[i]
-        ansLine = ansLines[i]
-        if len(outLine) >= 8 and len(ansLine) > 8 and outLine[-8:-1] == "seconds" and ansLine[-8:-1] == "seconds":
+        outLine = outLines[i].strip()
+        ansLine = ansLines[i].strip()
+        if len(outLine) >= 7 and len(ansLine) > 8 and outLine[-7:] == "seconds" and ansLine[-7:] == "seconds":
             spaceCnt = 0
             indexOut = -1
             for j in range(len(outLine) - 1, -1, -1):
@@ -38,7 +38,7 @@ def checkFile(outFile, ansFile):
             ansLine = ansLine[:indexAns]
         if outLine != ansLine:
             return i
-    return -1
+    return -2
 
 os.system("rm -r -f database")
 os.system("rm -r -f out")
@@ -53,11 +53,11 @@ if ARG.test is not None:
         os.system("../bin/SimDB 2>/dev/null 1>out/%s.out %s" % (fileName[:-4], fileName))
         res = checkFile("out/%s.out" % fileName[:-4], "ans/%s.ans" % fileName[:-4])
         elapsedTime = time.time() - startTime
-        if res == -1:
+        if res == -2:
             print("Pass %s elapased %.2lfs" % (fileName, elapsedTime))
-        elif res >= 0:
+        elif res >= -1:
             print("Fail on Line %d, %s elapased %.2lfs" % (res + 1, fileName, elapsedTime))
-        elif res == -2:
+        elif res == -3:
             print("No check on %s elapased %.2lfs" % (fileName, elapsedTime))
 else:
     for fileName in list(os.listdir('.')):
@@ -66,10 +66,10 @@ else:
             os.system("../bin/SimDB 2>/dev/null 1>out/%s.out %s" % (fileName[:-4], fileName))
             res = checkFile("out/%s.out" % fileName[:-4], "ans/%s.ans" % fileName[:-4])
             elapsedTime = time.time() - startTime
-            if res == -1:
+            if res == -2:
                 print("Pass %s elapased %.2lfs" % (fileName, elapsedTime))
-            elif res >= 0:
+            elif res >= -1:
                 print("Fail on Line %d, %s elapased %.2lfs" % (res + 1, fileName, elapsedTime))
-            elif res == -2:
+            elif res == -3:
                 print("No check on %s elapased %.2lfs" % (fileName, elapsedTime))
 os.system("rm -r database")
