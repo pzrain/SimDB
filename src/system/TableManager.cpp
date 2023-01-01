@@ -976,9 +976,17 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                         for (int k = 0; k < indexRes.size(); k++) {
                             ma[indexRes[k]] = true;
                         }
+                        TableEntryDesc lTableEntryDesc = fileHandlers[fileId]->getTableEntryDesc();
                         for (int k = j ^ 1; k < res[cur ^ 1].size(); k += tableNum) {
                             if (res[cur ^ 1][k ^ 1]->getPageId() != curRecordId->getPageId() || res[cur ^ 1][k ^ 1]->getSlotId() != curRecordId->getSlotId()) {
-                                break;
+                                RecordData searchedRecordData;
+                                Record searchedRecord(fileHandlers[fileId]->getRecordLen());
+                                fileHandlers[fileId]->getRecord(*res[cur ^ 1][k ^ 1], searchedRecord);
+                                searchedRecord.deserialize(searchedRecordData, lTableEntryDesc);
+                                RecordDataNode* searchedRecordDataNode = searchedRecordData.getData(colId);
+                                if (!compareEqual(curRecordDataNode, searchedRecordDataNode)) {
+                                    break;
+                                }
                             }
                             int val;
                             RecordId* rRecordId = res[cur ^ 1][k];
@@ -997,9 +1005,17 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     } else { // search using recordManager
                         RecordData searchRecordData;
                         RecordDataNode* searchRecordDataNode;
+                        TableEntryDesc lTableEntryDesc = fileHandlers[fileId]->getTableEntryDesc();
                         for (int k = j ^ 1; k < res[cur ^ 1].size(); k += tableNum) {
                             if (res[cur ^ 1][k ^ 1]->getPageId() != curRecordId->getPageId() || res[cur ^ 1][k ^ 1]->getSlotId() != curRecordId->getSlotId()) {
-                                break;
+                                RecordData searchedRecordData;
+                                Record searchedRecord(fileHandlers[fileId]->getRecordLen());
+                                fileHandlers[fileId]->getRecord(*res[cur ^ 1][k ^ 1], searchedRecord);
+                                searchedRecord.deserialize(searchedRecordData, lTableEntryDesc);
+                                RecordDataNode* searchedRecordDataNode = searchedRecordData.getData(colId);
+                                if (!compareEqual(curRecordDataNode, searchedRecordDataNode)) {
+                                    break;
+                                }
                             }
                             RecordId* rRecordId = res[cur ^ 1][k];
                             Record searchRecord(fileHandlers[rFileId]->getRecordLen());
@@ -1418,6 +1434,11 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resReco
         printf("[ERROR] join selection for more than two tables is not supported.\n");
         return -1;
     }
+    string fisrtTable = dbSelect->expressions.size() > 0 ? ((DBExpItem*)dbSelect->expressions[0].lVal)->expTable : "";
+    if (dbSelect->expressions.size() > 0 && tableSize > 1 && fisrtTable != "" && dbSelect->selectTables[0] != fisrtTable) {
+        std::swap(dbSelect->selectTables[0], dbSelect->selectTables[1]);
+    }
+    // fprintf(stderr, "%s %s\n", dbSelect->selectTables[0].c_str(), dbSelect->selectTables[1].c_str());
     FileHandler* fileHandlers[MAX_SELECT_TABLE];
     TableHeader* tableHeaders[MAX_SELECT_TABLE];
     for (int i = 0; i < tableSize; i++) {
