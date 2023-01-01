@@ -23,44 +23,69 @@ public:
 
     ~IndexManager();
 
+    /**
+     * @brief init index when open a database
+     */
     int initIndex(std::vector<std::string> tableNames, std::vector<std::vector<std::string>> colNames, std::vector<std::vector<uint16_t>> indexLens, std::vector<std::vector<uint8_t>> colTypes);
-    // init index when open a database
 
+    /**
+     * @brief  rename the tableNamess
+     */
     void renameIndex(const char* oldTableName, const char* newTableName);
-    // rename the tableNamess
 
+    /**
+     * @brief build index
+     * @return return 0 if succeed, otherwise -1
+     *         so are the returning values of other functions in IndexManager
+     */
     int createIndex(const char* tableName, const char* indexName, uint16_t indexLen, uint8_t colType);
-    // build index
-    // return 0 if succeed, otherwise -1
-    // so are the returning values of the following functions
 
+    /**
+     * @brief drop index, actually drop the corresponding B+ tree
+     */
     int removeIndex(const char* tableName, const char* indexName);
-    // drop index, actually drop the corresponding B+ tree
 
+    /**
+     * @brief return true if indexName has been created
+     */
     bool hasIndex(const char* tableName, const char* indexName);
-    // return true if indexName has been created
 
     int insert(const char* tableName, const char* indexName, void* data, const int val);
 
+    /**
+     * @brief insert index in batch mode
+     *        the sequence of data is not necessarily ordered
+     */
     int insert(const char* tableName, const char* indexName, std::vector<void*> data, std::vector<int> val);
-    // insert index in batch mode
-    // the sequence of data is not necessarily ordered
 
+    /**
+     * @brief search those index whose key is equal to data
+     *        than store their val in vector res
+     */
     int search(const char* tableName, const char* indexName, void* data, std::vector<int> &res);
-    // search those index whose key is equal to data
-    // than store their val in vector res
 
+    /**
+     * @brief search those index whose dat falls in [lData, rData]
+     *        set lData or rData to nullptr to get searching range [lData, infinity] or [-infinity, rData]
+     */
     int searchBetween(const char* tableName, const char* indexName, void* lData, void* rData, std::vector<int> &res, bool lIn = true, bool rIn = true);
-    // search those index whose dat falls in [lData, rData]
-    // set lData or rData to nullptr to get searching range [lData, infinity] or [-infinity, rData]
-    // example:
-    // int lData = 3;
-    // searchBetween(tableName, indexName, &lData, nullptr, res);
 
+    /**
+     * @brief remove those index whose key is equal to data and val equal to val (if val is not set to -1)
+     */
     int remove(const char* tableName, const char* indexName, void* data, int val = -1);
-    // remove those index whose key is equal to data
 
+    /**
+     * @brief update those index whose key is equal to data and val equal to oldVal
+     */
     int update(const char* tableName, const char* indexName, void* data, int oldVal, int newVal);
+
+    /**
+     * @brief Display all the index
+     */
+    int showIndex();
+
+    int showIndex(const char* tableName);
 
     void transform(const char* tableName, const char* indexName, int& val, int pageId, int slotId);
 
@@ -71,10 +96,6 @@ public:
     void transformR(const char* tableName, const char* indexName, std::vector<int> vals, std::vector<int>& pageIds, std::vector<int>& slotIds);
 
     bool isValid();
-
-    int showIndex();
-
-    int showIndex(const char* tableName);
 };
 
 #endif

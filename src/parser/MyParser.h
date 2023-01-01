@@ -19,6 +19,9 @@ public:
         delete mySQLVisitor;
     }
 
+    /**
+     * @brief parse the input SQL string
+     */
     bool parse(std::string SQL) {
         int err = 0;
         antlr4::ANTLRInputStream sInputStream(SQL);
