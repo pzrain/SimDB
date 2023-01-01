@@ -1,5 +1,5 @@
 Database changed.
-Insert 4 rows in 0.000046 seconds
+Insert 4 rows in 0.000045 seconds
 Insert 7 rows in 0.000038 seconds
 
 ----------------
@@ -10,7 +10,7 @@ test.id | test.website | test.user
 3 | www.youtube.com | 336542 
 4 | www.nicovideo.jp | 114514 
 ----------------
-Select 4 rows in 0.000036 seconds
+Select 4 rows in 0.000037 seconds
 
 ----------------
 test.id | test.website | test.user 
@@ -26,8 +26,6 @@ test.id | test.website | test.user
 ----------------
 Select 1 rows in 0.000044 seconds
 
-is not type
-
 ----------------
 test.id | test.website | test.user 
 ----------------
@@ -40,7 +38,7 @@ test.id | test.website | test.user
 3 | www.youtube.com | 336542 
 4 | www.nicovideo.jp | 114514 
 ----------------
-Select 2 rows in 0.000018 seconds
+Select 2 rows in 0.000013 seconds
 
 ----------------
 test.id | test.website | test.user 
@@ -49,7 +47,7 @@ test.id | test.website | test.user
 2 | www.netflix.com | 123456 
 3 | www.youtube.com | 336542 
 ----------------
-Select 3 rows in 0.000108 seconds
+Select 3 rows in 0.000078 seconds
 
 ----------------
 test.id | test.website | test.user 
@@ -57,7 +55,7 @@ test.id | test.website | test.user
 2 | www.netflix.com | 123456 
 3 | www.youtube.com | 336542 
 ----------------
-Select 2 rows in 0.001577 seconds
+Select 2 rows in 0.001550 seconds
 
 ----------------
 test.website 
@@ -65,49 +63,49 @@ test.website
 www.bilibili.com 
 www.nicovideo.jp 
 ----------------
-Select 2 rows in 0.000017 seconds
+Select 2 rows in 0.000012 seconds
 
 ----------------
 SUM(test.user) 
 ----------------
 689026 
 ----------------
-Select 1 rows in 0.000012 seconds
+Select 1 rows in 0.000008 seconds
 
 ----------------
 AVG(test.user) 
 ----------------
 172256.500000 
 ----------------
-Select 1 rows in 0.000030 seconds
+Select 1 rows in 0.000012 seconds
 
 ----------------
 MAX(test.user) 
 ----------------
 336542 
 ----------------
-Select 1 rows in 0.000009 seconds
+Select 1 rows in 0.000010 seconds
 
 ----------------
 MIN(test.user) 
 ----------------
 114514 
 ----------------
-Select 1 rows in 0.000008 seconds
+Select 1 rows in 0.000010 seconds
 
 ----------------
 COUNT(test.user) 
 ----------------
 4 
 ----------------
-Select 1 rows in 0.000007 seconds
+Select 1 rows in 0.000019 seconds
 
 ----------------
 COUNT(*) 
 ----------------
 4 
 ----------------
-Select 1 rows in 0.000007 seconds
+Select 1 rows in 0.000008 seconds
 
 ----------------
 access.site_id | SUM(access.daily_access) 
@@ -117,18 +115,18 @@ access.site_id | SUM(access.daily_access)
 2 | 1898 
 3 | 3322 
 ----------------
-Select 4 rows in 0.000023 seconds
+Select 4 rows in 0.000021 seconds
 
 ----------------
 MIN(access.daily_access) 
 ----------------
 33 
 ----------------
-Select 1 rows in 0.000009 seconds
+Select 1 rows in 0.000011 seconds
 
 ----------------
 MIN(access.daily_access) 
 ----------------
 532 
 ----------------
-Select 1 rows in 0.000007 seconds
+Select 1 rows in 0.000008 seconds

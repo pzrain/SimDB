@@ -130,13 +130,13 @@ public:
 
         DBInsert* dbInsert = new DBInsert;
         std::vector<std::vector<void*>> valueLists = std::any_cast<std::vector<std::vector<void*>>>(ctx->value_lists()->accept(this));
-        // printf("str is %s\n", (char*)valueLists[0][2]);
         dbInsert->valueLists = valueLists;
-        auto value_lists = ctx->value_lists()->value_list(); // a vector
-        for(int i = 0; i < value_lists.size(); i++) {
+
+        auto lists = ctx->value_lists()->value_list(); // a vector
+        for(int i = 0; i < lists.size(); i++) {
             // for each value list
             std::vector<DB_LIST_TYPE> listType;
-            auto values = value_lists[i]->value();
+            auto values = lists[i]->value();
             for(int j = 0; j < values.size(); j++) {
                 // for each value
                 switch (values[j]->getStart()->getType())
@@ -236,7 +236,6 @@ public:
 
         selectItems = std::any_cast<std::vector<DBSelItem>>(ctx->selectors()->accept(this));
         dbSelect->selectItems = selectItems;
-        // printf("column name is: %s, select type is: %d\n", selectItems[0].item.expCol.c_str() , selectItems[0].selectType);
 
         std::vector<std::string> selectTables;
         selectTables = std::any_cast<std::vector<std::string>>(ctx->identifiers()->accept(this));
@@ -376,10 +375,10 @@ public:
         colNames = std::any_cast<std::vector<std::string>>(ctx->identifiers(0)->accept(this));
         refColNames = std::any_cast<std::vector<std::string>>(ctx->identifiers(1)->accept(this));
 
-        if(colNames.size() != 1 || refColNames.size() != 1) {
-            printf("report error when add foreign key because it is not 1 on 1\n");
-            exit(0);
-        }
+        // if(colNames.size() != 1 || refColNames.size() != 1) {
+        //     printf("report error when add foreign key because it is not 1 on 1\n");
+        //     exit(0);
+        // }
 
         databaseManager->createForeignKey(tableName, fkName, colNames[0], refTableName, refColNames[0]);
         return 0;
@@ -486,7 +485,7 @@ public:
     }
 
     std::any visitType_(SQLParser::Type_Context *ctx) override {
-        fprintf(stderr, "Visit Type.\n");
+        // fprintf(stderr, "Visit Type.\n");
 
         Type type;
         if(ctx->getStart()->getText() == "INT") {
@@ -508,37 +507,38 @@ public:
         fprintf(stderr, "Visit Value Lists.\n");
 
         std::vector<std::vector<void*>> valueLists;
-        for(int i = 0; i < ctx->value_list().size(); i++) {
-            valueLists.push_back(std::any_cast<std::vector<void*>>(ctx->value_list(i)->accept(this)));
-        }
+        auto lists = ctx->value_list();
+        for(int i = 0; i < lists.size(); i++) {
+            valueLists.push_back(std::any_cast<std::vector<void*>>(lists[i]->accept(this)));
+        }   
         return valueLists;
     }
 
     std::any visitValue_list(SQLParser::Value_listContext *ctx) override {
-        fprintf(stderr, "Visit Value List.\n");
-
-        std::vector<void*> values;
-        for(int i = 0; i < ctx->value().size(); i++) {
-            if(ctx->value(i)->Integer() != nullptr) {
-                int* pInt = std::any_cast<int*>(ctx->value(i)->accept(this));
-                values.push_back((void*)pInt);
-            } else if(ctx->value(i)->String() != nullptr) {
-                char* pString = std::any_cast<char*>(ctx->value(i)->accept(this));
-                values.push_back((void*)pString);
-            } else if(ctx->value(i)->Float() != nullptr) {
-                float* pFloat = std::any_cast<float*>(ctx->value(i)->accept(this));
-                values.push_back((void*)pFloat);
-            } else if(ctx->value(i)->Null() != nullptr){
-                values.push_back(nullptr);
+        // fprintf(stderr, "Visit Value List.\n");
+        std::vector<void*> list;
+        auto values = ctx->value();
+        for(int i = 0; i < values.size(); i++) {
+            if(values[i]->Integer() != nullptr) {
+                int* pInt = std::any_cast<int*>(values[i]->accept(this));
+                list.push_back((void*)pInt);
+            } else if(values[i]->String() != nullptr) {
+                char* pString = std::any_cast<char*>(values[i]->accept(this));
+                list.push_back((void*)pString);
+            } else if(values[i]->Float() != nullptr) {
+                float* pFloat = std::any_cast<float*>(values[i]->accept(this));
+                list.push_back((void*)pFloat);
+            } else if(values[i]->Null() != nullptr){
+                list.push_back(nullptr);
             } else {
                 // it will never use this branch in normal
             }
         }
-        return values;
+        return list;
     }
 
     std::any visitValue(SQLParser::ValueContext *ctx) override {
-        fprintf(stderr, "Visit Value.\n");
+        // fprintf(stderr, "Visit Value.\n");
 
         // NOTICE: create pointer here, need to be deleted after using
         if(ctx->Integer() != nullptr) {
@@ -570,9 +570,11 @@ public:
 
         optimizeWhereClause(ctx, databaseManager);
         std::vector<DBExpression> expressions;
-        for(int i = 0; i < ctx->where_clause().size(); i++) {
+
+        auto clauses = ctx->where_clause();
+        for(int i = 0; i < clauses.size(); i++) {
             DBExpression expr;
-            expr = std::any_cast<DBExpression>(ctx->where_clause(i)->accept(this));
+            expr = std::any_cast<DBExpression>(clauses[i]->accept(this));
             expressions.push_back(expr);
         }
         return expressions;
@@ -647,7 +649,6 @@ public:
         expr.op = IS_TYPE;
         std::string nullInst = ctx->getText();
         if(nullInst.rfind("NOT") != std::string::npos) {
-            printf("\nis not type\n");
             expr.op = ISN_TYPE;
         }
 
@@ -667,16 +668,19 @@ public:
         
         std::vector<void*> valueList;
         std::vector<DB_LIST_TYPE> valueListType;
+
         valueList = std::any_cast<std::vector<void*>>(ctx->value_list()->accept(this));
         std::vector<void*>* pList = new std::vector<void*>(valueList);
+
+        auto values = ctx->value_list()->value();
         for(int i = 0; i < ctx->value_list()->value().size(); i++) {
-            if(ctx->value_list()->value(i)->Integer() != nullptr) {
+            if(values[i]->Integer() != nullptr) {
                 valueListType.push_back(DB_LIST_INT);
-            } else if(ctx->value_list()->value(i)->String() != nullptr) {
+            } else if(values[i]->String() != nullptr) {
                 valueListType.push_back(DB_LIST_CHAR);
-            } else if(ctx->value_list()->value(i)->Float() != nullptr) {
+            } else if(values[i]->Float() != nullptr) {
                 valueListType.push_back(DB_LIST_FLOAT);
-            } else if(ctx->value_list()->value(i)->Null() != nullptr){
+            } else if(values[i]->Null() != nullptr){
                 valueListType.push_back(DB_LIST_NULL);
             } else {
                 // it will never use this branch in normal
@@ -727,7 +731,7 @@ public:
     }
 
     std::any visitColumn(SQLParser::ColumnContext *ctx) override {
-        fprintf(stderr, "Visit Column.\n");
+        // fprintf(stderr, "Visit Column.\n");
 
         DBExpItem* pItem;
         if(ctx->Identifier().size() == 1) {
@@ -744,7 +748,7 @@ public:
     }
 
     std::any visitExpression(SQLParser::ExpressionContext *ctx) override {
-        fprintf(stderr, "Visit Expression.\n");
+        // fprintf(stderr, "Visit Expression.\n");
 
         if(ctx->value() != nullptr) {
             return ctx->value()->accept(this);
@@ -761,9 +765,11 @@ public:
 
         std::vector<DBExpression> expItem;
         DBExpression expr;
-        for(int i = 0; i < ctx->Identifier().size(); i++) {
+        auto idents = ctx->Identifier();
+        auto values = ctx->value();
+        for(int i = 0; i < idents.size(); i++) {
             DBExpItem *item = new DBExpItem;
-            item->expCol = ctx->Identifier(i)->getText();
+            item->expCol = idents[i]->getText();
             expr.lVal = item;
             expr.lType = DB_ITEM;
             expr.op = EQU_TYPE;
@@ -771,20 +777,20 @@ public:
             int* intValue;
             char* stringValue;
             float* floatValue;
-            if(ctx->value(i)->Integer() != nullptr) {
-                intValue = std::any_cast<int*>(ctx->value(i)->accept(this));
+            if(values[i]->Integer() != nullptr) {
+                intValue = std::any_cast<int*>(values[i]->accept(this));
                 // printf("%d\n", *intValue);
                 expr.rVal = intValue;
                 expr.rType = DB_INT;
-            } else if(ctx->value(i)->String() != nullptr) {
-                stringValue = std::any_cast<char*>(ctx->value(i)->accept(this));
+            } else if(values[i]->String() != nullptr) {
+                stringValue = std::any_cast<char*>(values[i]->accept(this));
                 expr.rVal = stringValue;
                 expr.rType = DB_CHAR;
-            } else if(ctx->value(i)->Float() != nullptr) {
-                floatValue = std::any_cast<float*>(ctx->value(i)->accept(this));
+            } else if(values[i]->Float() != nullptr) {
+                floatValue = std::any_cast<float*>(values[i]->accept(this));
                 expr.rVal = floatValue;
                 expr.rType = DB_FLOAT;
-            } else if(ctx->value(i)->Null() != nullptr) {
+            } else if(values[i]->Null() != nullptr) {
                 expr.rVal = nullptr;
                 expr.rType = DB_NULL;
             } else {
@@ -800,21 +806,21 @@ public:
 
         std::vector<DBSelItem> selectItems;
         DBSelItem item;
-        if(ctx->selector().size() == 0) {
+        auto selectors = ctx->selector();
+        if(selectors.size() == 0) {
             item.star = true;
             item.selectType = ORD_TYPE;
             selectItems.push_back(item);
         }
-        for(int i = 0; i < ctx->selector().size(); i++) {
-            item = std::any_cast<DBSelItem>(ctx->selector(i)->accept(this));
-            // printf("in selectors column name is: %s, select type is: %d\n", item.item.expCol.c_str() , item.selectType);
+        for(int i = 0; i < selectors.size(); i++) {
+            item = std::any_cast<DBSelItem>(selectors[i]->accept(this));
             selectItems.push_back(item);
         }
         return selectItems;
     }
 
     std::any visitSelector(SQLParser::SelectorContext *ctx) override {
-        fprintf(stderr, "Visit Selector.\n");
+        // fprintf(stderr, "Visit Selector.\n");
 
         DBSelItem selItem;
         selItem.star = false;
@@ -841,13 +847,14 @@ public:
         fprintf(stderr, "Visit Identifiers.\n");
 
         std::vector<std::string> selectTables;
+        auto idents = ctx->Identifier();
         for(int i = 0; i < ctx->Identifier().size(); i++)
-            selectTables.push_back(ctx->Identifier(i)->getText());
+            selectTables.push_back(idents[i]->getText());
         return selectTables;
     }
 
     std::any visitOperator_(SQLParser::Operator_Context *ctx) override {
-        fprintf(stderr, "Visit Operator.\n");
+        // fprintf(stderr, "Visit Operator.\n");
         bool flag = ctx->children.size() == 1;
         if(ctx->EqualOrAssign() != nullptr)
             return EQU_TYPE;
@@ -866,7 +873,7 @@ public:
     }
 
     std::any visitAggregator(SQLParser::AggregatorContext *ctx) override {
-        fprintf(stderr, "Visit Aggregator.\n");
+        // fprintf(stderr, "Visit Aggregator.\n");
 
         DB_SELECT_TYPE type;
         if(ctx->Count() != nullptr) {
