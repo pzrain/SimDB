@@ -131,16 +131,6 @@ int DatabaseManager::switchDatabase(string name) {
         printf("[INFO] databse %s is already in use.\n", name.c_str());
         return 0;
     }
-    if (databaseUsed) {
-        writeMetaData(databaseStroeFileId, metaData);
-        for(int i = 0; i < metaData->tableNum; i++) {
-            tableManager->saveChangeToFile(metaData->tableNames[i]);
-        }
-        databaseUsedName = "";
-        databaseStroeFileId = -1;
-        databaseUsed = false;
-    }
-
     if(!checkDatabaseName(name))
         return -1;
 
@@ -149,6 +139,16 @@ int DatabaseManager::switchDatabase(string name) {
     if(!checkFileExist(path)) {
         printf("[ERROR] database does not exist !\n");
         return -1;
+    }
+
+    if (databaseUsed) {
+        writeMetaData(databaseStroeFileId, metaData);
+        for(int i = 0; i < metaData->tableNum; i++) {
+            tableManager->saveChangeToFile(metaData->tableNames[i]);
+        }
+        databaseUsedName = "";
+        databaseStroeFileId = -1;
+        databaseUsed = false;
     }
 
     databaseUsedName = name;

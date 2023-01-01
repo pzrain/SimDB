@@ -81,6 +81,11 @@ int RecordManager::removeFile(const char* tableName) {
     assert(currentIndex != -1);
     char filename[TAB_MAX_NAME_LEN];
     sprintf(filename, "database/%s/%s.db", databaseName, tableName);
+    findTable(tableName);
+    if (currentIndex >= 0) {
+        delete fileHandlers[currentIndex];
+        fileHandlers[currentIndex] = nullptr;
+    }
     return bufPageManager->fileManager->removeFile(filename) ? 0 : -1;
 }
 
