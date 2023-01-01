@@ -1,7 +1,6 @@
 [ERROR] database already exist !
 Database changed.
 [ERROR] table named test_table already exist!
-report error when create table in database manager
 Insert 1 rows in 0.000045 seconds
 
 ----------------
