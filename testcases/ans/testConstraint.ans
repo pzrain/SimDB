@@ -1,0 +1,78 @@
+Database changed.
+[ERROR] specified column does not exist.
+===== Show Indexes =====
+INDEX(table_1.colName_1);
+INDEX(table_1.colName_3);
+==== 2 indexes in total. =====
+[ERROR] can not add primary key to this table.
+[ERROR] error in adding 0:colName_2 primary key
+[INFO] automatically remove Index on table_3.colName_1.
+[INFO] the index has already been created.
+[ERROR] error in adding 1 unique key error
+[ERROR] can not build foreign key on ref table's non-primary-key field.
+[ERROR] error in creating foreign key.
+[INFO] specified column dose not have unique constraint.
+[ERROR] error in dropping 0 unique key error.
+===== Show Indexes =====
+INDEX(table_1.colName_1);
+INDEX(table_1.colName_2);
+INDEX(table_1.colName_3);
+INDEX(table_3.colName_2);
+INDEX(table_3.colName_1);
+==== 5 indexes in total. =====
+==========  Begin Table Info  ==========
+Table name: table_3;
+Column size: 3;
+Record Length: 22;
+Record size: 372;
+[column 1] name = colName_1, type = VARCHAR(10), Default value = Null;
+[column 2] name = colName_2, type = INT, Default value = Null;
+[column 3] name = colName_3, type = INT, Default value = Null;
+PRIMARY KEY (colName_2);
+UNIQUE KEY (colName_1);
+FOREIGN KEY fpk_1 (colName_2) REFERENCE table_1.colName_2;
+INDEX(colName_2);
+INDEX(colName_1);
+==========   End  Table Info  ==========
+Insert 2 rows in 0.000074 seconds
+Insert 1 rows in 0.000033 seconds
+Insert 1 rows in 0.000015 seconds
+Delete 1 rows in 0.000033 seconds
+Update 1 rows in 0.000027 seconds
+
+----------------
+table_1.colName_1 | table_1.colName_2 | table_1.colName_3 
+----------------
+col1 | 1 | 9 
+col2 | 2 | 129 
+----------------
+Select 2 rows in 0.000021 seconds
+
+----------------
+SUM(table_1.colName_2) 
+----------------
+3 
+----------------
+Select 1 rows in 0.000010 seconds
+
+----------------
+MAX(table_1.colName_2) 
+----------------
+2 
+----------------
+Select 1 rows in 0.000009 seconds
+
+----------------
+table_1.colName_1 | table_1.colName_2 | table_1.colName_3 | table_3.colName_1 | table_3.colName_2 | table_3.colName_3 
+----------------
+col2 | 2 | 129 | col1 | 1 | 9 
+----------------
+Select 1 rows in 0.000030 seconds
+
+----------------
+COUNT(*) | table_1.colName_3 
+----------------
+1 | 9 
+1 | 129 
+----------------
+Select 2 rows in 0.000020 seconds

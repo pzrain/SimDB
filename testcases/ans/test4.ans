@@ -1,0 +1,22 @@
+[ERROR] database already exist !
+Database changed.
+[ERROR] table named test_table already exist!
+report error when create table in database manager
+Insert 1 rows in 0.000045 seconds
+
+----------------
+test_table.test_int | test_table.test_float | test_table.test_str 
+----------------
+1 | 3.330000 | newnewn 
+3 | 3.330000 | testst 
+----------------
+Select 2 rows in 0.000033 seconds
+Update 2 rows in 0.000038 seconds
+
+----------------
+test_table.test_int | test_table.test_float | test_table.test_str 
+----------------
+1 | 3.330000 | newnew 
+1 | 3.330000 | newnew 
+----------------
+Select 2 rows in 0.000015 seconds
