@@ -568,7 +568,9 @@ public:
     std::any visitWhere_and_clause(SQLParser::Where_and_clauseContext *ctx) override {
         fprintf(stderr, "Visit Where And Clause.\n");
 
+#ifndef NO_OPTIM
         optimizeWhereClause(ctx, databaseManager);
+#endif
         std::vector<DBExpression> expressions;
 
         auto clauses = ctx->where_clause();

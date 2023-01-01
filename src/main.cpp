@@ -4,13 +4,16 @@
 #include <fstream>
 
 int main(int argc, char** argv) {
+    #ifdef NO_OPTIM
+        printf("[INFO] no optimization for multi-table selection.\n");
+    #endif
     MyBitMap::initConst();
     DatabaseManager* databaseManager = new DatabaseManager(); // maybe updated when DBMS is completed
     MyParser* myParser = new MyParser(databaseManager);
     if (argc <= 1) {
         std::string inputSQLString = "";
         char inputSQLChar[MAX_INPUT_SIZE];
-        std::string welcomeMsg = "Welcome to SimDB, a simple MySQL engine.\nCommands end with ;\n";
+        std::string welcomeMsg = "Welcome to SimDB, a simple SQL engine.\nCommands end with ;\n";
         printf("%s\n", welcomeMsg.c_str());
         int flag = 0;
         // flag is used to check if a input is cut off
@@ -38,7 +41,7 @@ int main(int argc, char** argv) {
             inputSQLString = inputSQLChar;
             fprintf(stderr, "inputSQLString = %s length = %ld\n", inputSQLString.c_str(), inputSQLString.length());
             if (inputSQLString == "quit" || inputSQLString == "quit;" || inputSQLString == "exit" || inputSQLString == "exit;") {
-                std::cout << "Bye!" << std::endl;
+                printf("Bye!\n");
                 break;
             } else if (inputSQLString != "") {
                 myParser->parse(inputSQLString);
