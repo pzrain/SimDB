@@ -41,6 +41,7 @@ struct DBMeta {
         memset(isPrimaryKey, false, sizeof(isPrimaryKey));
         memset(isUniqueKey, false, sizeof(isUniqueKey));
         memset(mannuallyCreateIndex, false, sizeof(mannuallyCreateIndex));
+        fprintf(stderr, "Meta Size = %ld\n", sizeof(DBMeta));
     }
 };
 
