@@ -1070,6 +1070,9 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
         RecordId* curRecordId;
         RecordData curRecordData;
         RecordDataNode* curRecordDataNode, *preRecordDataNode = nullptr;
+        vector<RecordData> tempRecordData;
+        vector<string> tempColNames;
+        bool NST_FLAG = false;
         for (int j = fileId; j < res[cur ^ 1].size(); j += tableNum) {
             curRecordId = res[cur ^ 1][j];
             fileHandlers[fileId]->getRecord(*curRecordId, curRecord);
@@ -1303,8 +1306,6 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     printf("[ERROR] op %d is not supported for nesty selection.\n", expressions[i].op);
                     return -1;
                 }
-                vector<RecordData> tempRecordData;
-                vector<string> tempColNames;
                 if (((DBSelect*)(expressions[i].rVal))->selectItems.size() > 1) {
                     printf("[ERROR] nesty selection in tuple form not supported.\n");
                     return -1;
@@ -1317,9 +1318,10 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     continue;
                 }
                 // recursive search
-                if (_selectRecords((DBSelect*)expressions[i].rVal, tempRecordData, tempColNames) == -1) {
+                if (!NST_FLAG && _selectRecords((DBSelect*)expressions[i].rVal, tempRecordData, tempColNames) == -1) {
                     return -1;
                 }
+                NST_FLAG = true;
                 if (expressions[i].op == IN_TYPE) {
                     preFlag = false;
                     for (int k = 0; k < tempRecordData.size(); k++) {
