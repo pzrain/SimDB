@@ -68,6 +68,11 @@ inline int initFile(BufPageManager* bufPageManager, const char* filename) {
 int RecordManager::createFile(const char* tableName) {
     findTable(tableName);
     assert(currentIndex == -1);
+    int index = findEmptyIndex();
+    if (index < 0) {
+        printf("[ERROR] database can accept no more tables.\n");
+        return -1;
+    }
     char filename[TAB_MAX_NAME_LEN];
     sprintf(filename, "database/%s/%s.db", databaseName, tableName);
     if (bufPageManager->fileManager->createFile(filename)) {
