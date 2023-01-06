@@ -138,24 +138,14 @@ public:
             std::vector<DB_LIST_TYPE> listType;
             auto values = lists[i]->value();
             for(int j = 0; j < values.size(); j++) {
-                // for each value
-                switch (values[j]->getStart()->getType())
-                {
-                case SQLParser::Integer: {
+                if(values[j]->Integer() != nullptr) {
                     listType.push_back(DB_LIST_INT);
-                    break;
-                }
-                case SQLParser::String: {
+                } else if(values[j]->String() != nullptr) {
                     listType.push_back(DB_LIST_CHAR);
-                    break;
-                }
-                case SQLParser::Float: {
+                } else if(values[j]->Float() != nullptr) {
                     listType.push_back(DB_LIST_FLOAT);
-                    break;
-                }
-                default:
+                } else {
                     listType.push_back(DB_LIST_NULL);
-                    break;
                 }
             }
             dbInsert->valueListsType.push_back(listType);
@@ -550,7 +540,7 @@ public:
             size_t startPos = subString.find("'");
             size_t endPos   = subString.rfind("'");
             subString = subString.substr(startPos+1, endPos-startPos-1);
-            char* pString = new char[subString.length()];
+            char* pString = new char[subString.length()+1];
             strcpy(pString, subString.c_str());
             return pString;
         }
