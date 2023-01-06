@@ -89,6 +89,7 @@ int TableManager::dropTable(string name) {
         printf("[ERROR] fail to drop the table named %s\n", name.c_str());
         return -1;
     }
+    indexManager->removeIndex(name.c_str());
 
     return 0;
 

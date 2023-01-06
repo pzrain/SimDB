@@ -283,6 +283,11 @@ int DatabaseManager::dropTable(string name) {
     if(tableManager->dropTable(name) == 0) {
         strcpy(metaData->tableNames[tableToDrop], metaData->tableNames[metaData->tableNum-1]);
         metaData->colNum[tableToDrop] = metaData->colNum[metaData->tableNum-1];
+        metaData->indexNum[tableToDrop] = metaData->indexNum[metaData->tableNum-1];
+        for (int i = 0; i < metaData->indexNum[tableToDrop]; i++) {
+            strcpy(metaData->indexNames[tableToDrop][i], metaData->indexNames[metaData->tableNum-1][i]);
+            metaData->mannuallyCreateIndex[tableToDrop][i] = metaData->mannuallyCreateIndex[metaData->tableNum-1][i];
+        }
         for(int i = 0; i < TAB_MAX_COL_NUM; i++) { // note: this should be TAB_MAX_COL_NUM
             metaData->isPrimaryKey[tableToDrop][i] = metaData->isPrimaryKey[metaData->tableNum-1][i];
             metaData->isUniqueKey[tableToDrop][i] = metaData->isUniqueKey[metaData->tableNum-1][i];

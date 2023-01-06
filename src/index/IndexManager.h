@@ -45,6 +45,8 @@ public:
      */
     int removeIndex(const char* tableName, const char* indexName);
 
+    int removeIndex(const char* tableName);    
+
     /**
      * @brief return true if indexName has been created
      */
