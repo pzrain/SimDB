@@ -1,6 +1,20 @@
 Database changed.
-Insert 4 rows in 0.000055 seconds
-Insert 4 rows in 0.000046 seconds
+Insert 4 rows in 0.000063 seconds
+Insert 4 rows in 0.000038 seconds
+
+----------------
+table_2.id | table_2.iid | table_1.id | table_1.iid 
+----------------
+1 | 1 | 1 | 3 
+1 | 1 | 1 | 1 
+1 | 2 | 1 | 3 
+1 | 2 | 1 | 1 
+2 | 3 | 2 | 4 
+2 | 3 | 2 | 2 
+2 | 4 | 2 | 4 
+2 | 4 | 2 | 2 
+----------------
+Select 8 rows in 0.000121 seconds
 
 ----------------
 table_2.id | table_2.iid | table_1.id | table_1.iid 
@@ -14,18 +28,4 @@ table_2.id | table_2.iid | table_1.id | table_1.iid
 2 | 4 | 2 | 2 
 2 | 4 | 2 | 4 
 ----------------
-Select 8 rows in 0.000168 seconds
-
-----------------
-table_2.id | table_2.iid | table_1.id | table_1.iid 
-----------------
-1 | 1 | 1 | 1 
-1 | 1 | 1 | 3 
-1 | 2 | 1 | 1 
-1 | 2 | 1 | 3 
-2 | 3 | 2 | 2 
-2 | 3 | 2 | 4 
-2 | 4 | 2 | 2 
-2 | 4 | 2 | 4 
-----------------
-Select 8 rows in 0.000144 seconds
+Select 8 rows in 0.000065 seconds

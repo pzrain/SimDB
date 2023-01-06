@@ -233,7 +233,7 @@ void testOptimizer(SQLParser::Where_and_clauseContext* whereAndClause) {
 
 void optimizeWhereClause(SQLParser::Where_and_clauseContext* whereAndClause, DatabaseManager* databaseManager) {
     SQLOptimizerGraph graph;
-    std::vector<SQLParser::Where_clauseContext*> newWhereClause;
+    std::vector<SQLParser::Where_clauseContext*> newWhereClause, resWhereClause;
     std::vector<SQLParser::Where_operator_expressionContext*> omitWhereClause;
     fprintf(stderr, "Before Optimization:\n");
     testOptimizer(whereAndClause);
@@ -275,8 +275,11 @@ void optimizeWhereClause(SQLParser::Where_and_clauseContext* whereAndClause, Dat
             newWhereClause.push_back(whereClause);
         }
     }
-    graph.calc(newWhereClause, omitWhereClause);
+    graph.calc(resWhereClause, omitWhereClause);
     whereAndClause->children.clear();
+    for (auto whereClause : resWhereClause) {
+        whereAndClause->children.push_back(whereClause);
+    }
     for (auto whereClause : newWhereClause) {
         whereAndClause->children.push_back(whereClause);
     }

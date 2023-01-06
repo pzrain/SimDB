@@ -799,6 +799,8 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
     TableHeader* tableHeaders[MAX_SELECT_TABLE];
     std::vector<Record*> records[MAX_SELECT_TABLE];
     std::vector<RecordId*> recordIds[MAX_SELECT_TABLE];
+    std::vector<Record*> optimizeRecords;
+    std::vector<RecordId*> optimizeRecordIds, opRecordIds;
     int tableNum = selectTables.size();
     for (int i = 0; i < tableNum; i++) {
         fileHandlers[i] = recordManager->findTable(selectTables[i].c_str());
@@ -959,6 +961,75 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     }
                 } else {
                     return -1;
+                }
+            }
+            initialOptimize = true;
+        }
+    }
+    if (expressions.size() > 0 && expressions[0].rType == DB_ITEM) {
+        DBExpItem* lItem = (DBExpItem*)expressions[0].lVal;
+        DBExpItem* rItem = (DBExpItem*)expressions[0].rVal;
+        int lfileId = (lItem->expTable == selectTables[0]) ? 0 : 1;
+        int rfileId = (rItem->expTable == selectTables[0]) ? 0 : 1;
+        if (lfileId != rfileId && hasIndex(rItem->expTable, rItem->expCol)) {
+            int lcolId = tableHeaders[lfileId]->getCol(lItem->expCol.c_str());
+            int rcolId = tableHeaders[rfileId]->getCol(rItem->expCol.c_str());
+            TableEntryDesc ltableEntryDesc = tableHeaders[lfileId]->getTableEntryDesc();
+            TableEntryDesc rtableEntryDesc = tableHeaders[rfileId]->getTableEntryDesc();
+            TableEntryDescNode* ltableEntryDescNode = ltableEntryDesc.getCol(lcolId);
+            TableEntryDescNode* rtableEntryDescNode = rtableEntryDesc.getCol(rcolId);
+            if (ltableEntryDescNode->colType != rtableEntryDescNode->colType) {
+                printf("[ERROR] %s.%s and %s.%s don't have compatible types.\n", lItem->expTable.c_str(), lItem->expCol.c_str(), rItem->expTable.c_str(), rItem->expCol.c_str());
+                return -1;
+            }
+            fileHandlers[lfileId]->getAllRecordsAccordingToFields(optimizeRecords, optimizeRecordIds, 1 << lcolId);
+            void* searchData;
+            for (int i = 0; i < recordIds[rfileId].size(); i++) {
+                opRecordIds.push_back(new RecordId(-1, -1));
+            }
+            for (int i = 0; i < optimizeRecords.size(); i++) {
+                searchData = (void*)(((uint8_t*)optimizeRecords[i]->data) + sizeof(int16_t));
+                std::vector<int> val, tempVal;
+                switch (expressions[0].op) {
+                    case EQU_TYPE: indexManager->search(rItem->expTable.c_str(), rItem->expCol.c_str(), searchData, val); break;
+                    case NEQ_TYPE:
+                        indexManager->searchBetween(rItem->expTable.c_str(), rItem->expCol.c_str(), nullptr, searchData, val, true, false);
+                        indexManager->searchBetween(rItem->expTable.c_str(), rItem->expCol.c_str(), searchData, nullptr, tempVal, false, true);
+                        for (int k = 0; k < tempVal.size(); k++) {
+                            val.push_back(tempVal[k]);
+                        }
+                        break;
+                    case LT_TYPE:
+                        indexManager->searchBetween(rItem->expTable.c_str(), rItem->expCol.c_str(), searchData, nullptr, val, false, true);
+                        break;
+                    case LTE_TYPE:
+                        indexManager->searchBetween(rItem->expTable.c_str(), rItem->expCol.c_str(), searchData, nullptr, val, true, true);
+                        break;
+                    case GT_TYPE:
+                        indexManager->searchBetween(rItem->expTable.c_str(), rItem->expCol.c_str(), nullptr, searchData, val, true, false);
+                        break;
+                    case GTE_TYPE:
+                        indexManager->searchBetween(rItem->expTable.c_str(), rItem->expCol.c_str(), nullptr, searchData, val, true, true);
+                        break;
+                    default:
+                        fprintf(stderr, "encouter error op type %d in search.\n", expressions[i].op);
+                        return -1;
+                        break;
+                }
+                for (int j = 0; j < val.size(); j++) {
+                    int pageId, slotId, pos = val[j];
+                    fileHandlers[rfileId]->transformR(pos, pageId, slotId);
+                    while (pos >= opRecordIds.size()) {
+                        opRecordIds.push_back(new RecordId(-1, -1));
+                    }
+                    opRecordIds[pos]->set(pageId, slotId);
+                    if (lfileId == 0) {
+                        res[cur].push_back(optimizeRecordIds[i]);
+                        res[cur].push_back(opRecordIds[pos]);
+                    } else {
+                        res[cur].push_back(opRecordIds[pos]);
+                        res[cur].push_back(optimizeRecordIds[i]);
+                    }
                 }
             }
             initialOptimize = true;
@@ -1456,6 +1527,13 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
             delete records[i][j];
             delete recordIds[i][j];
         }
+    }
+    for (int i = 0; i < optimizeRecords.size(); i++) {
+        delete optimizeRecords[i];
+        delete optimizeRecordIds[i];
+    }
+    for (int i = 0; i < opRecordIds.size(); i++) {
+        delete opRecordIds[i];
     }
     return 0;
 }
