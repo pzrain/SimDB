@@ -768,6 +768,30 @@ int getMapIndex(RecordDataNode* cur, void* ma, int &cnt) {
     return -1;
 }
 
+int getMapIndex(void* cur, uint8_t colType, void* ma, int &cnt) {
+    switch (colType) {
+        case COL_INT:
+            if (((map<int, int>*)ma)->count(*(int*)cur) == 0) {
+                (*(map<int, int>*)ma)[*(int*)cur] = ++cnt;
+                return cnt;
+            }
+            return (*(map<int, int>*)ma)[*(int*)cur];
+        case COL_FLOAT:
+            if (((map<float, int>*)ma)->count(*(float*)cur) == 0) {
+                (*(map<float, int>*)ma)[*(float*)cur] = ++cnt;
+                return cnt;
+            }
+            return (*(map<float, int>*)ma)[*(float*)cur];
+        case COL_VARCHAR:
+            if (((map<string, int>*)ma)->count((string)((char*)cur)) == 0) {
+                (*(map<string, int>*)ma)[(string)((char*)cur)] = ++cnt;
+                return cnt;
+            }
+            return (*(map<string, int>*)ma)[(string)((char*)cur)];
+    }
+    return -1;
+}
+
 int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression> expressions, vector<RecordId*>& resRecordIds) {
     int cur = 0;
     std::vector<RecordId*> res[2];
@@ -782,7 +806,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
         fileHandlers[i]->getAllRecords(records[i], recordIds[i]);
     }
     bool initialOptimize = false;
-    if (expressions.size() > 0 && ((expressions[0].op >= EQU_TYPE && expressions[0].op <= LTE_TYPE && expressions[0].rType >= DB_INT && expressions[0].rType <= DB_CHAR) || (expressions[0].rType == DB_NST))) {
+    if (expressions.size() > 0 && ((expressions[0].op >= EQU_TYPE && expressions[0].op <= LTE_TYPE && expressions[0].rType >= DB_INT && expressions[0].rType <= DB_CHAR) || (expressions[0].rType == DB_NST) || (expressions[0].rType == DB_LIST))) {
         DBExpItem* lItem = (DBExpItem*)expressions[0].lVal;
         if (hasIndex(lItem->expTable, lItem->expCol)) {
             int fileId = (lItem->expTable == selectTables[0]) ? 0 : 1;
@@ -794,6 +818,42 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
             void* nstSearchData = expressions[0].rVal;
             vector<RecordData> tempRecordData;
             vector<string> tempColNames;
+            if (expressions[0].rType == DB_LIST) {
+                if (expressions[0].op != IN_TYPE) {
+                    printf("[ERROR] operation type of DB_LIST must be IN_TYPE.\n");
+                    return -1;
+                }
+                void* ma = nullptr;
+                switch (tableEntryDescNode->colType) { // build map
+                    case COL_INT: ma = new map<int, int>; break;
+                    case COL_FLOAT: ma = new map<float, int>; break;
+                    case COL_VARCHAR: ma = new map<string, int>; break;
+                    default: return -1; break;
+                }
+                int cnt = 0;
+                std::vector<void*>* valueList = (std::vector<void*>*)expressions[0].rVal;
+                for (int i = 0; i < expressions[0].valueListType.size(); i++) {
+                    if (expressions[0].valueListType[i] != (DB_LIST_TYPE)tableEntryDescNode->colType) {
+                        continue;
+                    }
+                    int lastCnt = cnt;
+                    getMapIndex((*valueList)[i], tableEntryDescNode->colType, ma, cnt);
+                    if (cnt == lastCnt) {
+                        continue;
+                    }
+                    std::vector<int> tempVal;
+                    indexManager->search(lItem->expTable.c_str(), lItem->expCol.c_str(), (*valueList)[i], tempVal);
+                    for (int j = 0; j < tempVal.size(); j++) {
+                        val.push_back(tempVal[j]);
+                    }
+                }
+                switch (tableEntryDescNode->colType) { // build map
+                    case COL_INT: delete (map<int, int>*)ma; break;
+                    case COL_FLOAT: delete (map<float, float>*)ma; break;
+                    case COL_VARCHAR: delete (map<string, int>*)ma; break;
+                    default: break;
+                }
+            }
             if (expressions[0].rType == DB_NST) {
                 if (expressions[0].op > LTE_TYPE && expressions[0].op != IN_TYPE) {
                     printf("[ERROR] op %d is not supported for nesty selection.\n", expressions[0].op);
@@ -847,12 +907,11 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     nstSearchData = transformType(tempRecordData[0].head);
                 }
             }
-            if (flag || expressions[0].rType != DB_NST) {
+            if (flag || (expressions[0].rType >= DB_INT && expressions[0].rType <= DB_CHAR)) {
                 if (!flag && tableEntryDescNode->colType != expressions[0].rType) {
                     printf("[ERROR] incompatible type for %s.%s and %d.\n", lItem->expTable.c_str(), lItem->expCol.c_str(), expressions[0].rType);
                     return -1;
                 }
-                fprintf(stderr, "searchData = %d, op = %d\n", *(int*)nstSearchData, expressions[0].op);
                 switch (expressions[0].op) {
                     case EQU_TYPE:
                         indexManager->search(lItem->expTable.c_str(), lItem->expCol.c_str(), nstSearchData, val);
