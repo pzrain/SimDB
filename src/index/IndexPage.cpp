@@ -166,7 +166,7 @@ int IndexPage::cut(int k) {
     return head;
 }
 
-int IndexPage::insert(void* data, const int val, const int16_t childIndex_) {
+int IndexPage::insert(void* data, const int val, const int16_t childIndex_, const int16_t lastIndex_) {
     int16_t head = indexPageHeader->firstIndex, last = -1;
     int16_t emptyIndex = indexPageHeader->firstEmptyIndex;
     uint8_t* emptySlot = nullptr;
@@ -187,11 +187,14 @@ int IndexPage::insert(void* data, const int val, const int16_t childIndex_) {
     } else {
         int originHead = head;
         while (head >= 0) {
-            if (compare->lte(data, getData(head))) {
+            if (lastIndex_ == -1 && compare->lte(data, getData(head))) {
                 break;
             }
             last = head;
             head = *getNextIndex(head);
+            if (lastIndex_ >= 0 && last == lastIndex_) {
+                break;
+            }
         }
         if (head == originHead) { // inserted data is the smallest of all
             indexPageHeader->firstIndex = emptyIndex;

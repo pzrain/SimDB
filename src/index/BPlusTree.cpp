@@ -151,7 +151,7 @@ void BPlusTree::dealOverFlow(IndexPage* indexPage, std::vector<IndexPage*> &rec,
         pageIndex.push_back(index);
 
         memcpy(fatherPage->getData(fatherSlot), indexPage->getData(*indexPage->getLastIndex()), indexLen);
-        int insertIndex = fatherPage->insert(newIndexPage->getData(*newIndexPage->getLastIndex()), 0, newPageId);
+        int insertIndex = fatherPage->insert(newIndexPage->getData(*newIndexPage->getLastIndex()), 0, newPageId, fatherSlot);
         int newIndexPageFatherIndex;
         _transform(newIndexPageFatherIndex, fatherPageId, insertIndex);
         *newIndexPage->getFatherIndex() = newIndexPageFatherIndex; 
@@ -161,8 +161,8 @@ void BPlusTree::dealOverFlow(IndexPage* indexPage, std::vector<IndexPage*> &rec,
         fatherPage->initialize(indexLen, colType);
         fatherPage->changePageType(INDEX_PAGE_INTERIOR);
         bufPageManager->markDirty(index);
-        int lInsertIndex = fatherPage->insert(indexPage->getData(*indexPage->getLastIndex()), 0, indexPage->getPageId());
         int rInsertIndex = fatherPage->insert(newIndexPage->getData(*newIndexPage->getLastIndex()), 0, newIndexPage->getPageId());
+        int lInsertIndex = fatherPage->insert(indexPage->getData(*indexPage->getLastIndex()), 0, indexPage->getPageId());
         int lFatherPos, rFatherPos;
         _transform(lFatherPos, fatherPageId, lInsertIndex);
         _transform(rFatherPos, fatherPageId, rInsertIndex);
