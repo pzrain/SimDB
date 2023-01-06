@@ -744,6 +744,30 @@ inline void writeBackData(void* data, RecordDataNode* recordDataNode) {
     }
 }
 
+int getMapIndex(RecordDataNode* cur, void* ma, int &cnt) {
+    switch (cur->nodeType) {
+        case COL_INT:
+            if (((map<int, int>*)ma)->count(*cur->content.intContent) == 0) {
+                (*(map<int, int>*)ma)[*cur->content.intContent] = ++cnt;
+                return cnt;
+            }
+            return (*(map<int, int>*)ma)[*cur->content.intContent];
+        case COL_FLOAT:
+            if (((map<float, int>*)ma)->count(*cur->content.floatContent) == 0) {
+                (*(map<float, int>*)ma)[*cur->content.floatContent] = ++cnt;
+                return cnt;
+            }
+            return (*(map<float, int>*)ma)[*cur->content.floatContent];
+        case COL_VARCHAR:
+            if (((map<string, int>*)ma)->count((string)(cur->content.charContent)) == 0) {
+                (*(map<string, int>*)ma)[(string)cur->content.charContent] = ++cnt;
+                return cnt;
+            }
+            return (*(map<string, int>*)ma)[(string)cur->content.charContent];
+    }
+    return -1;
+}
+
 int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression> expressions, vector<RecordId*>& resRecordIds) {
     int cur = 0;
     std::vector<RecordId*> res[2];
@@ -758,45 +782,105 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
         fileHandlers[i]->getAllRecords(records[i], recordIds[i]);
     }
     bool initialOptimize = false;
-    if (expressions.size() > 0 && expressions[0].op >= EQU_TYPE && expressions[0].op <= LTE_TYPE && expressions[0].rType >= DB_INT && expressions[0].rType <= DB_CHAR) {
+    if (expressions.size() > 0 && ((expressions[0].op >= EQU_TYPE && expressions[0].op <= LTE_TYPE && expressions[0].rType >= DB_INT && expressions[0].rType <= DB_CHAR) || (expressions[0].rType == DB_NST))) {
         DBExpItem* lItem = (DBExpItem*)expressions[0].lVal;
         if (hasIndex(lItem->expTable, lItem->expCol)) {
             int fileId = (lItem->expTable == selectTables[0]) ? 0 : 1;
             int colId = tableHeaders[fileId]->getCol(lItem->expCol.c_str());
             TableEntryDesc tableEntryDesc = tableHeaders[fileId]->getTableEntryDesc();
             TableEntryDescNode* tableEntryDescNode = tableEntryDesc.getCol(colId);
-            if (tableEntryDescNode->colType != expressions[0].rType) {
-                printf("[ERROR] incompatible type for %s.%s and %d.\n", lItem->expTable.c_str(), lItem->expCol.c_str(), expressions[0].rType);
-                return -1;
-            }
             std::vector<int> val, tempRes;
-            switch (expressions[0].op) {
-                case EQU_TYPE:
-                    indexManager->search(lItem->expTable.c_str(), lItem->expCol.c_str(), expressions[0].rVal, val);
-                    break;
-                case NEQ_TYPE:
-                    indexManager->searchBetween(lItem->expTable.c_str(), lItem->expCol.c_str(), nullptr, expressions[0].rVal, tempRes, true, false);
-                    indexManager->searchBetween(lItem->expTable.c_str(), lItem->expCol.c_str(), expressions[0].rVal, nullptr, val, false, true);
-                    for (int k = 0; k < tempRes.size(); k++) {
-                        val.push_back(tempRes[k]);
-                    }
-                    break;
-                case LT_TYPE:
-                    indexManager->searchBetween(lItem->expTable.c_str(), lItem->expCol.c_str(), nullptr, expressions[0].rVal, val, true, false);
-                    break;
-                case LTE_TYPE:
-                    indexManager->searchBetween(lItem->expTable.c_str(), lItem->expCol.c_str(), nullptr, expressions[0].rVal, val, true, true);
-                    break;
-                case GT_TYPE:
-                    indexManager->searchBetween(lItem->expTable.c_str(), lItem->expCol.c_str(), expressions[0].rVal, nullptr, val, false, true);
-                    break;
-                case GTE_TYPE:
-                    indexManager->searchBetween(lItem->expTable.c_str(), lItem->expCol.c_str(), expressions[0].rVal, nullptr, val, true, true);
-                    break;
-                default:
-                    fprintf(stderr, "encouter error op type %d in search.\n", expressions[0].op);
+            bool flag = false; // flag is used to integrate nesty selection and normal selection when op is an comparison operator
+            void* nstSearchData = expressions[0].rVal;
+            vector<RecordData> tempRecordData;
+            vector<string> tempColNames;
+            if (expressions[0].rType == DB_NST) {
+                if (expressions[0].op > LTE_TYPE && expressions[0].op != IN_TYPE) {
+                    printf("[ERROR] op %d is not supported for nesty selection.\n", expressions[0].op);
                     return -1;
-                    break;
+                }
+                if (((DBSelect*)(expressions[0].rVal))->selectItems.size() > 1) {
+                    printf("[ERROR] nesty selection in tuple form is not supported.\n");
+                    return -1;
+                }
+                if (_selectRecords((DBSelect*)expressions[0].rVal, tempRecordData, tempColNames) == -1) {
+                    return -1;
+                }
+                if (tempRecordData.size() > 0 && tempRecordData[0].head->nodeType != tableEntryDescNode->colType) {
+                    printf("[ERROR] incompatible type between data and result of nesty selection.\n");
+                    return -1;
+                }
+                if (expressions[0].op == IN_TYPE) {
+                    void* ma = nullptr;
+                    switch (tableEntryDescNode->colType) { // build map
+                        case COL_INT: ma = new map<int, int>; break;
+                        case COL_FLOAT: ma = new map<float, int>; break;
+                        case COL_VARCHAR: ma = new map<string, int>; break;
+                        default: return -1; break;
+                    }
+                    int cnt = 0;
+                    for (int i = 0; i < tempRecordData.size(); i++) {
+                        void* rData = transformType(tempRecordData[i].head);
+                        int lastCnt = cnt;
+                        getMapIndex(tempRecordData[i].head, ma, cnt);
+                        if (cnt == lastCnt) { // duplicate item
+                            continue;
+                        }
+                        std::vector<int> tempVal;
+                        indexManager->search(lItem->expTable.c_str(), lItem->expCol.c_str(), rData, tempVal);
+                        for (int j = 0; j < tempVal.size(); j++) {
+                            val.push_back(tempVal[j]);
+                        }
+                    }
+                    switch (tableEntryDescNode->colType) { // build map
+                        case COL_INT: delete (map<int, int>*)ma; break;
+                        case COL_FLOAT: delete (map<float, float>*)ma; break;
+                        case COL_VARCHAR: delete (map<string, int>*)ma; break;
+                        default: break;
+                    }
+                } else {
+                    if (tempRecordData.size() > 1) {
+                        printf("[ERROR] the result of child select contains more than one record.\n");
+                        return -1;
+                    }
+                    flag = true;
+                    nstSearchData = transformType(tempRecordData[0].head);
+                }
+            }
+            if (flag || expressions[0].rType != DB_NST) {
+                if (!flag && tableEntryDescNode->colType != expressions[0].rType) {
+                    printf("[ERROR] incompatible type for %s.%s and %d.\n", lItem->expTable.c_str(), lItem->expCol.c_str(), expressions[0].rType);
+                    return -1;
+                }
+                fprintf(stderr, "searchData = %d, op = %d\n", *(int*)nstSearchData, expressions[0].op);
+                switch (expressions[0].op) {
+                    case EQU_TYPE:
+                        indexManager->search(lItem->expTable.c_str(), lItem->expCol.c_str(), nstSearchData, val);
+                        break;
+                    case NEQ_TYPE:
+                        indexManager->searchBetween(lItem->expTable.c_str(), lItem->expCol.c_str(), nullptr, nstSearchData, tempRes, true, false);
+                        indexManager->searchBetween(lItem->expTable.c_str(), lItem->expCol.c_str(), nstSearchData, nullptr, val, false, true);
+                        for (int k = 0; k < tempRes.size(); k++) {
+                            val.push_back(tempRes[k]);
+                        }
+                        break;
+                    case LT_TYPE:
+                        indexManager->searchBetween(lItem->expTable.c_str(), lItem->expCol.c_str(), nullptr, nstSearchData, val, true, false);
+                        break;
+                    case LTE_TYPE:
+                        indexManager->searchBetween(lItem->expTable.c_str(), lItem->expCol.c_str(), nullptr, nstSearchData, val, true, true);
+                        break;
+                    case GT_TYPE:
+                        indexManager->searchBetween(lItem->expTable.c_str(), lItem->expCol.c_str(), nstSearchData, nullptr, val, false, true);
+                        break;
+                    case GTE_TYPE:
+                        indexManager->searchBetween(lItem->expTable.c_str(), lItem->expCol.c_str(), nstSearchData, nullptr, val, true, true);
+                        break;
+                    default:
+                        fprintf(stderr, "encouter error op type %d in search.\n", expressions[0].op);
+                        return -1;
+                        break;
+                }
             }
             for (int i = 0; i < val.size(); i++) {
                 int pageId, slotId;
@@ -1087,7 +1171,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                 vector<RecordData> tempRecordData;
                 vector<string> tempColNames;
                 if (((DBSelect*)(expressions[i].rVal))->selectItems.size() > 1) {
-                    printf("[ERROR] nesty selection in tuple form is incompatible with IN op.\n");
+                    printf("[ERROR] nesty selection in tuple form not supported.\n");
                     return -1;
                 }
                 if (equalAsPre && preFlag) {
@@ -1410,30 +1494,6 @@ inline void operateData(RecordData& lRecordData, RecordData& rRecordData, DB_SEL
     writeBackData(lData, lHead);
 }
 
-int getMapIndex(RecordDataNode* cur, void* ma, int &cnt) {
-    switch (cur->nodeType) {
-        case COL_INT:
-            if (((map<int, int>*)ma)->count(*cur->content.intContent) == 0) {
-                (*(map<int, int>*)ma)[*cur->content.intContent] = ++cnt;
-                return cnt;
-            }
-            return (*(map<int, int>*)ma)[*cur->content.intContent];
-        case COL_FLOAT:
-            if (((map<float, int>*)ma)->count(*cur->content.floatContent) == 0) {
-                (*(map<float, int>*)ma)[*cur->content.floatContent] = ++cnt;
-                return cnt;
-            }
-            return (*(map<float, int>*)ma)[*cur->content.floatContent];
-        case COL_VARCHAR:
-            if (((map<string, int>*)ma)->count((string)(cur->content.charContent)) == 0) {
-                (*(map<string, int>*)ma)[(string)cur->content.charContent] = ++cnt;
-                return cnt;
-            }
-            return (*(map<string, int>*)ma)[(string)cur->content.charContent];
-    }
-    return -1;
-}
-
 int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resRecords, vector<string>& entryNames) {
 
     int tableSize = dbSelect->selectTables.size();
@@ -1658,6 +1718,12 @@ int TableManager::_selectRecords(DBSelect* dbSelect, vector<RecordData>& resReco
                     operateData(resRecords[mapIndex], tempRecordData, ops[curFileId][k], colIds[curFileId][k], recordColIds[curFileId][k]);
                 }
             }
+        }
+        switch (groupTableEntryDescNode->colType) { // build map
+            case COL_INT: delete (map<int, int>*)ma; break;
+            case COL_FLOAT: delete (map<float, float>*)ma; break;
+            case COL_VARCHAR: delete (map<string, int>*)ma; break;
+            default: break;
         }
     } else {
         if (hasAggregate) { // when there is aggregate query, there will be only one result record
@@ -2002,6 +2068,7 @@ int TableManager::dropRecords(string tableName, DBDelete* dbDelete, DBMeta* dbMe
 
 int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* dbMeta) {
     string path = "database/" + databaseName + '/' + tableName +".db";
+    fprintf(stderr, "path = %s, %d\n", path.c_str(), checkTableExist(path));
     if(!checkTableExist(path)) {
         printf("[ERROR] table dose not exist!\n");
         return -1;
