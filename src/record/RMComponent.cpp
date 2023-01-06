@@ -195,7 +195,7 @@ void TableHeader::printInfo() {
                 }
                 break;
             case COL_VARCHAR:
-                printf("VARCHAR(%d)", entry.colLen);
+                printf("VARCHAR(%d)", entry.colLen - 1);
                 if (entry.hasDefault) {
                     printf(", Default value = %s;", entry.defaultVal.defaultValVarchar);
                 } else {

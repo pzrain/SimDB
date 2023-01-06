@@ -227,6 +227,9 @@ int DatabaseManager::createTable(string name, vector<FieldItem> normalFieldList)
         size_t colLen = normalFieldList[i].type.len;
         tableEntrys[i] = TableEntry(colName.c_str(), colType);
         tableEntrys[i].colLen = colLen;
+        if (colType == COL_VARCHAR) {
+            tableEntrys[i].colLen += 1;
+        }
         tableEntrys[i].notNullConstraint = normalFieldList[i].isNotNull;
         if(normalFieldList[i].hasDefault) {
             tableEntrys[i].hasDefault = true;

@@ -2,8 +2,8 @@ Database changed.
 ==========  Begin Table Info  ==========
 Table name: test_table;
 Column size: 3;
-Record Length: 20;
-Record size: 409;
+Record Length: 21;
+Record size: 389;
 [column 1] name = test_int, type = INT, Default value = Null;
 [column 2] name = test_float, type = FLOAT, Default value = 2.330000;
 [column 3] name = test_str, type = VARCHAR(8), Default value = Null;

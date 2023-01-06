@@ -57,7 +57,7 @@ struct RecordDataNode{
                 break;
             case COL_VARCHAR:
                 if (content.charContent) {
-                    delete content.charContent;
+                    delete[] content.charContent;
                 }
                 break;
             default:

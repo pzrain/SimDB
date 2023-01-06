@@ -50,7 +50,7 @@ public:
 
 class FloatCompare: public Compare{
 public:
-    #define FLOAT_COMPARE_EPSILON 1e-5
+    #define FLOAT_COMPARE_EPSILON 1e-3
 
     ~FloatCompare() {}
 

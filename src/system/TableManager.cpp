@@ -1721,7 +1721,11 @@ int TableManager::selectRecords(DBSelect* dbSelect) {
                     printf("%s ", cur->content.charContent);
                     break;
                 case COL_NULL:
-                    printf("NULL ");
+                    if (dbSelect->selectItems[i].selectType == COUNT_TYPE) {
+                        printf("0 ");
+                    } else {
+                        printf("NULL ");
+                    }
                     break;
                 default:
                     break;
@@ -1770,6 +1774,7 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert, DBMeta* db
                 printf("[Error] column type done't match. Types are %d and %d\n", dbInsert->valueListsType[i][j], tableEntryDesc.getCol(j)->colType);
                 return -1;
             }
+            int sLen = -1;
             switch (dbInsert->valueListsType[i][j]) {
                 case DB_LIST_INT:
                     recordDataNode->len = 4;
@@ -1789,8 +1794,12 @@ int TableManager::insertRecords(string tableName, DBInsert* dbInsert, DBMeta* db
                     recordDataNode->len = tableEntryDescNode->colLen;
                     recordDataNode->nodeType = COL_VARCHAR;
                     recordDataNode->content.charContent = new char[recordDataNode->len];
-                    strcpy(recordDataNode->content.charContent, (char*)dbInsert->valueLists[i][j]);
-                    *(recordDataNode->content.charContent + recordDataNode->len - 1) = '\0';
+                    sLen = strlen((char*)dbInsert->valueLists[i][j]);
+                    memcpy(recordDataNode->content.charContent, (char*)dbInsert->valueLists[i][j], sLen);
+                    if (recordDataNode->len - 1 < sLen) {
+                        sLen = recordDataNode->len - 1;
+                    } 
+                    recordDataNode->content.charContent[sLen] = '\0';
                     indexData[j].push_back((char*)dbInsert->valueLists[i][j]);
                     break;
                 case DB_LIST_NULL:
@@ -2062,6 +2071,8 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
 
         for (int j = 0; j < dbUpdate->expItem.size(); j++) {
             RecordDataNode* recordDataNode = updatedRecordData.getData(colIds[j]);
+            TableEntryDescNode* tableEntryDescNode = tableEntryDesc.getCol(j);
+            int sLen = -1;
             switch (dbUpdate->expItem[j].rType) {
                 case COL_INT:
                     if (recordDataNode->nodeType == COL_NULL) {
@@ -2079,11 +2090,15 @@ int TableManager::updateRecords(string tableName, DBUpdate* dbUpdate, DBMeta* db
                     break;
                 case COL_VARCHAR:
                     if (recordDataNode->nodeType == COL_NULL) {
-                        recordDataNode->len = strlen((char*)dbUpdate->expItem[j].rVal);
+                        recordDataNode->len = tableEntryDescNode->colLen;
                         recordDataNode->content.charContent = new char[recordDataNode->len];
                     }
-                    strcpy(recordDataNode->content.charContent, (char*)dbUpdate->expItem[j].rVal);
-                    *(recordDataNode->content.charContent + recordDataNode->len - 1) = '\0';
+                    sLen = strlen((char*)dbUpdate->expItem[j].rVal);
+                    memcpy(recordDataNode->content.charContent, (char*)dbUpdate->expItem[j].rVal, sLen);
+                    if (recordDataNode->len - 1 < sLen) {
+                        sLen = recordDataNode->len - 1;
+                    }
+                    recordDataNode->content.charContent[sLen] = '\0';
                     break;
                 default:
                     break;
@@ -2262,9 +2277,10 @@ bool TableManager::_checkConstraintOnInsert(string tableName, RecordData* record
         string refTableName = dbMeta->tableNames[refTable];
         FileHandler* foreignFileHandler = recordManager->findTable(refTableName.c_str());
         foreignFileHandler->getTableHeader()->getCol(refCol, colName);
-        if (!indexManager->hasIndex(tableName.c_str(), colName)) {
+        if (!indexManager->hasIndex(refTableName.c_str(), colName)) {
+            fprintf(stderr, "%s.%s\n", tableName.c_str(), colName);
             fprintf(stderr, "no index on foreign key when insert.\n");
-            return -1;
+            return false;
         }
         vector<int> res;
         RecordDataNode* recordDataNode = recordData->getData(col);
@@ -2276,7 +2292,7 @@ bool TableManager::_checkConstraintOnInsert(string tableName, RecordData* record
             default: break;
         }
         if (checkData == nullptr) {
-            return -1;
+            return false;
         }
         indexManager->search(refTableName.c_str(), colName, checkData, res);
         if (res.size() == 0) {
@@ -2330,7 +2346,7 @@ bool TableManager::_checkConstraintOnDelete(string tableName, RecordData* record
         }
         if (!indexManager->hasIndex(refTableName.c_str(), refColName)) {
             fprintf(stderr, "no index on foreign key when delete.\n");
-            return -1;
+            return false;
         }
         /* 
             should foreign key be unique?
@@ -2338,7 +2354,7 @@ bool TableManager::_checkConstraintOnDelete(string tableName, RecordData* record
          */
         if (!indexManager->hasIndex(tableName.c_str(), colName)) {
             fprintf(stderr, "no index on local key when delete.\n");
-            return -1;
+            return false;
         }
         vector<int> res;
         indexManager->search(tableName.c_str(), colName, checkData, res);
