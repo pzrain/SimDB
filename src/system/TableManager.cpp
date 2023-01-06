@@ -949,8 +949,13 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     res[cur].push_back(recordId);
                 } else if (tableNum == 2) {
                     for (auto recordIdJ : recordIds[fileId ^ 1]) {
-                        res[cur].push_back(recordId);
-                        res[cur].push_back(recordIdJ);
+                        if (fileId == 0) {
+                            res[cur].push_back(recordId);
+                            res[cur].push_back(recordIdJ);
+                        } else {
+                            res[cur].push_back(recordIdJ);
+                            res[cur].push_back(recordId);
+                        }
                     }
                 } else {
                     return -1;
