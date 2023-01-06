@@ -1143,11 +1143,11 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                             fileHandlers[rFileId]->transform(val, rRecordId->getPageId(), rRecordId->getSlotId());
                             if (ma.count(val) > 0) {
                                 if (fileId == 0) {
-                                    res[cur].push_back(curRecordId);
+                                    res[cur].push_back(res[cur ^ 1][k ^ 1]);
                                     res[cur].push_back(rRecordId);
                                 } else {
                                     res[cur].push_back(rRecordId);
-                                    res[cur].push_back(curRecordId);
+                                    res[cur].push_back(res[cur ^ 1][k ^ 1]);
                                 }
                             }
                         }
@@ -1212,11 +1212,11 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                             }
                             if (flag) {
                                 if (fileId == 0) {
-                                    res[cur].push_back(curRecordId);
+                                    res[cur].push_back(res[cur ^ 1][k ^ 1]);
                                     res[cur].push_back(rRecordId);
                                 } else {
                                     res[cur].push_back(rRecordId);
-                                    res[cur].push_back(curRecordId);
+                                    res[cur].push_back(res[cur ^ 1][k ^ 1]);
                                 }
                             }
                         }
