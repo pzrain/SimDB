@@ -1,0 +1,12 @@
+Database changed.
+Insert 16 rows in 0.000081 seconds
+[ERROR] fail in checking primary or unique constraint.
+[INFO] automatically remove Index on test.id.
+Insert 1 rows in 0.000016 seconds
+
+----------------
+COUNT(*) 
+----------------
+17 
+----------------
+Select 1 rows in 0.000060 seconds
