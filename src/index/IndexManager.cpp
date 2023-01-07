@@ -97,7 +97,20 @@ int IndexManager::showIndex() {
         for (int j = 0; j < TAB_MAX_COL_NUM; j++) {
             if (bPlusTree[i][j]) {
                 cnt++;
-                printf("%s.%s\n", tableNames[i], indexNames[i][j]);
+                printf("INDEX(%s.%s);\n", tableNames[i], indexNames[i][j]);
+            }
+        }
+    }
+    return cnt;
+}
+
+int IndexManager::showIndex(const char* tableName) {
+    int cnt = 0;
+    for (int i = 0; i < DB_MAX_TABLE_NUM; i++) {
+        for (int j = 0; j < TAB_MAX_COL_NUM; j++) {
+            if (bPlusTree[i][j] && strcmp(tableName, tableNames[i]) == 0) {
+                cnt++;
+                printf("INDEX(%s);\n", indexNames[i][j]);
             }
         }
     }
@@ -203,6 +216,25 @@ int IndexManager::removeIndex(const char* tableName, const char* indexName) {
         return 0;
     }
     return -1;
+}
+
+int IndexManager::removeIndex(const char* tableName) {
+    char fileName[DB_MAX_NAME_LEN + TAB_MAX_NAME_LEN + TAB_MAX_NAME_LEN + 30];
+    for (int i = 0; i < DB_MAX_TABLE_NUM; i++) {
+        if (strcmp(tableNames[i], tableName) != 0) {
+            continue;
+        }
+        for (int j = 0; j < TAB_MAX_COL_NUM; j++) {
+            if (bPlusTree[i][j]) {
+                delete bPlusTree[i][j];
+                bPlusTree[i][j] = nullptr;
+                sprintf(fileName, "database/%s/%s_%s.index", databaseName, tableName, indexNames[i][j]);
+                bufPageManager->fileManager->removeFile(fileName);
+            }
+        }
+        break;
+    }
+    return 0;
 }
 
 int IndexManager::insert(const char* tableName, const char* indexName, void* data, const int val) {

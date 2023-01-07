@@ -92,7 +92,7 @@ public:
 
     int cut(int k);
 
-    int insert(void* data, const int val, const int16_t childIndex_ = -1); // key and value
+    int insert(void* data, const int val, const int16_t childIndex_ = -1, const int16_t lastIndex_ = -1); // key and value
                                                                            // return the slot index of the inserted value
 
     int insert(std::vector<void*> data, std::vector<int> val, std::vector<int16_t> childIndex, bool front);

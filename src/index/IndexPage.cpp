@@ -23,7 +23,7 @@ inline uint16_t IndexPageHeader::getTotalLen() {
 IndexPage::IndexPage(uint8_t* pageData, uint16_t indexLen, uint8_t colType, uint16_t pageId_) {
     data = pageData;
     indexPageHeader = (IndexPageHeader*)data;
-    if (indexPageHeader->isInitialized == 0) { // uninitialized but not zero?
+    if (indexPageHeader->isInitialized != 1) { // uninitialized but not zero?
         indexPageHeader->initialize(indexLen, colType);
     }
     capacity = ((PAGE_SIZE - sizeof(IndexPageHeader)) / indexPageHeader->getTotalLen()) - 2;
@@ -52,6 +52,7 @@ IndexPage::~IndexPage() {
 
 void IndexPage::initialize(uint16_t indexLen_, uint8_t colType_) {
     indexPageHeader->initialize(indexLen_, colType_);
+    capacity = ((PAGE_SIZE - sizeof(IndexPageHeader)) / indexPageHeader->getTotalLen()) - 2;
 }
 
 void IndexPage::clear() {
@@ -165,7 +166,7 @@ int IndexPage::cut(int k) {
     return head;
 }
 
-int IndexPage::insert(void* data, const int val, const int16_t childIndex_) {
+int IndexPage::insert(void* data, const int val, const int16_t childIndex_, const int16_t lastIndex_) {
     int16_t head = indexPageHeader->firstIndex, last = -1;
     int16_t emptyIndex = indexPageHeader->firstEmptyIndex;
     uint8_t* emptySlot = nullptr;
@@ -186,11 +187,14 @@ int IndexPage::insert(void* data, const int val, const int16_t childIndex_) {
     } else {
         int originHead = head;
         while (head >= 0) {
-            if (compare->lte(data, getData(head))) {
+            if (lastIndex_ == -1 && compare->lte(data, getData(head))) {
                 break;
             }
             last = head;
             head = *getNextIndex(head);
+            if (lastIndex_ >= 0 && last == lastIndex_) {
+                break;
+            }
         }
         if (head == originHead) { // inserted data is the smallest of all
             indexPageHeader->firstIndex = emptyIndex;

@@ -19,11 +19,23 @@ public:
 
     ~RecordManager();
 
+    /**
+     * @brief called when create a table
+     *        create the file corresponding to a table in a database
+     * @return -1 if fail
+     */
     int createFile(const char* tableName); 
 
+    /**
+     * @brief called when remove a table
+     *        remove the file corresponding to a table in a database
+     */
     int removeFile(const char* tableName);
 
-    FileHandler* openFile(const char* tableName);// one file corresponds with one fileHandler
+    /**
+     * @brief open a file according to the tableName
+     */
+    FileHandler* openFile(const char* tableName);
 
     int closeFile(FileHandler* fileHandler);
 

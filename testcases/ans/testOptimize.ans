@@ -1,0 +1,13 @@
+Database changed.
+Insert 3 rows in xxx seconds
+===== Show Indexes =====
+INDEX(test.col1);
+==== 1 indexes in total. =====
+
+----------------
+test.col1 | test.col2 
+----------------
+3 | 2 
+4 | 4 
+----------------
+Select 2 rows in xxx seconds

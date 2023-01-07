@@ -63,7 +63,7 @@ public:
     
     int dropTable(string name);
 
-    int listTableInfo(string name);
+    int listTableInfo(string name, DBMeta* dbMeta);
 
     /**
      * @brief: rename process:
@@ -81,7 +81,7 @@ public:
 
     int createIndex(string tableName, string colName);
 
-    int dropIndex(string tableName, string colName);
+    int dropIndex(string tableName, string colName, DBMeta* dbMeta);
 
     bool hasIndex(string tableName, string colName);
 
@@ -93,7 +93,7 @@ public:
     */
     int createPrimaryKey(string tableName, string colName);
 
-    int dropPrimaryKey(string tableName, string colName, DBMeta* dbMeta, int& indexDropped);
+    int dropPrimaryKey(string tableName, int colId, DBMeta* dbMeta, int& indexDropped, char* pkColName);
 
     /**
      * @brief add one foreign key, it is stored in the TableEntry. The return value will be store in database meta data.

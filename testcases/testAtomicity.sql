@@ -1,0 +1,10 @@
+CREATE DATABASE testAtomicity;
+USE testAtomicity;
+CREATE TABLE test (id INT);
+ALTER TABLE test ADD UNIQUE (id);
+INSERT INTO test VALUES (1), (2), (3), (4), (2), (5), (6);
+SELECT * FROM test;
+ALTER TABLE test DROP UNIQUE (id);
+INSERT INTO test VALUES (1), (2), (3), (4), (2), (5), (6);
+SELECT COUNT(*) FROM test;
+SELECT * FROM test WHERE id=2;

@@ -70,6 +70,7 @@ alter_statement
     | 'ALTER' 'TABLE' Identifier 'ADD' 'CONSTRAINT' (Identifier)? 'PRIMARY' 'KEY' '(' identifiers ')'      # alter_table_add_pk
     | 'ALTER' 'TABLE' Identifier 'ADD' 'CONSTRAINT' (Identifier)? 'FOREIGN' 'KEY' '(' identifiers ')' 'REFERENCES' Identifier '(' identifiers ')'  # alter_table_add_foreign_key
     | 'ALTER' 'TABLE' Identifier 'ADD' 'UNIQUE' '(' identifiers ')'             # alter_table_add_unique
+    | 'ALTER' 'TABLE' Identifier 'DROP' 'UNIQUE' '(' identifiers ')'            # alter_table_drop_unique
     ;
 
 field_list

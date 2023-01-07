@@ -10,10 +10,13 @@
 
 /* Table Info */
 #define COL_MAX_NAME_LEN 64
-#define TAB_MAX_COL_NUM 10
+#define TAB_MAX_COL_NUM 13
 #define TAB_MAX_NAME_LEN 64
 #define TAB_MAX_LEN 128
 
+/* Parser */
+#define MAX_INPUT_SIZE 500
+#define MAX_FOREIGN_KEY_NUM 20
 /* System */
 #define MAX_FOREIGN_KEY_NUM 20
 #define MAX_FOREIGN_KEY_FOR_COL 5
@@ -58,10 +61,6 @@ typedef enum {
 } DB_LIST_TYPE;
 
 /* End System */
-
-/* Parser */
-#define MAX_INPUT_SIZE 150
-/* End Parser */
 
 typedef enum {
     COL_NULL = 0,

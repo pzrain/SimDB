@@ -1,0 +1,18 @@
+Database changed.
+Insert 2 rows in 0.000050 seconds
+
+----------------
+test_table.test_int | test_table.test_float | test_table.test_str 
+----------------
+1 | 2.330000 | abc 
+3 | 6.660000 | in 
+----------------
+Select 2 rows in 0.000031 seconds
+Delete 1 rows in 0.000021 seconds
+
+----------------
+test_table.test_int | test_table.test_float | test_table.test_str 
+----------------
+1 | 2.330000 | abc 
+----------------
+Select 1 rows in 0.000007 seconds

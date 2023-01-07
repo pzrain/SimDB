@@ -33,42 +33,48 @@ public:
 
     char* getTableName();
 
-    int operateTable(TB_OP_TYPE opCode, char* colName = nullptr, TableEntry* tableEntry = nullptr, int num = 0);
-    /* 
-        When operating type is TB_INIT, tableEntry represents an array of TableEntry
-
-        TB_REMOVE, TB_EXIST requires parameter colName
-        TB_INIT, TB_ALTER, TB_ADD requires parameter tableEntry
-        TB_INIT requires parameter num, which is the total number of tableEntry array
-
-        @return: -1 if fail, 
-                 0 if succeed for all op other than TB_EXIST 
-                 TB_EXIST returns 1 if exists otherwise 0
+    /**
+     * @brief When operating type is TB_INIT, tableEntry represents an array of TableEntry
+     *        TB_REMOVE, TB_EXIST requires parameter colName
+     *        TB_INIT, TB_ALTER, TB_ADD requires parameter tableEntry
+     *        TB_INIT requires parameter num, which is the total number of tableEntry array
+     * @return -1 if fail,
+     *         0 if succeed for all op other than TB_EXIST (TB_EXIST returns 1 if exists otherwise 0)
      */
+    int operateTable(TB_OP_TYPE opCode, char* colName = nullptr, TableEntry* tableEntry = nullptr, int num = 0);
     
     bool getRecord(RecordId recordId, Record &record);
 
+    /**
+     * @brief the page id and slot id of the inserted record will be stored in recordId      
+     */
     bool insertRecord(RecordId &recordId, Record &record);
-    // the page id and slot id of the inserted record will be stored in recordId
-    // at present, no constraints will be checked. (TODO)
 
     bool removeRecord(RecordId &recordId, Record &record);
 
+    /**
+     * @brief parameter recordId specifies the position of the record that needed to be updated
+     *        parameter record will substitutes the old record
+     */
     bool updateRecord(RecordId &recordId, Record &record);
-    // parameter recordId specifies the position of the record that needed to be updated
-    // parameter record will substitutes the old record
 
-    // ATTENTION: you should manually delete the pointer to avoid memory leak
+    /**
+     * @brief ATTENTION: you should manually delete the pointer to avoid memory leak
+     * @return all records stores in this file
+     */
     void getAllRecords(std::vector<Record*>&, std::vector<RecordId*>&);
-    // returns all records stores in this file
 
+    /**
+     * @brief get specific fields of all records storing in this file
+     *        if you want get i-th field, please set the i-th bit of enable (from low to high) to 1
+     * @return true if successful
+     */
     bool getAllRecordsAccordingToFields(std::vector<Record*>&, std::vector<RecordId*>&, const uint16_t enable = 0);
-    // get specific fields of all records storing in this file
-    // if you want get i-th field, please set the i-th bit of enable (from low to high) to 1
-    // return true if succeed
 
+    /**
+     * @brief insert records in bulk
+     */
     bool insertAllRecords(const std::vector<Record*>&, std::vector<RecordId>&);
-    // insert records in bulk
 
     int getRecordNum();
 
@@ -79,6 +85,20 @@ public:
     TableHeader* getTableHeader();
 
     void renameTable(const char* newName);
+
+    void saveTableHeader();
+
+    /**
+     * @brief transform pageId together with slotId to a int value
+     *        used in indexing
+     */
+    void transform(int& val, int pageId, int slotId);
+
+    void transform(std::vector<int>& vals, std::vector<int> pageIds, std::vector<int> slotIds);
+
+    void transformR(int val, int& pageId, int& slotId);
+
+    void transformR(std::vector<int> vals, std::vector<int>& pageIds, std::vector<int>& slotIds);
 
 };
 

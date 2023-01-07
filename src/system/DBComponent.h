@@ -41,6 +41,7 @@ struct DBMeta {
         memset(isPrimaryKey, false, sizeof(isPrimaryKey));
         memset(isUniqueKey, false, sizeof(isUniqueKey));
         memset(mannuallyCreateIndex, false, sizeof(mannuallyCreateIndex));
+        fprintf(stderr, "Meta Size = %ld\n", sizeof(DBMeta));
     }
 };
 
@@ -100,11 +101,112 @@ struct DBSelect {
 
     bool offsetEn = false;                     // offset
     int offsetNum;
+
+    ~DBSelect() {
+        for(int i = 0; i < this->expressions.size(); i++) {
+            // delete lVal pointer
+            switch (this->expressions[i].lType) {
+                case DB_INT:
+                    delete (int*)this->expressions[i].lVal;
+                    break;
+                case DB_CHAR:
+                    delete (char*)this->expressions[i].lVal;
+                    break;
+                case DB_FLOAT:
+                    delete (float*)this->expressions[i].lVal;
+                    break;
+                case DB_LIST:
+                    delete (std::vector<void*>*)this->expressions[i].lVal;
+                    break;
+                case DB_ITEM:
+                    delete (DBExpItem*)this->expressions[i].lVal;
+                    break;
+                case DB_NST:
+                    delete (DBSelect*)this->expressions[i].lVal;
+                    break;
+                default:
+                    break;
+            }
+            // delete rVal pointer
+            switch (this->expressions[i].rType) {
+                case DB_INT:
+                    delete (int*)this->expressions[i].rVal;
+                    break;
+                case DB_CHAR:
+                    delete (char*)this->expressions[i].rVal;
+                    break;
+                case DB_FLOAT:
+                    delete (float*)this->expressions[i].rVal;
+                    break;
+                case DB_LIST:
+                    delete (std::vector<void*>*)this->expressions[i].rVal;
+                    break;
+                case DB_ITEM:
+                    delete (DBExpItem*)this->expressions[i].rVal;
+                    break;
+                case DB_NST:
+                    delete (DBSelect*)this->expressions[i].rVal;
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
 };
 
 struct DBUpdate {
     std::vector<DBExpression> expItem;      // set clause, like "name=value"
     std::vector<DBExpression> expressions;  // where clause
+    ~DBUpdate() {
+        for(int i = 0; i < this->expressions.size(); i++) {
+            // delete lVal pointer
+            switch (this->expressions[i].lType) {
+                case DB_INT:
+                    delete (int*)this->expressions[i].lVal;
+                    break;
+                case DB_CHAR:
+                    delete (char*)this->expressions[i].lVal;
+                    break;
+                case DB_FLOAT:
+                    delete (float*)this->expressions[i].lVal;
+                    break;
+                case DB_LIST:
+                    delete (std::vector<void*>*)this->expressions[i].lVal;
+                    break;
+                case DB_ITEM:
+                    delete (DBExpItem*)this->expressions[i].lVal;
+                    break;
+                case DB_NST:
+                    delete (DBSelect*)this->expressions[i].lVal;
+                    break;
+                default:
+                    break;
+            }
+            // delete rVal pointer
+            switch (this->expressions[i].rType) {
+                case DB_INT:
+                    delete (int*)this->expressions[i].rVal;
+                    break;
+                case DB_CHAR:
+                    delete (char*)this->expressions[i].rVal;
+                    break;
+                case DB_FLOAT:
+                    delete (float*)this->expressions[i].rVal;
+                    break;
+                case DB_LIST:
+                    delete (std::vector<void*>*)this->expressions[i].rVal;
+                    break;
+                case DB_ITEM:
+                    delete (DBExpItem*)this->expressions[i].rVal;
+                    break;
+                case DB_NST:
+                    delete (DBSelect*)this->expressions[i].rVal;
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
 };
 
 struct DBInsert {
@@ -113,10 +215,84 @@ struct DBInsert {
     // list of value list
     // similar to valueListType in DBExpression
     // example 2 below shows some details
+    ~DBInsert() {
+        for(int i = 0; i < this->valueLists.size(); i++) {
+            for(int j = 0; j < this->valueLists[i].size(); j++) {
+                switch(this->valueListsType[i][j]) {
+                    case DB_LIST_INT : {
+                        delete (int*)this->valueLists[i][j];
+                        break;
+                    }
+                    case DB_LIST_CHAR : {
+                        delete (char*)this->valueLists[i][j];
+                        break;
+                    }
+                    case DB_LIST_FLOAT : {
+                        delete (float*)this->valueLists[i][j];
+                        break;
+                    }
+                    default:
+                        break;
+                }
+
+            }
+        }
+    }
 };
 
 struct DBDelete {
     std::vector<DBExpression> expression;  // where clause
+    ~DBDelete() {
+        for(int i = 0; i < this->expression.size(); i++) {
+            // delete lVal pointer
+            switch (this->expression[i].lType) {
+                case DB_INT:
+                    delete (int*)this->expression[i].lVal;
+                    break;
+                case DB_CHAR:
+                    delete (char*)this->expression[i].lVal;
+                    break;
+                case DB_FLOAT:
+                    delete (float*)this->expression[i].lVal;
+                    break;
+                case DB_LIST:
+                    delete (std::vector<void*>*)this->expression[i].lVal;
+                    break;
+                case DB_ITEM:
+                    delete (DBExpItem*)this->expression[i].lVal;
+                    break;
+                case DB_NST:
+                    delete (DBSelect*)this->expression[i].lVal;
+                    break;
+                default:
+                    break;
+            }
+            // delete rVal pointer
+            switch (this->expression[i].rType) {
+                case DB_INT:
+                    delete (int*)this->expression[i].rVal;
+                    break;
+                case DB_CHAR:
+                    delete (char*)this->expression[i].rVal;
+                    break;
+                case DB_FLOAT:
+                    delete (float*)this->expression[i].rVal;
+                    break;
+                case DB_LIST:
+                    delete (std::vector<void*>*)this->expression[i].rVal;
+                    break;
+                case DB_ITEM:
+                    delete (DBExpItem*)this->expression[i].rVal;
+                    break;
+                case DB_NST:
+                    delete (DBSelect*)this->expression[i].rVal;
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+
 };
 
 /**
@@ -192,5 +368,31 @@ struct DBDelete {
  *  dbSelect->expressions.push_back(exp);
  *  delete dbSelect;
  */
+struct Type {
+    TB_COL_TYPE typeName;
+    size_t len;
+};
+struct FieldItem {
+    // for normal field
+    bool isNormalField = false;
+    std::string fieldName;
+    Type type;
+    bool isNotNull = false;
+    bool hasDefault = false;
+    int dValueInt;
+    float dValueFloat;
+    std::string dValueString;
+
+    // for primary key field
+    bool isPkField = false;
+    std::vector<std::string> colNames;
+
+    // for foreign key field
+    bool isFkField = false;
+    std::string fkName;
+    std::string colName;
+    std::string refTableName;
+    std::string refColName;
+};
 
 #endif

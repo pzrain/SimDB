@@ -1,0 +1,25 @@
+Database changed.
+[ERROR] fail in checking primary or unique constraint.
+
+----------------
+test.id 
+----------------
+----------------
+Select 0 rows in 0.000018 seconds
+[INFO] automatically remove Index on test.id.
+Insert 7 rows in 0.000018 seconds
+
+----------------
+COUNT(*) 
+----------------
+7 
+----------------
+Select 1 rows in 0.000393 seconds
+
+----------------
+test.id 
+----------------
+2 
+2 
+----------------
+Select 2 rows in 0.000277 seconds

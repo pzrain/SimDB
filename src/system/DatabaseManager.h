@@ -23,8 +23,6 @@ private:
     BufPageManager* bufPageManager;
     TableManager* tableManager;
 
-
-
     inline bool checkDatabaseName(string name);
 
     inline bool checkFileExist(string path);
@@ -81,11 +79,11 @@ public:
      *     ...
      * );
     */
-    int createTable(string name, char colName[][COL_MAX_NAME_LEN], TB_COL_TYPE* colType, int* colLen, int colNum);
+    int createTable(string name, vector<FieldItem> normalFieldList);
 
     /**
      * @brief only print all columns' name and data type. 
-     * SHOW TABLE <table name> (maybe DESC <table name> ?)
+     * DESC TABLE <table name>
     */
     int listTableInfo(string name);
 
@@ -102,14 +100,23 @@ public:
     int renameTable(string oldName, string newName);
 
     /**
-     * not sure
-    */
+     * @brief Create a index on a specific table.column
+     * 'ALTER' 'TABLE' Identifier 'ADD' 'INDEX' '(' identifiers ')'   
+     */
     int createIndex(string tableName, string colName);
 
+    /**
+     * @brief Drop the index on table.column
+     * 'ALTER' 'TABLE' Identifier 'DROP' 'INDEX' '(' identifiers ')'
+     */
     int dropIndex(string tableName, string colName);
 
     int hasIndex(string tableName, string colName);
 
+    /**
+     * @brief Display all the index of a table
+     * 'SHOW' 'INDEXES'
+     */
     int showIndex();
 
     /**
@@ -120,7 +127,7 @@ public:
     */
     int createPrimaryKey(string tableName, vector<string> colNames, int colNum);
 
-    int dropPrimaryKey(string tableName, vector<string> colNames, int colNum);
+    int dropPrimaryKey(string tableName);
 
     /**
      * @brief Create a Unique Key object. Refer to createPrimaryKey for more information
@@ -148,18 +155,34 @@ public:
 
     /**
      * @brief select statement, including fuzzy, nesty, group by…… selection
-     * 
+     * 'SELECT' selectors 'FROM' identifiers ('WHERE' where_and_clause)? ('GROUP' 'BY' column)? ('LIMIT' Integer ('OFFSET' Integer)?)?
      * @param dbSelect 
      * @return number of queries affected, -1 if encounters error
      */
     int selectRecords(DBSelect* dbSelect);
-    // SELECT column FROM table WHERE expr;
-    // parameters are encapsulated mainly due to nesty selections
 
+    /**
+     * @brief update statement
+     * 'UPDATE' Identifier 'SET' set_clause 'WHERE' where_and_clause
+     * @param dbUpdate 
+     * @return int 
+     */
     int updateRecords(string tableName, DBUpdate* dbUpdate);
 
+    /**
+     * @brief insert statement
+     * 'INSERT' 'INTO' Identifier 'VALUES' value_lists
+     * @param dbInsert 
+     * @return int 
+     */
     int insertRecords(string tableName, DBInsert* dbInsert);
 
+    /**
+     * @brief delete statement
+     * 'DELETE' 'FROM' Identifier 'WHERE' where_and_clause
+     * @param dbDelete 
+     * @return int 
+     */
     int dropRecords(string tableName, DBDelete* dbDelete);
 
 };

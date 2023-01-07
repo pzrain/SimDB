@@ -1,0 +1,10 @@
+CREATE DATABASE test6;
+USE test6;
+CREATE TABLE table_1(id INT, iid INT);
+CREATE TABLE table_2(id INT, iid INT);
+ALTER TABLE table_1 ADD INDEX (id);
+INSERT INTO table_1 VALUES(1, 1), (2, 2), (1, 3), (2, 4);
+INSERT INTO table_2 VALUES(1, 1), (1, 2), (2, 3), (2, 4);
+SELECT * FROM table_1, table_2 WHERE table_2.id=table_1.id;
+ALTER TABLE table_1 DROP INDEX (id);
+SELECT * FROM table_1, table_2 WHERE table_2.id=table_1.id;

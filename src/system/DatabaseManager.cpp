@@ -131,16 +131,6 @@ int DatabaseManager::switchDatabase(string name) {
         printf("[INFO] databse %s is already in use.\n", name.c_str());
         return 0;
     }
-    if (databaseUsed) {
-        writeMetaData(databaseStroeFileId, metaData);
-        for(int i = 0; i < metaData->tableNum; i++) {
-            tableManager->saveChangeToFile(metaData->tableNames[i]);
-        }
-        databaseUsedName = "";
-        databaseStroeFileId = -1;
-        databaseUsed = false;
-    }
-
     if(!checkDatabaseName(name))
         return -1;
 
@@ -149,6 +139,16 @@ int DatabaseManager::switchDatabase(string name) {
     if(!checkFileExist(path)) {
         printf("[ERROR] database does not exist !\n");
         return -1;
+    }
+
+    if (databaseUsed) {
+        writeMetaData(databaseStroeFileId, metaData);
+        for(int i = 0; i < metaData->tableNum; i++) {
+            tableManager->saveChangeToFile(metaData->tableNames[i]);
+        }
+        databaseUsedName = "";
+        databaseStroeFileId = -1;
+        databaseUsed = false;
     }
 
     databaseUsedName = name;
@@ -214,23 +214,41 @@ int DatabaseManager::listTablesOfDatabase() {
     return 0;
 }
 
-int DatabaseManager::createTable(string name, char colName[][COL_MAX_NAME_LEN], TB_COL_TYPE* colType, int* colLen, int colNum) {
+int DatabaseManager::createTable(string name, vector<FieldItem> normalFieldList) {
     if(!databaseUsed) {
         printf("[ERROR] use a database first!\n");
         return -1;
     }
-
+    size_t colNum = normalFieldList.size();
     TableEntry* tableEntrys = new TableEntry[colNum];
     for(int i = 0; i < colNum; i++) {
-        tableEntrys[i] = TableEntry(colName[i], colType[i]);
-        tableEntrys[i].colLen = colLen[i];
+        string colName = normalFieldList[i].fieldName;
+        TB_COL_TYPE colType = normalFieldList[i].type.typeName;
+        size_t colLen = normalFieldList[i].type.len;
+        tableEntrys[i] = TableEntry(colName.c_str(), colType);
+        tableEntrys[i].colLen = colLen;
+        if (colType == COL_VARCHAR) {
+            tableEntrys[i].colLen += 1;
+        }
+        tableEntrys[i].notNullConstraint = normalFieldList[i].isNotNull;
+        if(normalFieldList[i].hasDefault) {
+            tableEntrys[i].hasDefault = true;
+            if(colType == COL_INT)
+                tableEntrys[i].defaultVal.defaultValInt = normalFieldList[i].dValueInt;
+            else if(colType == COL_VARCHAR)
+                strcpy(tableEntrys[i].defaultVal.defaultValVarchar, normalFieldList[i].dValueString.c_str());
+            else if(colType == COL_FLOAT)
+                tableEntrys[i].defaultVal.defaultValFloat = normalFieldList[i].dValueFloat;
+            else
+                printf("report type error when create table\n");
+        }
     }
     if(tableManager->creatTable(name, tableEntrys, colNum) != 0) {
-        printf("report error when create table in database manager\n");
         return -1;
     }
     
     strcpy(metaData->tableNames[metaData->tableNum], name.c_str());
+    // printf("create table %s\n", name.c_str());
     metaData->colNum[metaData->tableNum] = colNum;
     metaData->foreignKeyNum[metaData->tableNum] = 0;
     for(int i = 0; i < TAB_MAX_COL_NUM; i++) {
@@ -248,7 +266,7 @@ int DatabaseManager::listTableInfo(string name) {
         return -1;
     }
 
-    return tableManager->listTableInfo(name);
+    return tableManager->listTableInfo(name, metaData);
 }
 
 int DatabaseManager::dropTable(string name) {
@@ -265,6 +283,11 @@ int DatabaseManager::dropTable(string name) {
     if(tableManager->dropTable(name) == 0) {
         strcpy(metaData->tableNames[tableToDrop], metaData->tableNames[metaData->tableNum-1]);
         metaData->colNum[tableToDrop] = metaData->colNum[metaData->tableNum-1];
+        metaData->indexNum[tableToDrop] = metaData->indexNum[metaData->tableNum-1];
+        for (int i = 0; i < metaData->indexNum[tableToDrop]; i++) {
+            strcpy(metaData->indexNames[tableToDrop][i], metaData->indexNames[metaData->tableNum-1][i]);
+            metaData->mannuallyCreateIndex[tableToDrop][i] = metaData->mannuallyCreateIndex[metaData->tableNum-1][i];
+        }
         for(int i = 0; i < TAB_MAX_COL_NUM; i++) { // note: this should be TAB_MAX_COL_NUM
             metaData->isPrimaryKey[tableToDrop][i] = metaData->isPrimaryKey[metaData->tableNum-1][i];
             metaData->isUniqueKey[tableToDrop][i] = metaData->isUniqueKey[metaData->tableNum-1][i];
@@ -341,7 +364,7 @@ int DatabaseManager::dropIndex(string tableName, string colName) {
         printf("[ERROR] use a database first\n");
         return -1;
     }
-    int res = tableManager->dropIndex(tableName, colName);
+    int res = tableManager->dropIndex(tableName, colName, metaData);
     if (res > -1) {
         int tableNum = -1;
         for(int i = 0; i < metaData->tableNum; i++) {
@@ -438,7 +461,7 @@ int DatabaseManager::createPrimaryKey(string tableName, vector<string> colNames,
     return 0;
 }
 
-int DatabaseManager::dropPrimaryKey(string tableName, vector<string> colNames, int colNum) {
+int DatabaseManager::dropPrimaryKey(string tableName) {
     if(!databaseUsed) {
         printf("[ERROR] use a database first\n");
         return -1;
@@ -454,18 +477,28 @@ int DatabaseManager::dropPrimaryKey(string tableName, vector<string> colNames, i
         fprintf(stderr, "meta data error when drop primary key\n");
         return -1;
     }
-    for(int i = 0; i < colNum; i++) {
-        int indexDropped = -1;
-        int colIndex = tableManager->dropPrimaryKey(tableName, colNames[i], metaData, indexDropped);
-        if(colIndex == -1) {
-            printf("[ERROR] error in dropping %d primary key error.\n", i);
-            return -1;
+    int colIndex = -1;
+    for (int i = 0; i < metaData->colNum[tableNum]; i++) {
+        if (metaData->isPrimaryKey[tableNum][i]) {
+            colIndex = i;
+            break;
         }
-        if (indexDropped == 1) {
-            addOrDropIndex(tableName, colNames[i], metaData, false);
-        }
-        metaData->isPrimaryKey[tableNum][colIndex] = false;
     }
+    if (colIndex == -1) {
+        printf("[ERROR] no primary key on table %s.\n", tableName.c_str());
+        return -1;
+    }
+    int indexDropped = -1;
+    char colName[64];
+    colIndex = tableManager->dropPrimaryKey(tableName, colIndex, metaData, indexDropped, colName);
+    if(colIndex == -1) {
+        printf("[ERROR] error in dropping primary key on table %s error.\n", tableName.c_str());
+        return -1;
+    }
+    if (indexDropped == 1) {
+        addOrDropIndex(tableName, colName, metaData, false);
+    }
+    metaData->isPrimaryKey[tableNum][colIndex] = false;
     return 0;
 }
 

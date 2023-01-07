@@ -1,0 +1,20 @@
+Database changed.
+Insert 4 rows in 0.000044 seconds
+
+----------------
+test.site 
+----------------
+google 
+baidu 
+bilibili 
+youtube 
+----------------
+Select 4 rows in 0.000030 seconds
+
+----------------
+test.site 
+----------------
+baidu 
+bilibili 
+----------------
+Select 2 rows in 0.000076 seconds

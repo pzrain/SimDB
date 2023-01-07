@@ -1,10 +1,10 @@
 
-// Generated from SQL.g4 by ANTLR 4.11.1
+// Generated from src/parser/antlr4/SQL.g4 by ANTLR 4.11.1
 
 #pragma once
 
 
-#include "antlr4-runtime/antlr4-runtime.h"
+#include "antlr4-runtime.h"
 #include "SQLParser.h"
 
 
@@ -68,6 +68,8 @@ public:
     virtual std::any visitAlter_table_add_foreign_key(SQLParser::Alter_table_add_foreign_keyContext *context) = 0;
 
     virtual std::any visitAlter_table_add_unique(SQLParser::Alter_table_add_uniqueContext *context) = 0;
+
+    virtual std::any visitAlter_table_drop_unique(SQLParser::Alter_table_drop_uniqueContext *context) = 0;
 
     virtual std::any visitField_list(SQLParser::Field_listContext *context) = 0;
 
