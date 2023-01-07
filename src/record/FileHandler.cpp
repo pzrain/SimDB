@@ -223,6 +223,7 @@ bool FileHandler::removeRecord(RecordId &recordId, Record &record) {
 
     int index;
     BufType data = bufPageManager->getPage(fileId, pageId, index);
+    bufPageManager->markDirty(index);
     PageHeader* pageHeader = (PageHeader*)data;
 
     if (slotId < 0 || slotId > pageHeader->maximumSlot) {
@@ -265,6 +266,7 @@ bool FileHandler::updateRecord(RecordId &recordId, Record &record) {
 
     int index;
     BufType data = bufPageManager->getPage(fileId, pageId, index);
+    bufPageManager->markDirty(index);
     PageHeader* pageHeader = (PageHeader*)data;
 
     if (slotId < 0 || slotId > pageHeader->maximumSlot) {
