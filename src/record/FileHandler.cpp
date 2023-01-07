@@ -318,11 +318,11 @@ bool FileHandler::getAllRecordsAccordingToFields(std::vector<Record*>& records, 
             head = tableHeader->entrys[head].next;
             i++;
         }
-        entryLen.push_back(len);
-        len = 0;
         if (i == tableHeader->colNum) {
             break;
         }
+        entryLen.push_back(len);
+        len = 0;
         // enable & (1 << i) == 1
         totalLen += tableHeader->entrys[head].colLen;
         entryLen.push_back(tableHeader->entrys[head].colLen);
