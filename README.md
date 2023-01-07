@@ -1,3 +1,9 @@
+## Final project for course Introduction to Database in Tsinghua University, Fall 2022
+SimDB is the final project for course Introduction to Database in Tsinghua University, Fall 2022. It is a demo-level relational database system. We implement many of the basic SQL statements. It supports both command line and batch mode.
+
+For more details and specific instructions, please refer to `report.pdf` under `doc/`.
+### Environment
+Tested under Ubuntu20.04 and wsl under windows. To compile, the runtime environment of antlr4 needs to be configured correctly.
 ### Quick start
 ```bash
 ./run.sh
@@ -9,26 +15,13 @@ compile & run
 ./run.sh -c
 ```
 
-### SQL Command
+### References
 
-* **quit SimDB**
+Stanford rebase project: https://web.stanford.edu/class/cs346/2015/redbase.html
 
-  ```sql
-  quit
-  ```
+Database by YuHao Zhou: https://github.com/miskcoo/TrivialDB
 
-  or
+Implementation of B+ tree: https://en.wikipedia.org/wiki/B%2B_tree
 
-  ```
-  exit
-  ```
-
-### Documentation
-See `report.pdf` under `./doc`.
-
-### Reference
-
-https://web.stanford.edu/class/cs346/2015/redbase.html
-
-https://thu-db.github.io/dbs-tutorial/
+Course documentation: https://thu-db.github.io/dbs-tutorial/
 
