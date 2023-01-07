@@ -1,4 +1,4 @@
-## Final project for course Introduction to Database in Tsinghua University, Fall 2022
+## SimDB
 SimDB is the final project for course Introduction to Database in Tsinghua University, Fall 2022. It is a demo-level relational database system. We implement many of the basic SQL statements. It supports both command line and batch mode.
 
 For more details and specific instructions, please refer to `report.pdf` under `doc/`.
