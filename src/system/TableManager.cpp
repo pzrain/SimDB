@@ -792,6 +792,22 @@ int getMapIndex(void* cur, uint8_t colType, void* ma, int &cnt) {
     return -1;
 }
 
+void _iterateWhereRecycle(std::vector<Record*> records[2], std::vector<RecordId*> recordIds[2], std::vector<Record*> optimizeRecords, std::vector<RecordId*> optimizeRecordIds, std::vector<RecordId*> opRecordIds) {
+    for (int i = 0; i < 2; i++) {
+        for (int j = 0; j < records[i].size(); j++) {
+            delete records[i][j];
+            delete recordIds[i][j];
+        }
+    }
+    for (int i = 0; i < optimizeRecords.size(); i++) {
+        delete optimizeRecords[i];
+        delete optimizeRecordIds[i];
+    }
+    for (int i = 0; i < opRecordIds.size(); i++) {
+        delete opRecordIds[i];
+    }
+}
+
 int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression> expressions, vector<RecordId*>& resRecordIds) {
     int cur = 0;
     std::vector<RecordId*> res[2];
@@ -823,6 +839,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
             if (expressions[0].rType == DB_LIST) {
                 if (expressions[0].op != IN_TYPE) {
                     printf("[ERROR] operation type of DB_LIST must be IN_TYPE.\n");
+                    _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
                     return -1;
                 }
                 void* ma = nullptr;
@@ -830,7 +847,10 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     case COL_INT: ma = new map<int, int>; break;
                     case COL_FLOAT: ma = new map<float, int>; break;
                     case COL_VARCHAR: ma = new map<string, int>; break;
-                    default: return -1; break;
+                    default: 
+                        _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
+                        return -1; 
+                        break;
                 }
                 int cnt = 0;
                 std::vector<void*>* valueList = (std::vector<void*>*)expressions[0].rVal;
@@ -859,17 +879,21 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
             if (expressions[0].rType == DB_NST) {
                 if (expressions[0].op > LTE_TYPE && expressions[0].op != IN_TYPE) {
                     printf("[ERROR] op %d is not supported for nesty selection.\n", expressions[0].op);
+                    _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
                     return -1;
                 }
                 if (((DBSelect*)(expressions[0].rVal))->selectItems.size() > 1) {
                     printf("[ERROR] nesty selection in tuple form is not supported.\n");
+                    _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
                     return -1;
                 }
                 if (_selectRecords((DBSelect*)expressions[0].rVal, tempRecordData, tempColNames) == -1) {
+                    _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
                     return -1;
                 }
                 if (tempRecordData.size() > 0 && tempRecordData[0].head->nodeType != tableEntryDescNode->colType) {
                     printf("[ERROR] incompatible type between data and result of nesty selection.\n");
+                    _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
                     return -1;
                 }
                 if (expressions[0].op == IN_TYPE) {
@@ -878,7 +902,10 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                         case COL_INT: ma = new map<int, int>; break;
                         case COL_FLOAT: ma = new map<float, int>; break;
                         case COL_VARCHAR: ma = new map<string, int>; break;
-                        default: return -1; break;
+                        default: 
+                            _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
+                            return -1; 
+                            break;
                     }
                     int cnt = 0;
                     for (int i = 0; i < tempRecordData.size(); i++) {
@@ -912,6 +939,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
             if (flag || (expressions[0].rType >= DB_INT && expressions[0].rType <= DB_CHAR)) {
                 if (!flag && tableEntryDescNode->colType != expressions[0].rType) {
                     printf("[ERROR] incompatible type for %s.%s and %d.\n", lItem->expTable.c_str(), lItem->expCol.c_str(), expressions[0].rType);
+                    _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
                     return -1;
                 }
                 switch (expressions[0].op) {
@@ -939,6 +967,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                         break;
                     default:
                         fprintf(stderr, "encouter error op type %d in search.\n", expressions[0].op);
+                        _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
                         return -1;
                         break;
                 }
@@ -960,6 +989,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                         }
                     }
                 } else {
+                    _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
                     return -1;
                 }
             }
@@ -980,6 +1010,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
             TableEntryDescNode* rtableEntryDescNode = rtableEntryDesc.getCol(rcolId);
             if (ltableEntryDescNode->colType != rtableEntryDescNode->colType) {
                 printf("[ERROR] %s.%s and %s.%s don't have compatible types.\n", lItem->expTable.c_str(), lItem->expCol.c_str(), rItem->expTable.c_str(), rItem->expCol.c_str());
+                _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
                 return -1;
             }
             fileHandlers[lfileId]->getAllRecordsAccordingToFields(optimizeRecords, optimizeRecordIds, 1 << lcolId);
@@ -1013,6 +1044,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                         break;
                     default:
                         fprintf(stderr, "encouter error op type %d in search.\n", expressions[i].op);
+                        _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
                         return -1;
                         break;
                 }
@@ -1050,6 +1082,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
         } else {
             // tableNum > 2
             // should not be here
+            _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
             return -1;
         }
     }
@@ -1062,6 +1095,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
         res[cur].clear();
         if (expressions[i].lType != DB_ITEM) { // in SQL.g4, the left must be an item;
             fprintf(stderr, "the left must be an item.\n");
+            _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
             return -1;
         }
         DBExpItem* lItem = (DBExpItem*)expressions[i].lVal;
@@ -1102,6 +1136,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
             }
             if (expressions[i].rType != DB_NULL && curRecordDataNode->nodeType == COL_NULL) {
                 printf("[ERROR] null type currently is not supported in op other than IS(NOT) NULL.\n");
+                _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
                 return -1;
             }
             if (expressions[i].rType == DB_ITEM) {
@@ -1112,6 +1147,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                 TableEntryDescNode* tableEntryDescNode = tableEntryDesc.getCol(rColId);
                 if (tableEntryDescNode->colType != curRecordDataNode->nodeType) {
                     printf("[ERROR] %s.%s and %s.%s don't have compatible types.\n", lItem->expTable.c_str(), lItem->expCol.c_str(), rItem->expTable.c_str(), rItem->expCol.c_str());
+                    _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
                     return -1;
                 }
                 std::vector<int> indexRes, indexResTemp;
@@ -1152,6 +1188,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                             break;
                         default:
                             fprintf(stderr, "encouter error op type %d in search.\n", expressions[i].op);
+                            _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
                             return -1;
                             break;
                     }
@@ -1198,6 +1235,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                                 break;
                             default:
                                 fprintf(stderr, "encouter error op type %d in search.\n", expressions[i].op);
+                                _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
                                 return -1;
                                 break;
                         }
@@ -1286,6 +1324,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                                     break;
                                 default:
                                     fprintf(stderr, "encouter error op type %d in search.\n", expressions[i].op);
+                                    _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
                                     return -1;
                                     break;
                             }
@@ -1304,10 +1343,12 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
             } else if (expressions[i].rType == DB_NST) {
                 if (expressions[i].op > LTE_TYPE && expressions[i].op != IN_TYPE) {
                     printf("[ERROR] op %d is not supported for nesty selection.\n", expressions[i].op);
+                    _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
                     return -1;
                 }
                 if (((DBSelect*)(expressions[i].rVal))->selectItems.size() > 1) {
                     printf("[ERROR] nesty selection in tuple form not supported.\n");
+                    _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
                     return -1;
                 }
                 if (equalAsPre && preFlag) {
@@ -1319,6 +1360,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                 }
                 // recursive search
                 if (!NST_FLAG && _selectRecords((DBSelect*)expressions[i].rVal, tempRecordData, tempColNames) == -1) {
+                    _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
                     return -1;
                 }
                 NST_FLAG = true;
@@ -1342,10 +1384,12 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     preFlag = false;
                     if (tempRecordData.size() > 1) {
                         printf("[ERROR] the result of child select contains more than one record.\n");
+                        _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
                         return -1;
                     }
                     if (tempRecordData[0].head->nodeType != curRecordDataNode->nodeType) {
                         printf("[ERROR] can not compare between different types in child select.\n");
+                        _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
                         return -1;
                     }
                     bool flag = false;
@@ -1379,6 +1423,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     }
                 } else {
                     fprintf(stderr, "error\n");
+                    _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
                     return -1;
                 }
             } else if (expressions[i].rType == DB_LIST) {
@@ -1416,6 +1461,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
             } else if (expressions[i].rType == DB_NULL) {
                 if (expressions[i].op != IS_TYPE && expressions[i].op != ISN_TYPE) {
                     fprintf(stderr, "Null should have op type IS or IS NOT.\n");
+                    _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
                     return -1;
                 }
                 if (curRecordDataNode->nodeType == COL_NULL) {
@@ -1432,6 +1478,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
             } else { // DB_INT, DB_CHAR, DB_FLOAT
                 if (curRecordDataNode->nodeType != (TB_COL_TYPE)expressions[i].rType) {
                     printf("[ERROR] incompatible type for %s.%s and %d.\n", lItem->expTable.c_str(), lItem->expCol.c_str(), expressions[i].rType);
+                    _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
                     return -1;
                 }
                 if (equalAsPre && preFlag) {
@@ -1482,12 +1529,14 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                     case LIKE_TYPE: {
                         if (expressions[i].rType != DB_CHAR) {
                             printf("[ERROR] right expression in LIKE must be VARCHAR.\n");
+                            _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
                             return -1;
                         }
                         string regStr = ((char*)expressions[i].rVal);
                         for (int i = 0; i < regStr.length(); i++) {
                             if (regStr[i] == '%' && i != 0 && i != regStr.length() - 1) {
                                 printf("[ERROR] wrong format of LIKE string.\n");
+                                _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
                                 return -1;
                             }
                         }
@@ -1501,6 +1550,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
                         break;
                     }
                     default:
+                        _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
                         return -1;
                         break;
                 }
@@ -1524,19 +1574,7 @@ int TableManager::_iterateWhere(vector<string> selectTables, vector<DBExpression
         RecordId* resRecordId = new RecordId(res[cur][i]->getPageId(), res[cur][i]->getSlotId());
         resRecordIds.push_back(resRecordId);
     }
-    for (int i = 0; i < MAX_SELECT_TABLE; i++) {
-        for (int j = 0; j < records[i].size(); j++) {
-            delete records[i][j];
-            delete recordIds[i][j];
-        }
-    }
-    for (int i = 0; i < optimizeRecords.size(); i++) {
-        delete optimizeRecords[i];
-        delete optimizeRecordIds[i];
-    }
-    for (int i = 0; i < opRecordIds.size(); i++) {
-        delete opRecordIds[i];
-    }
+    _iterateWhereRecycle(records, recordIds, optimizeRecords, optimizeRecordIds, opRecordIds);
     return 0;
 }
 
